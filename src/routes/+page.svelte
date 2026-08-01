@@ -5,22 +5,14 @@
 </script>
 
 <div class="flex flex-col gap-4">
-	<h1 class="text-2xl font-semibold">Your groups</h1>
+	<h1 class="text-2xl font-semibold">Your account</h1>
 
-	{#if data.groups.length === 0}
-		<p class="text-muted-foreground">You're not part of any group yet.</p>
-	{:else}
-		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-			{#each data.groups as group (group.id)}
-				<Card.Root>
-					<Card.Header>
-						<Card.Title>{group.name}</Card.Title>
-						<Card.Description>
-							Created {new Date(group.createdAt).toLocaleDateString()}
-						</Card.Description>
-					</Card.Header>
-				</Card.Root>
-			{/each}
-		</div>
+	{#if data.user}
+		<Card.Root class="max-w-sm">
+			<Card.Header>
+				<Card.Title>{data.user.displayName}</Card.Title>
+				<Card.Description>{data.user.email}</Card.Description>
+			</Card.Header>
+		</Card.Root>
 	{/if}
 </div>

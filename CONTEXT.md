@@ -4,6 +4,16 @@ Splitwise-style shared expense tracker. Users split Expenses within a Group and 
 
 ## Language
 
+**User**:
+A person who can belong to Groups. Created either by invite (added to a Group by email, before ever logging in) or by first Google login. `displayName` and `email` are seeded from the Google profile on first login and are user-editable after.
+
+**Identity**:
+The link between a User and an external auth provider account, keyed by (`provider`, `providerSubject`) — `providerSubject` is the provider's stable subject id (e.g. Google's `sub` claim), not email, which can change. Google is the only provider today; the shape allows more later. Login resolves an Identity by (`provider`, `providerSubject`); if none exists, falls back to matching an existing User by email (linking it rather than duplicating); only creates a new User if neither match.
+_Avoid_: Account (collides with a future financial-account concept), OAuth account
+
+**Session**:
+A server-side record of an authenticated User, referenced by a cookie. Expires independently of the Identity/Google token.
+
 **Group**:
 Top-level scope for shared spending. Every Expense and Settlement belongs to exactly one Group — there is no ungrouped expense.
 _Avoid_: Trip, household (too narrow — a Group is generic)

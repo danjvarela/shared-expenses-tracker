@@ -1,4 +1,6 @@
 export * from './user';
+export * from './identity';
+export * from './session';
 export * from './category';
 export * from './group';
 export * from './group-member';

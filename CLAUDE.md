@@ -4,6 +4,11 @@
 - **Package Manager**: pnpm
 - **Add-ons**: prettier, eslint, vitest, tailwindcss, drizzle, mcp
 
+## UI Components
+
+- Always use shadcn-svelte components where possible, over raw HTML/custom controls.
+- If needed component not installed yet, prompt user to install it. Never install components yourself.
+
 ---
 
 You are able to use the Svelte MCP server, where you have access to comprehensive Svelte 5 and SvelteKit documentation. Here's how to use the available tools effectively:
