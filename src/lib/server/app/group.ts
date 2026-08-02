@@ -1,5 +1,8 @@
-import { getAll } from '$lib/server/infra/db/repositories/group';
+import { db } from '$lib/server/infra/db';
+import { createGroupRepository } from '$lib/server/infra/db/repositories/group';
+
+const groupRepo = createGroupRepository(db);
 
 export async function getUserGroups(userId: string) {
-	return await getAll(userId);
+	return await groupRepo.getAll(userId);
 }

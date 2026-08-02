@@ -4,7 +4,7 @@ import { expense } from '$lib/server/infra/db/schema/expense';
 import { expenseSplit } from '$lib/server/infra/db/schema/expense-split';
 import { eq } from 'drizzle-orm';
 
-export const create =
+const create =
 	(db: Database): IExpenseRepository['create'] =>
 	async (input) => {
 		const [expenseRow] = await db
@@ -26,7 +26,7 @@ export const create =
 		return { ...expenseRow, splits };
 	};
 
-export const getWithSplits =
+const getWithSplits =
 	(db: Database): IExpenseRepository['getWithSplits'] =>
 	async (id) => {
 		const [expenseRow] = await db.select().from(expense).where(eq(expense.id, id));
@@ -36,7 +36,7 @@ export const getWithSplits =
 		return { ...expenseRow, splits };
 	};
 
-export const update =
+const update =
 	(db: Database): IExpenseRepository['update'] =>
 	async (id, input) => {
 		const [expenseRow] = await db
@@ -61,13 +61,13 @@ export const update =
 		return { ...expenseRow, splits };
 	};
 
-export const deleteExpense =
+const deleteExpense =
 	(db: Database): IExpenseRepository['delete'] =>
 	async (id) => {
 		await db.delete(expense).where(eq(expense.id, id));
 	};
 
-export const getAllForGroupWithSplits =
+const getAllForGroupWithSplits =
 	(db: Database): IExpenseRepository['getAllForGroupWithSplits'] =>
 	async (groupId) => {
 		const expenseRows = await db.select().from(expense).where(eq(expense.groupId, groupId));
@@ -82,3 +82,13 @@ export const getAllForGroupWithSplits =
 			})
 		);
 	};
+
+export function createExpenseRepository(db: Database): IExpenseRepository {
+	return {
+		create: create(db),
+		getWithSplits: getWithSplits(db),
+		update: update(db),
+		delete: deleteExpense(db),
+		getAllForGroupWithSplits: getAllForGroupWithSplits(db)
+	};
+}

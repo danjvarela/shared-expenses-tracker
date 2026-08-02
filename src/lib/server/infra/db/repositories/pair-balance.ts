@@ -3,7 +3,7 @@ import type { Database } from '$lib/server/infra/db/types';
 import { pairBalance } from '$lib/server/infra/db/schema/pair-balance';
 import { and, eq, or } from 'drizzle-orm';
 
-export const getForPair =
+const getForPair =
 	(db: Database): IPairBalanceRepository['getForPair'] =>
 	async (groupId, userA, userB) => {
 		const [row] = await db
@@ -26,7 +26,7 @@ export const getForPair =
 		return row ?? null;
 	};
 
-export const replaceForPair =
+const replaceForPair =
 	(db: Database): IPairBalanceRepository['replaceForPair'] =>
 	async (groupId, userA, userB, next) => {
 		await db
@@ -46,13 +46,13 @@ export const replaceForPair =
 		}
 	};
 
-export const getAllForGroup =
+const getAllForGroup =
 	(db: Database): IPairBalanceRepository['getAllForGroup'] =>
 	async (groupId) => {
 		return await db.select().from(pairBalance).where(eq(pairBalance.groupId, groupId));
 	};
 
-export const replaceAllForGroup =
+const replaceAllForGroup =
 	(db: Database): IPairBalanceRepository['replaceAllForGroup'] =>
 	async (groupId, balances) => {
 		await db.delete(pairBalance).where(eq(pairBalance.groupId, groupId));
@@ -62,7 +62,7 @@ export const replaceAllForGroup =
 		}
 	};
 
-export function pairBalanceRepoFor(db: Database): IPairBalanceRepository {
+export function createPairBalanceRepository(db: Database): IPairBalanceRepository {
 	return {
 		getForPair: getForPair(db),
 		replaceForPair: replaceForPair(db),

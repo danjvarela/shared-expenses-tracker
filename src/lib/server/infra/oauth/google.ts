@@ -45,36 +45,42 @@ async function fetchProfile(accessToken: string) {
 	};
 }
 
-export const googleOAuthProvider: IOAuthProvider = {
-	provider: 'google',
+export function createGoogleOAuthProvider(): IOAuthProvider {
+	return {
+		provider: 'google',
 
-	async createAuthorizationRequest(redirectUri: string) {
-		const state = randomToken();
-		const codeVerifier = randomToken();
-		const codeChallenge = await sha256Base64url(codeVerifier);
+		async createAuthorizationRequest(redirectUri: string) {
+			const state = randomToken();
+			const codeVerifier = randomToken();
+			const codeChallenge = await sha256Base64url(codeVerifier);
 
-		const url = new URL(AUTH_URL);
-		url.searchParams.set('client_id', requireEnv('GOOGLE_CLIENT_ID'));
-		url.searchParams.set('redirect_uri', redirectUri);
-		url.searchParams.set('response_type', 'code');
-		url.searchParams.set('scope', 'openid email profile');
-		url.searchParams.set('state', state);
-		url.searchParams.set('code_challenge', codeChallenge);
-		url.searchParams.set('code_challenge_method', 'S256');
+			const url = new URL(AUTH_URL);
+			url.searchParams.set('client_id', requireEnv('GOOGLE_CLIENT_ID'));
+			url.searchParams.set('redirect_uri', redirectUri);
+			url.searchParams.set('response_type', 'code');
+			url.searchParams.set('scope', 'openid email profile');
+			url.searchParams.set('state', state);
+			url.searchParams.set('code_challenge', codeChallenge);
+			url.searchParams.set('code_challenge_method', 'S256');
 
-		return { url: url.toString(), state, codeVerifier };
-	},
+			return { url: url.toString(), state, codeVerifier };
+		},
 
-	async handleCallback(code: string, codeVerifier: string, redirectUri: string): Promise<OAuthProfile> {
-		const accessToken = await exchangeCodeForAccessToken(code, codeVerifier, redirectUri);
-		const profile = await fetchProfile(accessToken);
+		async handleCallback(
+			code: string,
+			codeVerifier: string,
+			redirectUri: string
+		): Promise<OAuthProfile> {
+			const accessToken = await exchangeCodeForAccessToken(code, codeVerifier, redirectUri);
+			const profile = await fetchProfile(accessToken);
 
-		return {
-			provider: 'google',
-			subject: profile.sub,
-			email: profile.email,
-			emailVerified: profile.email_verified,
-			name: profile.name
-		};
-	}
-};
+			return {
+				provider: 'google',
+				subject: profile.sub,
+				email: profile.email,
+				emailVerified: profile.email_verified,
+				name: profile.name
+			};
+		}
+	};
+}

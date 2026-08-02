@@ -1,16 +1,20 @@
 import { db } from '$lib/server/infra/db';
-import * as expenseRepo from '$lib/server/infra/db/repositories/expense';
-import * as settlementRepo from '$lib/server/infra/db/repositories/settlement';
-import { pairBalanceRepoFor, getAllForGroup } from '$lib/server/infra/db/repositories/pair-balance';
+import { createExpenseRepository } from '$lib/server/infra/db/repositories/expense';
+import { createSettlementRepository } from '$lib/server/infra/db/repositories/settlement';
+import { createPairBalanceRepository } from '$lib/server/infra/db/repositories/pair-balance';
 import { recomputeGroupBalances as recompute } from '$lib/server/app/pair-balance';
 
 export async function recomputeGroupBalances(groupId: string): Promise<void> {
-	const expenses = await expenseRepo.getAllForGroupWithSplits(db)(groupId);
-	const settlements = await settlementRepo.getAllForGroup(db)(groupId);
+	const expenseRepo = createExpenseRepository(db);
+	const settlementRepo = createSettlementRepository(db);
+	const pairBalanceRepo = createPairBalanceRepository(db);
 
-	await recompute(pairBalanceRepoFor(db), groupId, expenses, settlements);
+	const expenses = await expenseRepo.getAllForGroupWithSplits(groupId);
+	const settlements = await settlementRepo.getAllForGroup(groupId);
+
+	await recompute(pairBalanceRepo, groupId, expenses, settlements);
 }
 
 export async function getGroupBalances(groupId: string) {
-	return getAllForGroup(db)(groupId);
+	return createPairBalanceRepository(db).getAllForGroup(groupId);
 }
