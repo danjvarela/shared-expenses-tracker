@@ -30,6 +30,10 @@ _Avoid_: Purchase, transaction, bill
 One User's exact share (`amountCents`) of an Expense. Stored as its own row per (Expense, User) pair, not embedded in Expense, so balances can be computed with a cross-expense sum. The sum of an Expense's splits is expected to equal the Expense's `amountCents`, but this invariant is not enforced at the schema level — see ADR-0001.
 _Avoid_: Share, portion
 
+**PairBalance**:
+The cached, directed net debt between two Users within a Group (`fromUserId` owes `toUserId` `amountCents`), incrementally maintained on every Expense/Settlement write rather than summed from ExpenseSplit/Settlement at read time. At most one nonzero row exists per unordered User pair per Group — see ADR-0004.
+_Avoid_: Balance (ambiguous between net-per-user and pairwise — this context only has the pairwise shape), debt
+
 **Split type**:
 How an Expense's total is divided into ExpenseSplits (equal, percentage, by shares, exact). This is a presentation-layer concern only — it must resolve to exact per-user `amountCents` before an ExpenseSplit is created. The domain has no `splitType` field.
 _Avoid_: Split method, division strategy
