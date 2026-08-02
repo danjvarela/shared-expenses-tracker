@@ -23,7 +23,7 @@
 	{#if data.userGroupBalances.length}
 		<div class="flex flex-col gap-3">
 			{#each data.userGroupBalances as group (group.id)}
-				<a href={resolve('/groups/[id]', { id: group.id })} class="block no-underline">
+				<a href={resolve('/(app)/groups/[id]', { id: group.id })} class="block no-underline">
 					<Card.Root class="transition-colors hover:bg-muted/50">
 						<Card.Header>
 							<Card.Title>{group.name}</Card.Title>
