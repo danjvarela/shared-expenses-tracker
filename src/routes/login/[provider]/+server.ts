@@ -1,13 +1,14 @@
 import { redirect } from '@sveltejs/kit';
-import { createAuthorizationRequest } from '$lib/server/app/auth';
+import { authService } from '$lib/server/container';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, url, cookies }) => {
 	const redirectUri = `${url.origin}/login/${params.provider}/callback`;
-	const { url: authorizationUrl, state, codeVerifier } = await createAuthorizationRequest(
-		params.provider,
-		redirectUri
-	);
+	const {
+		url: authorizationUrl,
+		state,
+		codeVerifier
+	} = await authService.createAuthorizationRequest(params.provider, redirectUri);
 
 	const cookieOptions = {
 		path: '/',

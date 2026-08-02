@@ -1,5 +1,5 @@
 import { redirect, type Handle } from '@sveltejs/kit';
-import { validateSessionToken } from '$lib/server/app/auth';
+import { authService } from '$lib/server/container';
 
 const PUBLIC_ROUTES = new Set([
 	'/login',
@@ -15,7 +15,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		event.locals.user = null;
 		event.locals.session = null;
 	} else {
-		const result = await validateSessionToken(token);
+		const result = await authService.validateSessionToken(token);
 
 		if (!result) {
 			event.cookies.delete('session', { path: '/' });

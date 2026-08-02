@@ -1,9 +1,5 @@
 import { error, redirect } from '@sveltejs/kit';
-import {
-	handleAuthorizationCallback,
-	generateSessionToken,
-	createSession
-} from '$lib/server/app/auth';
+import { authService } from '$lib/server/container';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, url, cookies }) => {
@@ -20,15 +16,15 @@ export const GET: RequestHandler = async ({ params, url, cookies }) => {
 	}
 
 	const redirectUri = `${url.origin}/login/${params.provider}/callback`;
-	const { userId } = await handleAuthorizationCallback(
+	const { userId } = await authService.handleAuthorizationCallback(
 		params.provider,
 		code,
 		codeVerifier,
 		redirectUri
 	);
 
-	const token = generateSessionToken();
-	const session = await createSession(token, userId);
+	const token = authService.generateSessionToken();
+	const session = await authService.createSession(token, userId);
 
 	cookies.set('session', token, {
 		path: '/',

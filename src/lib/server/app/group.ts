@@ -1,8 +1,11 @@
-import { db } from '$lib/server/infra/db';
-import { createGroupRepository } from '$lib/server/infra/db/repositories/group';
+import type { IGroupRepository } from '$lib/server/app/interfaces/repositories/group';
 
-const groupRepo = createGroupRepository(db);
+export function createGroupService(deps: { groupRepo: IGroupRepository }) {
+	async function getUserGroups(userId: string) {
+		return await deps.groupRepo.getAll(userId);
+	}
 
-export async function getUserGroups(userId: string) {
-	return await groupRepo.getAll(userId);
+	return { getUserGroups };
 }
+
+export type GroupService = ReturnType<typeof createGroupService>;

@@ -1,20 +1,27 @@
-import { db } from '$lib/server/infra/db';
-import { createExpenseRepository } from '$lib/server/infra/db/repositories/expense';
-import { createSettlementRepository } from '$lib/server/infra/db/repositories/settlement';
-import { createPairBalanceRepository } from '$lib/server/infra/db/repositories/pair-balance';
+import type { IExpenseRepository } from '$lib/server/app/interfaces/repositories/expense';
+import type { ISettlementRepository } from '$lib/server/app/interfaces/repositories/settlement';
+import type { IPairBalanceRepository } from '$lib/server/app/interfaces/repositories/pair-balance';
 import { recomputeGroupBalances as recompute } from '$lib/server/app/pair-balance';
 
-export async function recomputeGroupBalances(groupId: string): Promise<void> {
-	const expenseRepo = createExpenseRepository(db);
-	const settlementRepo = createSettlementRepository(db);
-	const pairBalanceRepo = createPairBalanceRepository(db);
-
-	const expenses = await expenseRepo.getAllForGroupWithSplits(groupId);
-	const settlements = await settlementRepo.getAllForGroup(groupId);
-
-	await recompute(pairBalanceRepo, groupId, expenses, settlements);
+export interface GroupBalanceDeps {
+	expenseRepo: IExpenseRepository;
+	settlementRepo: ISettlementRepository;
+	pairBalanceRepo: IPairBalanceRepository;
 }
 
-export async function getGroupBalances(groupId: string) {
-	return createPairBalanceRepository(db).getAllForGroup(groupId);
+export function createGroupBalanceService(deps: GroupBalanceDeps) {
+	async function recomputeGroupBalances(groupId: string): Promise<void> {
+		const expenses = await deps.expenseRepo.getAllForGroupWithSplits(groupId);
+		const settlements = await deps.settlementRepo.getAllForGroup(groupId);
+
+		await recompute(deps.pairBalanceRepo, groupId, expenses, settlements);
+	}
+
+	async function getGroupBalances(groupId: string) {
+		return deps.pairBalanceRepo.getAllForGroup(groupId);
+	}
+
+	return { recomputeGroupBalances, getGroupBalances };
 }
+
+export type GroupBalanceService = ReturnType<typeof createGroupBalanceService>;
