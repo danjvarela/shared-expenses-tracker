@@ -26,6 +26,9 @@ function fakeExpenseRepo(expenses: Array<ExpenseWithSplits>): IExpenseRepository
 		async delete() {
 			throw new Error('not implemented');
 		},
+		async getAllForGroupWithDetails() {
+			throw new Error('not implemented');
+		},
 		async getAllForGroupWithSplits(groupId) {
 			return expenses.filter((expense) => expense.groupId === groupId);
 		}

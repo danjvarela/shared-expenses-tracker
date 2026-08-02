@@ -69,6 +69,16 @@ function fakeExpenseRepo(seed: Array<ExpenseWithSplits> = []): IExpenseRepositor
 		},
 		async getAllForGroupWithSplits(groupId) {
 			return Array.from(rows.values()).filter((row) => row.groupId === groupId);
+		},
+		async getAllForGroupWithDetails(groupId) {
+			return Array.from(rows.values())
+				.filter((row) => row.groupId === groupId)
+				.map((row) => ({
+					...row,
+					paidByName: row.paidByUserId,
+					categoryName: null,
+					categoryIcon: null
+				}));
 		}
 	};
 }
@@ -114,11 +124,36 @@ function fakePairBalanceRepo(): IPairBalanceRepository & {
 }
 
 describe('createExpenseService', () => {
+	it('returns the expenses the repo reports for a group', async () => {
+		const seed: ExpenseWithSplits = {
+			id: 'expense-0',
+			groupId,
+			paidByUserId: alice,
+			categoryId: null,
+			description: 'Dinner',
+			amountCents: 1000,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			splits: []
+		};
+		const expenseRepo = fakeExpenseRepo([seed]);
+		const service = createExpenseService({
+			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo: fakePairBalanceRepo() }),
+			expenseRepo
+		});
+
+		expect(await service.getGroupExpenses(groupId)).toEqual([
+			{ ...seed, paidByName: alice, categoryName: null, categoryIcon: null }
+		]);
+		expect(await service.getGroupExpenses('other-group')).toEqual([]);
+	});
+
 	it('creates an expense and applies pair balance deltas within the unit of work', async () => {
 		const expenseRepo = fakeExpenseRepo();
 		const pairBalanceRepo = fakePairBalanceRepo();
 		const service = createExpenseService({
-			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo })
+			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo }),
+			expenseRepo
 		});
 
 		const created = await service.createExpense({
@@ -140,11 +175,13 @@ describe('createExpenseService', () => {
 	});
 
 	it('throws when updating an expense that does not exist', async () => {
+		const expenseRepo = fakeExpenseRepo();
 		const service = createExpenseService({
 			uow: fakeUnitOfWork({
-				expenseRepo: fakeExpenseRepo(),
+				expenseRepo,
 				pairBalanceRepo: fakePairBalanceRepo()
-			})
+			}),
+			expenseRepo
 		});
 
 		await expect(
@@ -188,7 +225,8 @@ describe('createExpenseService', () => {
 		const expenseRepo = fakeExpenseRepo([seed]);
 		const pairBalanceRepo = fakePairBalanceRepo();
 		const service = createExpenseService({
-			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo })
+			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo }),
+			expenseRepo
 		});
 
 		await service.deleteExpense('expense-0');

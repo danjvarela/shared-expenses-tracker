@@ -5,6 +5,12 @@ export interface ExpenseWithSplits extends Expense {
 	splits: Array<ExpenseSplit>;
 }
 
+export interface ExpenseWithDetails extends ExpenseWithSplits {
+	paidByName: string;
+	categoryName: string | null;
+	categoryIcon: string | null;
+}
+
 export interface IExpenseRepository {
 	create(input: {
 		groupId: string;
@@ -31,4 +37,6 @@ export interface IExpenseRepository {
 	delete(id: string): Promise<void>;
 
 	getAllForGroupWithSplits(groupId: string): Promise<Array<ExpenseWithSplits>>;
+
+	getAllForGroupWithDetails(groupId: string): Promise<Array<ExpenseWithDetails>>;
 }

@@ -2,32 +2,9 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Empty from '$lib/components/ui/empty/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import type { Group } from '$lib/server/domain/group';
+	import { resolve } from '$app/paths';
 
-	type GroupSummary = Group & { netBalanceCents: number };
 	const { data } = $props();
-
-	// TODO: replace with real data from `data.groups` once balances are wired up
-	const sampleGroups: GroupSummary[] = [
-		{
-			id: '1',
-			name: 'Roommates',
-			createdAt: new Date(),
-			netBalanceCents: -2050
-		},
-		{
-			id: '2',
-			name: 'Japan Trip',
-			createdAt: new Date(),
-			netBalanceCents: 12500
-		},
-		{
-			id: '3',
-			name: 'Book Club',
-			createdAt: new Date(),
-			netBalanceCents: 0
-		}
-	];
 
 	function formatBalance(netBalanceCents: number) {
 		const amount = (Math.abs(netBalanceCents) / 100).toFixed(2);
@@ -37,7 +14,7 @@
 	}
 </script>
 
-<div class="container mx-auto max-w-2xl p-4">
+<div class="container mx-auto max-w-xl p-4">
 	<div class="mb-4 flex items-center justify-between">
 		<h1 class="text-2xl font-semibold">Your groups</h1>
 		<Button>Create group</Button>
@@ -46,14 +23,16 @@
 	{#if data.userGroupBalances.length}
 		<div class="flex flex-col gap-3">
 			{#each data.userGroupBalances as group (group.id)}
-				<Card.Root>
-					<Card.Header>
-						<Card.Title>{group.name}</Card.Title>
-						<Card.Description class={formatBalance(group.netCents).class}>
-							{formatBalance(group.netCents).text}
-						</Card.Description>
-					</Card.Header>
-				</Card.Root>
+				<a href={resolve('/groups/[id]', { id: group.id })} class="block no-underline">
+					<Card.Root class="transition-colors hover:bg-muted/50">
+						<Card.Header>
+							<Card.Title>{group.name}</Card.Title>
+							<Card.Description class={formatBalance(group.netCents).class}>
+								{formatBalance(group.netCents).text}
+							</Card.Description>
+						</Card.Header>
+					</Card.Root>
+				</a>
 			{/each}
 		</div>
 	{:else}

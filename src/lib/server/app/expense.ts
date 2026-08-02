@@ -1,7 +1,8 @@
 import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
 import type {
 	IExpenseRepository,
-	ExpenseWithSplits
+	ExpenseWithSplits,
+	ExpenseWithDetails
 } from '$lib/server/app/interfaces/repositories/expense';
 import type { IPairBalanceRepository } from '$lib/server/app/interfaces/repositories/pair-balance';
 import { applyPairBalanceDeltas, expenseDeltas } from '$lib/server/app/pair-balance';
@@ -20,7 +21,14 @@ export interface ExpenseRepos {
 	pairBalanceRepo: IPairBalanceRepository;
 }
 
-export function createExpenseService(deps: { uow: IUnitOfWork<ExpenseRepos> }) {
+export function createExpenseService(deps: {
+	uow: IUnitOfWork<ExpenseRepos>;
+	expenseRepo: IExpenseRepository;
+}) {
+	async function getGroupExpenses(groupId: string): Promise<Array<ExpenseWithDetails>> {
+		return await deps.expenseRepo.getAllForGroupWithDetails(groupId);
+	}
+
 	async function createExpense(input: ExpenseInput): Promise<ExpenseWithSplits> {
 		return deps.uow.run(async ({ expenseRepo, pairBalanceRepo }) => {
 			const created = await expenseRepo.create(input);
@@ -75,7 +83,7 @@ export function createExpenseService(deps: { uow: IUnitOfWork<ExpenseRepos> }) {
 		});
 	}
 
-	return { createExpense, updateExpense, deleteExpense };
+	return { getGroupExpenses, createExpense, updateExpense, deleteExpense };
 }
 
 export type ExpenseService = ReturnType<typeof createExpenseService>;

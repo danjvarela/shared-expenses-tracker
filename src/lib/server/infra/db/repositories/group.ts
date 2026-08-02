@@ -16,8 +16,20 @@ const getAll =
 		return rows;
 	};
 
+const getById =
+	(db: Database): IGroupRepository['getById'] =>
+	async (id) => {
+		const [row] = await db
+			.select({ id: group.id, name: group.name, createdAt: group.createdAt })
+			.from(group)
+			.where(eq(group.id, id));
+
+		return row ?? null;
+	};
+
 export function createGroupRepository(db: Database): IGroupRepository {
 	return {
-		getAll: getAll(db)
+		getAll: getAll(db),
+		getById: getById(db)
 	};
 }

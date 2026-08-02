@@ -2,6 +2,8 @@ import type { IExpenseRepository } from '$lib/server/app/interfaces/repositories
 import type { Database } from '$lib/server/infra/db/types';
 import { expense } from '$lib/server/infra/db/schema/expense';
 import { expenseSplit } from '$lib/server/infra/db/schema/expense-split';
+import { user } from '$lib/server/infra/db/schema/user';
+import { category } from '$lib/server/infra/db/schema/category';
 import { eq } from 'drizzle-orm';
 
 const create =
@@ -83,12 +85,46 @@ const getAllForGroupWithSplits =
 		);
 	};
 
+const getAllForGroupWithDetails =
+	(db: Database): IExpenseRepository['getAllForGroupWithDetails'] =>
+	async (groupId) => {
+		const expenseRows = await db
+			.select({
+				id: expense.id,
+				groupId: expense.groupId,
+				paidByUserId: expense.paidByUserId,
+				categoryId: expense.categoryId,
+				description: expense.description,
+				amountCents: expense.amountCents,
+				createdAt: expense.createdAt,
+				updatedAt: expense.updatedAt,
+				paidByName: user.displayName,
+				categoryName: category.name,
+				categoryIcon: category.icon
+			})
+			.from(expense)
+			.innerJoin(user, eq(user.id, expense.paidByUserId))
+			.leftJoin(category, eq(category.id, expense.categoryId))
+			.where(eq(expense.groupId, groupId));
+
+		return Promise.all(
+			expenseRows.map(async (expenseRow) => {
+				const splits = await db
+					.select()
+					.from(expenseSplit)
+					.where(eq(expenseSplit.expenseId, expenseRow.id));
+				return { ...expenseRow, splits };
+			})
+		);
+	};
+
 export function createExpenseRepository(db: Database): IExpenseRepository {
 	return {
 		create: create(db),
 		getWithSplits: getWithSplits(db),
 		update: update(db),
 		delete: deleteExpense(db),
-		getAllForGroupWithSplits: getAllForGroupWithSplits(db)
+		getAllForGroupWithSplits: getAllForGroupWithSplits(db),
+		getAllForGroupWithDetails: getAllForGroupWithDetails(db)
 	};
 }
