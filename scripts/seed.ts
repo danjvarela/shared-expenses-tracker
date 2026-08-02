@@ -24,12 +24,11 @@ async function main() {
 	await db.delete(schema.group);
 	await db.delete(schema.user);
 
-	const [alice, bob, carol] = await db
+	const [alice, bob] = await db
 		.insert(schema.user)
 		.values([
-			{ displayName: 'Alice', email: 'alice@example.com' },
-			{ displayName: 'Bob', email: 'bob@example.com' },
-			{ displayName: 'Carol', email: 'carol@example.com' }
+			{ displayName: 'Dan', email: 'vareladanmarj@gmail.com' },
+			{ displayName: 'Nelie', email: 'neliejoycabanillas26@gmail.com' }
 		])
 		.returning();
 
@@ -53,8 +52,7 @@ async function main() {
 		{ groupId: apartment.id, userId: alice.id },
 		{ groupId: apartment.id, userId: bob.id },
 		{ groupId: tripToOsaka.id, userId: alice.id },
-		{ groupId: tripToOsaka.id, userId: bob.id },
-		{ groupId: tripToOsaka.id, userId: carol.id }
+		{ groupId: tripToOsaka.id, userId: bob.id }
 	]);
 
 	const apartmentExpenses = await db
@@ -96,7 +94,7 @@ async function main() {
 			},
 			{
 				groupId: tripToOsaka.id,
-				paidByUserId: carol.id,
+				paidByUserId: bob.id,
 				categoryId: food.id,
 				description: 'Ramen night',
 				amountCents: 9000
@@ -107,19 +105,12 @@ async function main() {
 				categoryId: fun.id,
 				description: 'Karaoke',
 				amountCents: 6000
-			},
-			{
-				groupId: tripToOsaka.id,
-				paidByUserId: carol.id,
-				categoryId: null,
-				description: 'Convenience store snacks',
-				amountCents: 1800
 			}
 		])
 		.returning();
 
 	const [rentExpense, electricExpense, costcoExpense] = apartmentExpenses;
-	const [taxiExpense, ramenExpense, karaokeExpense, snacksExpense] = osakaExpenses;
+	const [taxiExpense, ramenExpense, karaokeExpense] = osakaExpenses;
 
 	await db.insert(schema.expenseSplit).values([
 		// August rent, split equally between Alice and Bob
@@ -131,27 +122,19 @@ async function main() {
 		// Costco run, split equally
 		{ expenseId: costcoExpense.id, userId: alice.id, amountCents: 5625 },
 		{ expenseId: costcoExpense.id, userId: bob.id, amountCents: 5625 },
-		// Airport taxi, split three ways
-		{ expenseId: taxiExpense.id, userId: alice.id, amountCents: 1500 },
-		{ expenseId: taxiExpense.id, userId: bob.id, amountCents: 1500 },
-		{ expenseId: taxiExpense.id, userId: carol.id, amountCents: 1500 },
-		// Ramen night, split three ways
-		{ expenseId: ramenExpense.id, userId: alice.id, amountCents: 3000 },
-		{ expenseId: ramenExpense.id, userId: bob.id, amountCents: 3000 },
-		{ expenseId: ramenExpense.id, userId: carol.id, amountCents: 3000 },
-		// Karaoke, split three ways
-		{ expenseId: karaokeExpense.id, userId: alice.id, amountCents: 2000 },
-		{ expenseId: karaokeExpense.id, userId: bob.id, amountCents: 2000 },
-		{ expenseId: karaokeExpense.id, userId: carol.id, amountCents: 2000 },
-		// Convenience store snacks, Carol treated everyone, exact shares
-		{ expenseId: snacksExpense.id, userId: alice.id, amountCents: 600 },
-		{ expenseId: snacksExpense.id, userId: bob.id, amountCents: 600 },
-		{ expenseId: snacksExpense.id, userId: carol.id, amountCents: 600 }
+		// Airport taxi, split equally
+		{ expenseId: taxiExpense.id, userId: alice.id, amountCents: 2250 },
+		{ expenseId: taxiExpense.id, userId: bob.id, amountCents: 2250 },
+		// Ramen night, split equally
+		{ expenseId: ramenExpense.id, userId: alice.id, amountCents: 4500 },
+		{ expenseId: ramenExpense.id, userId: bob.id, amountCents: 4500 },
+		// Karaoke, split equally
+		{ expenseId: karaokeExpense.id, userId: alice.id, amountCents: 3000 },
+		{ expenseId: karaokeExpense.id, userId: bob.id, amountCents: 3000 }
 	]);
 
 	await db.insert(schema.settlement).values([
-		{ groupId: apartment.id, fromUserId: bob.id, toUserId: alice.id, amountCents: 5000 },
-		{ groupId: tripToOsaka.id, fromUserId: alice.id, toUserId: carol.id, amountCents: 2000 }
+		{ groupId: apartment.id, fromUserId: bob.id, toUserId: alice.id, amountCents: 5000 }
 	]);
 
 	console.log('Seeded database.');
