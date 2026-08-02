@@ -1,5 +1,8 @@
+import { userBalanceService } from '$lib/server/container';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	return { user: locals.user };
+	const userGroupBalances = await userBalanceService.getUserGroupBalances(locals.user!.id);
+
+	return { user: locals.user, userGroupBalances };
 };

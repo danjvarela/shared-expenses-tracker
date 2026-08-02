@@ -12,6 +12,7 @@ import { createGoogleOAuthProvider } from '$lib/server/infra/oauth/google';
 import { createAuthService } from '$lib/server/app/auth';
 import { createGroupService } from '$lib/server/app/group';
 import { createGroupBalanceService } from '$lib/server/app/group-balance';
+import { createUserBalanceService } from '$lib/server/app/user-balance';
 import { createExpenseService, type ExpenseRepos } from '$lib/server/app/expense';
 import { createSettlementService, type SettlementRepos } from '$lib/server/app/settlement';
 import type { IOAuthProvider } from '$lib/server/app/interfaces/oauth-provider';
@@ -53,6 +54,8 @@ export const groupBalanceService = createGroupBalanceService({
 	settlementRepo,
 	pairBalanceRepo
 });
+
+export const userBalanceService = createUserBalanceService({ groupRepo, pairBalanceRepo });
 
 export const expenseService = createExpenseService({ uow: expenseUnitOfWork });
 

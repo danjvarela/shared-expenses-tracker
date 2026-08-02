@@ -16,6 +16,8 @@ export interface IPairBalanceRepository {
 
 	getAllForGroup(groupId: string): Promise<Array<PairBalance>>;
 
+	getNetForUserInGroups(userId: string, groupIds: Array<string>): Promise<Map<string, number>>;
+
 	replaceAllForGroup(
 		groupId: string,
 		balances: Array<{ fromUserId: string; toUserId: string; amountCents: number }>

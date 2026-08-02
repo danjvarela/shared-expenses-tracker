@@ -5,6 +5,7 @@
 	import type { Group } from '$lib/server/domain/group';
 
 	type GroupSummary = Group & { netBalanceCents: number };
+	const { data } = $props();
 
 	// TODO: replace with real data from `data.groups` once balances are wired up
 	const sampleGroups: GroupSummary[] = [
@@ -42,14 +43,14 @@
 		<Button>Create group</Button>
 	</div>
 
-	{#if sampleGroups.length}
+	{#if data.userGroupBalances.length}
 		<div class="flex flex-col gap-3">
-			{#each sampleGroups as group (group.id)}
+			{#each data.userGroupBalances as group (group.id)}
 				<Card.Root>
 					<Card.Header>
 						<Card.Title>{group.name}</Card.Title>
-						<Card.Description class={formatBalance(group.netBalanceCents).class}>
-							{formatBalance(group.netBalanceCents).text}
+						<Card.Description class={formatBalance(group.netCents).class}>
+							{formatBalance(group.netCents).text}
 						</Card.Description>
 					</Card.Header>
 				</Card.Root>
@@ -65,7 +66,7 @@
 			</Empty.Header>
 			<Empty.Content>
 				<div class="flex gap-2">
-          <Button variant="outline">Join group</Button>
+					<Button variant="outline">Join group</Button>
 					<Button>Create group</Button>
 				</div>
 			</Empty.Content>

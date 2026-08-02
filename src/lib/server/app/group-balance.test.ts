@@ -56,6 +56,9 @@ function fakePairBalanceRepo(): IPairBalanceRepository & { replaced: Array<Array
 		async getAllForGroup() {
 			return stored;
 		},
+		async getNetForUserInGroups() {
+			return new Map();
+		},
 		async replaceAllForGroup(groupId, balances) {
 			replaced.push(balances);
 			stored = balances.map((balance, index) => ({

@@ -36,6 +36,9 @@ function fakePairBalanceRepo(): IPairBalanceRepository {
 				...value
 			}));
 		},
+		async getNetForUserInGroups() {
+			return new Map();
+		},
 		async replaceAllForGroup(_groupId, balances) {
 			rows.clear();
 			for (const balance of balances) {
