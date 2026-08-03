@@ -7,6 +7,7 @@ import { createGroupRepository } from '$lib/server/infra/db/repositories/group';
 import { createExpenseRepository } from '$lib/server/infra/db/repositories/expense';
 import { createSettlementRepository } from '$lib/server/infra/db/repositories/settlement';
 import { createPairBalanceRepository } from '$lib/server/infra/db/repositories/pair-balance';
+import { createGroupMemberRepository } from '$lib/server/infra/db/repositories/group-member';
 import { createGoogleOAuthProvider } from '$lib/server/infra/oauth/google';
 
 import { createAuthService } from '$lib/server/app/auth';
@@ -14,6 +15,7 @@ import { createGroupBalanceService } from '$lib/server/app/group-balance';
 import { createUserBalanceService } from '$lib/server/app/user-balance';
 import { createExpenseService, type ExpenseRepos } from '$lib/server/app/expense';
 import { createSettlementService, type SettlementRepos } from '$lib/server/app/settlement';
+import { createGroupMemberService } from '$lib/server/app/group-member';
 import type { IOAuthProvider } from '$lib/server/app/interfaces/oauth-provider';
 
 const userRepo = createUserRepository(db);
@@ -23,6 +25,7 @@ const groupRepo = createGroupRepository(db);
 const expenseRepo = createExpenseRepository(db);
 const settlementRepo = createSettlementRepository(db);
 const pairBalanceRepo = createPairBalanceRepository(db);
+const groupMemberRepo = createGroupMemberRepository(db);
 
 const googleOAuthProvider = createGoogleOAuthProvider();
 const oauthProviders: Record<string, IOAuthProvider> = {
@@ -57,5 +60,7 @@ export const userBalanceService = createUserBalanceService({ groupRepo, pairBala
 export const expenseService = createExpenseService({ uow: expenseUnitOfWork, expenseRepo });
 
 export const settlementService = createSettlementService({ uow: settlementUnitOfWork });
+
+export const groupMemberService = createGroupMemberService({ groupMemberRepo });
 
 export { groupRepo };

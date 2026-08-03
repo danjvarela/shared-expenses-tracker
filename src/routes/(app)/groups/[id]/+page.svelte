@@ -17,7 +17,10 @@
 <div class="container mx-auto max-w-xl p-4">
 	<div class="mb-4 flex items-center justify-between">
 		<h1 class="text-2xl font-semibold">{data.group.name}</h1>
-		<Button>Add expense</Button>
+		<div class="flex gap-2">
+			<Button variant="outline" href="{data.group.id}/settings">Settings</Button>
+			<Button>Add expense</Button>
+		</div>
 	</div>
 
 	{#if data.groupExpenses.length}

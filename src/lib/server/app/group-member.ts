@@ -1,0 +1,35 @@
+import type {
+	IGroupMemberRepository,
+	GroupMemberWithUser
+} from '$lib/server/app/interfaces/repositories/group-member';
+
+const SUM_TOLERANCE = 0.01;
+
+export function createGroupMemberService(deps: { groupMemberRepo: IGroupMemberRepository }) {
+	async function getGroupMembers(groupId: string): Promise<Array<GroupMemberWithUser>> {
+		return deps.groupMemberRepo.getAllForGroupWithUser(groupId);
+	}
+
+	async function updateDefaultSplitPercents(
+		groupId: string,
+		entries: Array<{ userId: string; defaultSplitPercent: number | null }>
+	): Promise<void> {
+		const set = entries.filter(
+			(entry): entry is { userId: string; defaultSplitPercent: number } =>
+				entry.defaultSplitPercent !== null
+		);
+
+		if (set.length > 0) {
+			const sum = set.reduce((total, entry) => total + entry.defaultSplitPercent, 0);
+			if (Math.abs(sum - 100) > SUM_TOLERANCE) {
+				throw new Error(`Default split percentages must sum to 100, got ${sum}`);
+			}
+		}
+
+		await deps.groupMemberRepo.updateDefaultSplitPercents(groupId, entries);
+	}
+
+	return { getGroupMembers, updateDefaultSplitPercents };
+}
+
+export type GroupMemberService = ReturnType<typeof createGroupMemberService>;

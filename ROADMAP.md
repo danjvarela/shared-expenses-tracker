@@ -8,6 +8,7 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 - [ ] Not started — Update group detail (name, etc.)
 - [ ] Not started — Delete group (blocked while any nonzero `PairBalance` exists in the group; hard delete, cascades Expenses/Settlements/PairBalances once clear)
 - [ ] Not started — Invite user to group by email (domain already supports pre-login Users via `Identity` fallback-by-email match; UI/flow not built)
+- [ ] In progress — Set default split percentages per member (`GroupMember.defaultSplitPercent`, prefill-only, unenforced sum — see ADR-0005). Schema, service, and whole-group settings UI done; prefill into the split-entry UI still blocked on the not-yet-built expense-add form.
 - [ ] Not started — Kick user from group (blocked while that member has any nonzero `PairBalance` in the group)
 - [x] Done — View a group's members/expenses/balances (read-only)
 

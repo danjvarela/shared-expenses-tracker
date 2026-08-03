@@ -1,0 +1,1 @@
+ALTER TABLE `group_member` ADD `default_split_percent` real;

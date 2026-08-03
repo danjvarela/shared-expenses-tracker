@@ -19,7 +19,7 @@ Top-level scope for shared spending. Every Expense and Settlement belongs to exa
 _Avoid_: Trip, household (too narrow — a Group is generic)
 
 **GroupMember**:
-A User's membership in a Group. Plain join — carries no role or permission (no admin/member distinction exists yet).
+A User's membership in a Group. Carries no role or permission (no admin/member distinction exists yet). Optionally carries `defaultSplitPercent` — a nullable, per-Group default share used only to prefill new Expense split UIs; not enforced to sum to 100 across a Group's members at the schema level (app layer enforces on save), and independent of any per-`ExpenseGroup` split arrangement default — see ADR-0005.
 _Avoid_: Membership, participant
 
 **Expense**:

@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { group } from './group';
 import { user } from './user';
 
@@ -12,6 +12,7 @@ export const groupMember = sqliteTable(
 		userId: text()
 			.notNull()
 			.references(() => user.id, { onDelete: 'restrict' }),
+		defaultSplitPercent: real(),
 		createdAt: integer({ mode: 'timestamp' })
 			.notNull()
 			.$defaultFn(() => new Date())
