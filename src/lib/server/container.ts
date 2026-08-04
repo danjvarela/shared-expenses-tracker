@@ -8,6 +8,7 @@ import { createExpenseRepository } from '$lib/server/infra/db/repositories/expen
 import { createSettlementRepository } from '$lib/server/infra/db/repositories/settlement';
 import { createPairBalanceRepository } from '$lib/server/infra/db/repositories/pair-balance';
 import { createGroupMemberRepository } from '$lib/server/infra/db/repositories/group-member';
+import { createCategoryRepository } from '$lib/server/infra/db/repositories/category';
 import { createGoogleOAuthProvider } from '$lib/server/infra/oauth/google';
 
 import { createAuthService } from '$lib/server/app/auth';
@@ -26,6 +27,7 @@ const expenseRepo = createExpenseRepository(db);
 const settlementRepo = createSettlementRepository(db);
 const pairBalanceRepo = createPairBalanceRepository(db);
 const groupMemberRepo = createGroupMemberRepository(db);
+const categoryRepo = createCategoryRepository(db);
 
 const googleOAuthProvider = createGoogleOAuthProvider();
 const oauthProviders: Record<string, IOAuthProvider> = {
@@ -63,4 +65,4 @@ export const settlementService = createSettlementService({ uow: settlementUnitOf
 
 export const groupMemberService = createGroupMemberService({ groupMemberRepo });
 
-export { groupRepo };
+export { groupRepo, categoryRepo };

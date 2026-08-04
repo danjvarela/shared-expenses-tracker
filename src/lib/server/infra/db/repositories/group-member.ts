@@ -15,7 +15,8 @@ const getAllForGroupWithUser =
 			})
 			.from(groupMember)
 			.innerJoin(user, eq(user.id, groupMember.userId))
-			.where(eq(groupMember.groupId, groupId));
+			.where(eq(groupMember.groupId, groupId))
+			.orderBy(groupMember.createdAt);
 	};
 
 const updateDefaultSplitPercents =

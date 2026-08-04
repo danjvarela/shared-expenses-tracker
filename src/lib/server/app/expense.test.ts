@@ -43,6 +43,7 @@ function fakeExpenseRepo(seed: Array<ExpenseWithSplits> = []): IExpenseRepositor
 				categoryId: input.categoryId,
 				description: input.description,
 				amountCents: input.amountCents,
+				date: input.date,
 				createdAt: new Date(),
 				updatedAt: new Date(),
 				splits: toSplits(id, input.splits)
@@ -132,6 +133,7 @@ describe('createExpenseService', () => {
 			categoryId: null,
 			description: 'Dinner',
 			amountCents: 1000,
+			date: new Date(),
 			createdAt: new Date(),
 			updatedAt: new Date(),
 			splits: []
@@ -162,6 +164,7 @@ describe('createExpenseService', () => {
 			categoryId: null,
 			description: 'Dinner',
 			amountCents: 1000,
+			date: new Date(),
 			splits: [
 				{ userId: alice, amountCents: 500 },
 				{ userId: bob, amountCents: 500 }
@@ -190,6 +193,7 @@ describe('createExpenseService', () => {
 				categoryId: null,
 				description: 'x',
 				amountCents: 100,
+				date: new Date(),
 				splits: []
 			})
 		).rejects.toThrow('Expense not found: missing');
@@ -203,6 +207,7 @@ describe('createExpenseService', () => {
 			categoryId: null,
 			description: 'Dinner',
 			amountCents: 1000,
+			date: new Date(),
 			createdAt: new Date(),
 			updatedAt: new Date(),
 			splits: [

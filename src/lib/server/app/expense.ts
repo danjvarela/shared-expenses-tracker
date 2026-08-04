@@ -13,6 +13,7 @@ export interface ExpenseInput {
 	categoryId: string | null;
 	description: string;
 	amountCents: number;
+	date: Date;
 	splits: Array<{ userId: string; amountCents: number }>;
 }
 

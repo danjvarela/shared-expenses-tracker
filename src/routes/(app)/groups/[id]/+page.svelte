@@ -10,7 +10,11 @@
 	}
 
 	function formatDate(date: Date) {
-		return new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+		return new Date(date).toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
 	}
 </script>
 
@@ -19,7 +23,7 @@
 		<h1 class="text-2xl font-semibold">{data.group.name}</h1>
 		<div class="flex gap-2">
 			<Button variant="outline" href="{data.group.id}/settings">Settings</Button>
-			<Button>Add expense</Button>
+			<Button href="{data.group.id}/expenses/new">Add expense</Button>
 		</div>
 	</div>
 
@@ -37,8 +41,9 @@
 						</Card.Action>
 					</Card.Header>
 					{#if expense.categoryName}
-						<Card.Content class="text-muted-foreground text-sm">
-							{expense.categoryIcon} {expense.categoryName}
+						<Card.Content class="text-sm text-muted-foreground">
+							{expense.categoryIcon}
+							{expense.categoryName}
 						</Card.Content>
 					{/if}
 				</Card.Root>
@@ -53,7 +58,7 @@
 				</Empty.Description>
 			</Empty.Header>
 			<Empty.Content>
-				<Button>Add expense</Button>
+				<Button href="{data.group.id}/expenses/new">Add expense</Button>
 			</Empty.Content>
 		</Empty.Root>
 	{/if}

@@ -84,6 +84,7 @@ describe('createGroupBalanceService', () => {
 			categoryId: null,
 			description: 'Dinner',
 			amountCents: 1000,
+			date: new Date(),
 			createdAt: new Date(),
 			updatedAt: new Date(),
 			splits: [

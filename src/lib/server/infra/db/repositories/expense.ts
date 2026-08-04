@@ -16,7 +16,8 @@ const create =
 				paidByUserId: input.paidByUserId,
 				categoryId: input.categoryId,
 				description: input.description,
-				amountCents: input.amountCents
+				amountCents: input.amountCents,
+				date: input.date
 			})
 			.returning();
 
@@ -48,6 +49,7 @@ const update =
 				categoryId: input.categoryId,
 				description: input.description,
 				amountCents: input.amountCents,
+				date: input.date,
 				updatedAt: new Date()
 			})
 			.where(eq(expense.id, id))
@@ -96,6 +98,7 @@ const getAllForGroupWithDetails =
 				categoryId: expense.categoryId,
 				description: expense.description,
 				amountCents: expense.amountCents,
+				date: expense.date,
 				createdAt: expense.createdAt,
 				updatedAt: expense.updatedAt,
 				paidByName: user.displayName,

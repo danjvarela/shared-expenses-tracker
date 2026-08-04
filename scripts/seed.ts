@@ -63,21 +63,24 @@ async function main() {
 				paidByUserId: alice.id,
 				categoryId: rent.id,
 				description: 'August rent',
-				amountCents: 180000
+				amountCents: 180000,
+				date: new Date('2025-08-01')
 			},
 			{
 				groupId: apartment.id,
 				paidByUserId: bob.id,
 				categoryId: utilities.id,
 				description: 'Electric bill',
-				amountCents: 6400
+				amountCents: 6400,
+				date: new Date('2025-08-05')
 			},
 			{
 				groupId: apartment.id,
 				paidByUserId: alice.id,
 				categoryId: food.id,
 				description: 'Costco run',
-				amountCents: 11250
+				amountCents: 11250,
+				date: new Date('2025-08-10')
 			}
 		])
 		.returning();
@@ -90,21 +93,24 @@ async function main() {
 				paidByUserId: bob.id,
 				categoryId: transport.id,
 				description: 'Airport taxi',
-				amountCents: 4500
+				amountCents: 4500,
+				date: new Date('2025-09-01')
 			},
 			{
 				groupId: tripToOsaka.id,
 				paidByUserId: bob.id,
 				categoryId: food.id,
 				description: 'Ramen night',
-				amountCents: 9000
+				amountCents: 9000,
+				date: new Date('2025-09-02')
 			},
 			{
 				groupId: tripToOsaka.id,
 				paidByUserId: alice.id,
 				categoryId: fun.id,
 				description: 'Karaoke',
-				amountCents: 6000
+				amountCents: 6000,
+				date: new Date('2025-09-02')
 			}
 		])
 		.returning();
@@ -133,9 +139,9 @@ async function main() {
 		{ expenseId: karaokeExpense.id, userId: bob.id, amountCents: 3000 }
 	]);
 
-	await db.insert(schema.settlement).values([
-		{ groupId: apartment.id, fromUserId: bob.id, toUserId: alice.id, amountCents: 5000 }
-	]);
+	await db
+		.insert(schema.settlement)
+		.values([{ groupId: apartment.id, fromUserId: bob.id, toUserId: alice.id, amountCents: 5000 }]);
 
 	console.log('Seeded database.');
 	client.close();

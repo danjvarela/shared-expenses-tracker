@@ -7,6 +7,7 @@ export const expenseSchema = z.object({
 	categoryId: z.uuid().nullable(),
 	description: z.string().min(1),
 	amountCents: z.number().int().positive(),
+	date: z.date(),
 	createdAt: z.date(),
 	updatedAt: z.date()
 });

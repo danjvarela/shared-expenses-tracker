@@ -23,7 +23,7 @@ A User's membership in a Group. Carries no role or permission (no admin/member d
 _Avoid_: Membership, participant
 
 **Expense**:
-A single purchase paid by one User (`paidByUserId`) on behalf of a Group, for a total of `amountCents`. Optionally tagged with a Category. The only entity that tracks `updatedAt`, since it's expected to be edited after creation.
+A single purchase paid by one User (`paidByUserId`) on behalf of a Group, for a total of `amountCents`, that happened on `date`. Optionally tagged with a Category. The only entity that tracks `updatedAt`, since it's expected to be edited after creation. `date` (the purchase date, user-editable) is distinct from `createdAt`/`updatedAt` (audit timestamps) — see ADR-0006.
 _Avoid_: Purchase, transaction, bill
 
 **ExpenseSplit**:
