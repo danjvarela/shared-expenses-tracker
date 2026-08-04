@@ -8,14 +8,14 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 - [ ] Not started — Update group detail (name, etc.)
 - [ ] Not started — Delete group (blocked while any nonzero `PairBalance` exists in the group; hard delete, cascades Expenses/Settlements/PairBalances once clear)
 - [ ] Not started — Invite user to group by email (domain already supports pre-login Users via `Identity` fallback-by-email match; UI/flow not built)
-- [ ] In progress — Set default split percentages per member (`GroupMember.defaultSplitPercent`, prefill-only, unenforced sum — see ADR-0005). Schema, service, and whole-group settings UI done; prefill into the split-entry UI still blocked on the not-yet-built expense-add form.
+- [x] Done — Set default split percentages per member (`GroupMember.defaultSplitPercent`, prefill-only, unenforced sum — see ADR-0005). Schema, service, whole-group settings UI, and prefill into the expense-add split UI all done.
 - [ ] Not started — Kick user from group (blocked while that member has any nonzero `PairBalance` in the group)
 - [x] Done — View a group's members/expenses/balances (read-only)
 
 ## Expenses
 
 - [x] Done — View a group's expenses (read-only list)
-- [ ] Not started — Add expense manually (form)
+- [x] Done — Add expense manually (form)
 - [ ] Not started — Add expense via free-text input (AI-generated fields)
 - [ ] Not started — Scan receipt to add multiple expenses (OCR/AI)
 - [ ] Not started — `ExpenseGroup` entity — new domain concept, needs a `CONTEXT.md` entry + ADR before/while building:
