@@ -40,10 +40,22 @@ const updateDefaultSplitPercents =
 		});
 	};
 
+const isMember =
+	(db: Database): IGroupMemberRepository['isMember'] =>
+	async (groupId, userId) => {
+		const [row] = await db
+			.select({ userId: groupMember.userId })
+			.from(groupMember)
+			.where(and(eq(groupMember.groupId, groupId), eq(groupMember.userId, userId)));
+
+		return row !== undefined;
+	};
+
 export function createGroupMemberRepository(db: Database): IGroupMemberRepository {
 	return {
 		getAllForGroupWithUser: getAllForGroupWithUser(db),
 		create: create(db),
-		updateDefaultSplitPercents: updateDefaultSplitPercents(db)
+		updateDefaultSplitPercents: updateDefaultSplitPercents(db),
+		isMember: isMember(db)
 	};
 }

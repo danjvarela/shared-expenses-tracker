@@ -1,10 +1,14 @@
-import { error, fail } from '@sveltejs/kit';
-import { groupRepo, groupMemberService } from '$lib/server/container';
+import { fail } from '@sveltejs/kit';
+import { groupService, groupMemberService } from '$lib/server/container';
+import { CURRENCIES } from '$lib/currency';
 import type { PageServerLoad, Actions } from './$types';
 
-export const load: PageServerLoad = async ({ params }) => {
-	const group = await groupRepo.getById(params.id);
-	if (!group) error(404, 'Group not found');
+function trimmedOrNull(value: FormDataEntryValue | null): string | null {
+	return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
+}
+
+export const load: PageServerLoad = async ({ params, parent }) => {
+	const { group } = await parent();
 
 	const members = await groupMemberService.getGroupMembers(params.id);
 
@@ -12,7 +16,31 @@ export const load: PageServerLoad = async ({ params }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, params }) => {
+	details: async ({ request, params }) => {
+		const formData = await request.formData();
+
+		const name = formData.get('name');
+		const currencyCode = trimmedOrNull(formData.get('currencyCode'));
+		const avatarIcon = trimmedOrNull(formData.get('avatarIcon'));
+
+		if (typeof name !== 'string' || name.trim() === '') {
+			return fail(400, { error: 'Name is required' });
+		}
+		if (currencyCode === null || !CURRENCIES.some((currency) => currency.code === currencyCode)) {
+			return fail(400, { error: 'Select a valid currency' });
+		}
+
+		await groupService.updateGroup({
+			id: params.id,
+			name: name.trim(),
+			currencyCode,
+			avatarIcon
+		});
+
+		return { success: true };
+	},
+
+	percents: async ({ request, params }) => {
 		const members = await groupMemberService.getGroupMembers(params.id);
 		const formData = await request.formData();
 

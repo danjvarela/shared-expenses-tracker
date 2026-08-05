@@ -71,6 +71,6 @@ export const settlementService = createSettlementService({ uow: settlementUnitOf
 
 export const groupMemberService = createGroupMemberService({ groupMemberRepo });
 
-export const groupService = createGroupService({ uow: groupUnitOfWork });
+export const groupService = createGroupService({ uow: groupUnitOfWork, groupRepo });
 
-export { groupRepo, categoryRepo };
+export { groupRepo, groupMemberRepo, categoryRepo };

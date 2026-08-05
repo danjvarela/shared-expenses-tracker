@@ -13,4 +13,6 @@ export interface IGroupMemberRepository {
 		groupId: string,
 		entries: Array<{ userId: string; defaultSplitPercent: number | null }>
 	): Promise<void>;
+
+	isMember(groupId: string, userId: string): Promise<boolean>;
 }

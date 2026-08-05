@@ -8,4 +8,8 @@ export interface IGroupRepository {
 		currencyCode: string;
 		avatarIcon: string | null;
 	}): Promise<Group>;
+	update(
+		id: string,
+		input: { name: string; currencyCode: string; avatarIcon: string | null }
+	): Promise<Group>;
 }

@@ -11,12 +11,22 @@ export interface GroupInput {
 	creatorUserId: string;
 }
 
+export interface GroupUpdateInput {
+	id: string;
+	name: string;
+	currencyCode: string;
+	avatarIcon: string | null;
+}
+
 export interface GroupRepos {
 	groupRepo: IGroupRepository;
 	groupMemberRepo: IGroupMemberRepository;
 }
 
-export function createGroupService(deps: { uow: IUnitOfWork<GroupRepos> }) {
+export function createGroupService(deps: {
+	uow: IUnitOfWork<GroupRepos>;
+	groupRepo: IGroupRepository;
+}) {
 	async function createGroup(input: GroupInput): Promise<Group> {
 		return deps.uow.run(async ({ groupRepo, groupMemberRepo }) => {
 			const created = await groupRepo.create({
@@ -31,7 +41,15 @@ export function createGroupService(deps: { uow: IUnitOfWork<GroupRepos> }) {
 		});
 	}
 
-	return { createGroup };
+	async function updateGroup(input: GroupUpdateInput): Promise<Group> {
+		return deps.groupRepo.update(input.id, {
+			name: input.name,
+			currencyCode: input.currencyCode,
+			avatarIcon: input.avatarIcon
+		});
+	}
+
+	return { createGroup, updateGroup };
 }
 
 export type GroupService = ReturnType<typeof createGroupService>;

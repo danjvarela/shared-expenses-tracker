@@ -1,11 +1,10 @@
-import { error, fail, redirect } from '@sveltejs/kit';
-import { expenseService, groupRepo, groupMemberService, categoryRepo } from '$lib/server/container';
+import { fail, redirect } from '@sveltejs/kit';
+import { expenseService, groupMemberService, categoryRepo } from '$lib/server/container';
 import { resolveSplits, type SplitMethod } from '$lib/server/app/split-resolver';
 import type { PageServerLoad, Actions } from './$types';
 
-export const load: PageServerLoad = async ({ locals, params }) => {
-	const group = await groupRepo.getById(params.id);
-	if (!group) error(404, 'Group not found');
+export const load: PageServerLoad = async ({ locals, params, parent }) => {
+	const { group } = await parent();
 
 	const members = await groupMemberService.getGroupMembers(params.id);
 	const categories = await categoryRepo.getAll();
@@ -21,7 +20,7 @@ function parseAmountCents(raw: FormDataEntryValue | null): number | null {
 }
 
 async function createExpense(
-	{ request, params, locals }: { request: Request; params: { id: string }; locals: App.Locals },
+	{ request, params }: { request: Request; params: { id: string } },
 	redirectTo: string
 ) {
 	const members = await groupMemberService.getGroupMembers(params.id);

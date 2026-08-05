@@ -6,10 +6,15 @@ import { createGroupService, type GroupRepos } from './group';
 
 const userId = 'alice';
 
-function fakeGroupRepo(): IGroupRepository & { created: Array<unknown> } {
+function fakeGroupRepo(): IGroupRepository & {
+	created: Array<unknown>;
+	updated: Array<unknown>;
+} {
 	const created: Array<unknown> = [];
+	const updated: Array<unknown> = [];
 	return {
 		created,
+		updated,
 		async getAll() {
 			return [];
 		},
@@ -19,6 +24,11 @@ function fakeGroupRepo(): IGroupRepository & { created: Array<unknown> } {
 		async create(input) {
 			const row = { id: 'group-1', createdAt: new Date(), ...input };
 			created.push(row);
+			return row;
+		},
+		async update(id, input) {
+			const row = { id, createdAt: new Date(), ...input };
+			updated.push(row);
 			return row;
 		}
 	};
@@ -34,7 +44,10 @@ function fakeGroupMemberRepo(): IGroupMemberRepository & { created: Array<unknow
 		async create(groupId, userId) {
 			created.push({ groupId, userId });
 		},
-		async updateDefaultSplitPercents() {}
+		async updateDefaultSplitPercents() {},
+		async isMember() {
+			return true;
+		}
 	};
 }
 
@@ -51,7 +64,7 @@ describe('createGroupService', () => {
 		const groupRepo = fakeGroupRepo();
 		const groupMemberRepo = fakeGroupMemberRepo();
 		const uow = fakeUow({ groupRepo, groupMemberRepo });
-		const service = createGroupService({ uow });
+		const service = createGroupService({ uow, groupRepo });
 
 		const created = await service.createGroup({
 			name: 'Trip',
@@ -77,7 +90,7 @@ describe('createGroupService', () => {
 		const groupRepo = fakeGroupRepo();
 		const groupMemberRepo = fakeGroupMemberRepo();
 		const uow = fakeUow({ groupRepo, groupMemberRepo });
-		const service = createGroupService({ uow });
+		const service = createGroupService({ uow, groupRepo });
 
 		await service.createGroup({
 			name: 'Trip',
@@ -87,5 +100,35 @@ describe('createGroupService', () => {
 		});
 
 		expect(groupRepo.created).toMatchObject([{ currencyCode: 'PHP' }]);
+	});
+
+	it('updates a group', async () => {
+		const groupRepo = fakeGroupRepo();
+		const groupMemberRepo = fakeGroupMemberRepo();
+		const uow = fakeUow({ groupRepo, groupMemberRepo });
+		const service = createGroupService({ uow, groupRepo });
+
+		const updated = await service.updateGroup({
+			id: 'group-1',
+			name: 'Renamed Trip',
+			currencyCode: 'USD',
+			avatarIcon: 'plane'
+		});
+
+		expect(updated).toMatchObject({
+			id: 'group-1',
+			name: 'Renamed Trip',
+			currencyCode: 'USD',
+			avatarIcon: 'plane'
+		});
+		expect(groupRepo.updated).toEqual([
+			{
+				id: 'group-1',
+				createdAt: expect.any(Date),
+				name: 'Renamed Trip',
+				currencyCode: 'USD',
+				avatarIcon: 'plane'
+			}
+		]);
 	});
 });

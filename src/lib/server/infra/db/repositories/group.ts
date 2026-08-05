@@ -40,10 +40,19 @@ const create =
 		return row;
 	};
 
+const update =
+	(db: Database): IGroupRepository['update'] =>
+	async (id, input) => {
+		const [row] = await db.update(group).set(input).where(eq(group.id, id)).returning(columns);
+
+		return row;
+	};
+
 export function createGroupRepository(db: Database): IGroupRepository {
 	return {
 		getAll: getAll(db),
 		getById: getById(db),
-		create: create(db)
+		create: create(db),
+		update: update(db)
 	};
 }

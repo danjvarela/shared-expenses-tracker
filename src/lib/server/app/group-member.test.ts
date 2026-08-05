@@ -24,6 +24,9 @@ function fakeGroupMemberRepo(
 				const existing = rows.get(entry.userId);
 				if (existing) existing.defaultSplitPercent = entry.defaultSplitPercent;
 			}
+		},
+		async isMember(_groupId, userId) {
+			return rows.has(userId);
 		}
 	};
 }
