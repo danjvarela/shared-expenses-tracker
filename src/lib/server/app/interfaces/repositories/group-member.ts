@@ -7,6 +7,8 @@ export interface GroupMemberWithUser {
 export interface IGroupMemberRepository {
 	getAllForGroupWithUser(groupId: string): Promise<Array<GroupMemberWithUser>>;
 
+	create(groupId: string, userId: string): Promise<void>;
+
 	updateDefaultSplitPercents(
 		groupId: string,
 		entries: Array<{ userId: string; defaultSplitPercent: number | null }>

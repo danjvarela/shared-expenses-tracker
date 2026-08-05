@@ -17,7 +17,7 @@
 <div class="container mx-auto max-w-xl p-4">
 	<div class="mb-4 flex items-center justify-between">
 		<h1 class="text-2xl font-semibold">Your groups</h1>
-		<Button>Create group</Button>
+		<Button href="/groups/new">Create group</Button>
 	</div>
 
 	{#if data.userGroupBalances.length}
@@ -46,7 +46,7 @@
 			<Empty.Content>
 				<div class="flex gap-2">
 					<Button variant="outline">Join group</Button>
-					<Button>Create group</Button>
+					<Button href="/groups/new">Create group</Button>
 				</div>
 			</Empty.Content>
 		</Empty.Root>

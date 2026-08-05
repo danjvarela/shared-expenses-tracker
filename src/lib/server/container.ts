@@ -15,6 +15,7 @@ import { createAuthService } from '$lib/server/app/auth';
 import { createGroupBalanceService } from '$lib/server/app/group-balance';
 import { createUserBalanceService } from '$lib/server/app/user-balance';
 import { createExpenseService, type ExpenseRepos } from '$lib/server/app/expense';
+import { createGroupService, type GroupRepos } from '$lib/server/app/group';
 import { createSettlementService, type SettlementRepos } from '$lib/server/app/settlement';
 import { createGroupMemberService } from '$lib/server/app/group-member';
 import type { IOAuthProvider } from '$lib/server/app/interfaces/oauth-provider';
@@ -44,6 +45,11 @@ const settlementUnitOfWork = createUnitOfWork<SettlementRepos>((tx) => ({
 	pairBalanceRepo: createPairBalanceRepository(tx)
 }));
 
+const groupUnitOfWork = createUnitOfWork<GroupRepos>((tx) => ({
+	groupRepo: createGroupRepository(tx),
+	groupMemberRepo: createGroupMemberRepository(tx)
+}));
+
 export const authService = createAuthService({
 	userRepo,
 	identityRepo,
@@ -64,5 +70,7 @@ export const expenseService = createExpenseService({ uow: expenseUnitOfWork, exp
 export const settlementService = createSettlementService({ uow: settlementUnitOfWork });
 
 export const groupMemberService = createGroupMemberService({ groupMemberRepo });
+
+export const groupService = createGroupService({ uow: groupUnitOfWork });
 
 export { groupRepo, categoryRepo };

@@ -15,7 +15,7 @@ _Avoid_: Account (collides with a future financial-account concept), OAuth accou
 A server-side record of an authenticated User, referenced by a cookie. Expires independently of the Identity/Google token.
 
 **Group**:
-Top-level scope for shared spending. Every Expense and Settlement belongs to exactly one Group — there is no ungrouped expense.
+Top-level scope for shared spending. Every Expense and Settlement belongs to exactly one Group — there is no ungrouped expense. Optionally carries `description` and `avatarIcon` (a Lucide icon name, purely cosmetic). Also carries `currencyCode`, user-selected at creation and defaulting to pesos — display/formatting only, never used in `PairBalance` or `ExpenseSplit` math, which stay single-currency — see ADR-0007.
 _Avoid_: Trip, household (too narrow — a Group is generic)
 
 **GroupMember**:

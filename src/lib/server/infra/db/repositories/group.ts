@@ -4,11 +4,20 @@ import { group } from '$lib/server/infra/db/schema/group';
 import { groupMember } from '$lib/server/infra/db/schema/group-member';
 import { eq } from 'drizzle-orm';
 
+const columns = {
+	id: group.id,
+	name: group.name,
+	description: group.description,
+	currencyCode: group.currencyCode,
+	avatarIcon: group.avatarIcon,
+	createdAt: group.createdAt
+};
+
 const getAll =
 	(db: Database): IGroupRepository['getAll'] =>
 	async (userId) => {
 		const rows = await db
-			.select({ id: group.id, name: group.name, createdAt: group.createdAt })
+			.select(columns)
 			.from(group)
 			.innerJoin(groupMember, eq(groupMember.groupId, group.id))
 			.where(eq(groupMember.userId, userId));
@@ -19,17 +28,23 @@ const getAll =
 const getById =
 	(db: Database): IGroupRepository['getById'] =>
 	async (id) => {
-		const [row] = await db
-			.select({ id: group.id, name: group.name, createdAt: group.createdAt })
-			.from(group)
-			.where(eq(group.id, id));
+		const [row] = await db.select(columns).from(group).where(eq(group.id, id));
 
 		return row ?? null;
+	};
+
+const create =
+	(db: Database): IGroupRepository['create'] =>
+	async (input) => {
+		const [row] = await db.insert(group).values(input).returning(columns);
+
+		return row;
 	};
 
 export function createGroupRepository(db: Database): IGroupRepository {
 	return {
 		getAll: getAll(db),
-		getById: getById(db)
+		getById: getById(db),
+		create: create(db)
 	};
 }

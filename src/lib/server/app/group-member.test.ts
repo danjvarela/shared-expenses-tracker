@@ -17,6 +17,7 @@ function fakeGroupMemberRepo(
 		async getAllForGroupWithUser() {
 			return Array.from(rows.values());
 		},
+		async create() {},
 		async updateDefaultSplitPercents(groupId, entries) {
 			updates.push({ groupId, entries });
 			for (const entry of entries) {

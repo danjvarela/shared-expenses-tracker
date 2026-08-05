@@ -4,7 +4,7 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 
 ## Groups
 
-- [ ] Not started — Group creation
+- [ ] Not started — Group creation (name, optional description/avatarIcon, user-selected `currencyCode` display-only — see ADR-0007)
 - [ ] Not started — Update group detail (name, etc.)
 - [ ] Not started — Delete group (blocked while any nonzero `PairBalance` exists in the group; hard delete, cascades Expenses/Settlements/PairBalances once clear)
 - [ ] Not started — Invite user to group by email (domain already supports pre-login Users via `Identity` fallback-by-email match; UI/flow not built)
@@ -32,7 +32,6 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 
 - [ ] Not started — Change display name
 - [ ] Not started — Update profile picture
-- [ ] Flagged — Currency setting (see Open questions)
 
 ## Receipts
 
@@ -49,5 +48,4 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 
 ## Open questions
 
-- **Currency setting**: is it (a) display/formatting only — store stays single-currency — or (b) real multi-currency, where Groups/Expenses carry their own `currencyCode`? Currently deferred. Option (b) conflicts with `CONTEXT.md`'s `Money` definition (implicitly one currency, "pesos") and complicates `PairBalance`'s cross-expense summing (see `docs/adr/0004-pairbalance-as-incremental-cache.md`) — would need an FX story if chosen.
 - **Receipt image storage backend**: which backends to actually support (R2, Google Drive, others), and the shape of the adapter interface selecting between them via env/flag.

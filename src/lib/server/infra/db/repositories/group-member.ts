@@ -19,6 +19,12 @@ const getAllForGroupWithUser =
 			.orderBy(groupMember.createdAt);
 	};
 
+const create =
+	(db: Database): IGroupMemberRepository['create'] =>
+	async (groupId, userId) => {
+		await db.insert(groupMember).values({ groupId, userId });
+	};
+
 const updateDefaultSplitPercents =
 	(db: Database): IGroupMemberRepository['updateDefaultSplitPercents'] =>
 	async (groupId, entries) => {
@@ -37,6 +43,7 @@ const updateDefaultSplitPercents =
 export function createGroupMemberRepository(db: Database): IGroupMemberRepository {
 	return {
 		getAllForGroupWithUser: getAllForGroupWithUser(db),
+		create: create(db),
 		updateDefaultSplitPercents: updateDefaultSplitPercents(db)
 	};
 }

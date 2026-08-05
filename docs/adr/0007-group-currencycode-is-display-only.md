@@ -1,0 +1,7 @@
+# Group.currencyCode is display-only, resolving the Currency open question as option (a)
+
+`Group` gains a `currencyCode`, user-selected at creation (defaulting to the existing pesos assumption). This resolves the roadmap's Flagged "Currency setting" open question as option (a): display/formatting only. The store stays single-currency under the hood — `currencyCode` never feeds into `PairBalance` deltas or `ExpenseSplit`/`Expense` `amountCents` math, all of which keep summing raw cents across a Group with no FX conversion.
+
+We chose this over option (b) (real per-Group currency, `Expense`/`ExpenseSplit` each carrying their own `currencyCode`) because (b) breaks `PairBalance`'s incremental cross-expense summing (ADR-0004), which assumes every delta into a pair's cached balance is already in the same unit — mixing currencies there requires an FX-rate story (which rate, at what point in time, is it re-derived when rates change) that nothing else in this codebase needs yet. Option (b) also contradicts `CONTEXT.md`'s existing `Money` definition, which is implicitly one currency ("pesos").
+
+Consequence: a Group's `currencyCode` is purely a label used to format `amountCents` for display (see `formatCents`). Two Groups can show different currency symbols next to the same underlying cent values, but a User's cross-Group balances (`user-balance.ts`) still sum raw cents as if they were the same currency — this is a known, accepted misrepresentation until/unless option (b) is revisited.
