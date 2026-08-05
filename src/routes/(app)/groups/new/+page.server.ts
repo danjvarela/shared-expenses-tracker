@@ -12,7 +12,6 @@ export const actions: Actions = {
 		const formData = await request.formData();
 
 		const name = formData.get('name');
-		const description = trimmedOrNull(formData.get('description'));
 		const currencyCode = trimmedOrNull(formData.get('currencyCode'));
 		const avatarIcon = trimmedOrNull(formData.get('avatarIcon'));
 
@@ -25,7 +24,6 @@ export const actions: Actions = {
 
 		const created = await groupService.createGroup({
 			name: name.trim(),
-			description,
 			currencyCode: currencyCode ?? undefined,
 			avatarIcon,
 			creatorUserId: locals.user!.id

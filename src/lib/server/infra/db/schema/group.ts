@@ -6,7 +6,6 @@ export const group = sqliteTable('group', {
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
 	name: text().notNull(),
-	description: text(),
 	currencyCode: text().notNull().default(DEFAULT_CURRENCY_CODE),
 	avatarIcon: text(),
 	createdAt: integer({ mode: 'timestamp' })

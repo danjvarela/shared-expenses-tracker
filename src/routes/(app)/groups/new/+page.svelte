@@ -35,11 +35,6 @@
 				</Field.Field>
 
 				<Field.Field>
-					<Field.FieldLabel for="description">Description</Field.FieldLabel>
-					<Input id="description" name="description" />
-				</Field.Field>
-
-				<Field.Field>
 					<Field.FieldLabel for="currencyCode">Currency</Field.FieldLabel>
 					<Select.Root type="single" name="currencyCode" bind:value={currencyCode}>
 						<Select.Trigger id="currencyCode">{currencyLabel()}</Select.Trigger>

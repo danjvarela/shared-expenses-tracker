@@ -7,7 +7,6 @@ import { eq } from 'drizzle-orm';
 const columns = {
 	id: group.id,
 	name: group.name,
-	description: group.description,
 	currencyCode: group.currencyCode,
 	avatarIcon: group.avatarIcon,
 	createdAt: group.createdAt

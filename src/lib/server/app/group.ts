@@ -6,7 +6,6 @@ import { DEFAULT_CURRENCY_CODE } from '$lib/currency';
 
 export interface GroupInput {
 	name: string;
-	description: string | null;
 	currencyCode: string | undefined;
 	avatarIcon: string | null;
 	creatorUserId: string;
@@ -22,7 +21,6 @@ export function createGroupService(deps: { uow: IUnitOfWork<GroupRepos> }) {
 		return deps.uow.run(async ({ groupRepo, groupMemberRepo }) => {
 			const created = await groupRepo.create({
 				name: input.name,
-				description: input.description,
 				currencyCode: input.currencyCode ?? DEFAULT_CURRENCY_CODE,
 				avatarIcon: input.avatarIcon
 			});

@@ -5,7 +5,6 @@ export interface IGroupRepository {
 	getById(id: string): Promise<Group | null>;
 	create(input: {
 		name: string;
-		description: string | null;
 		currencyCode: string;
 		avatarIcon: string | null;
 	}): Promise<Group>;

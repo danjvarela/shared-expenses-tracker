@@ -55,7 +55,6 @@ describe('createGroupService', () => {
 
 		const created = await service.createGroup({
 			name: 'Trip',
-			description: null,
 			currencyCode: 'PHP',
 			avatarIcon: null,
 			creatorUserId: userId
@@ -67,7 +66,6 @@ describe('createGroupService', () => {
 				id: 'group-1',
 				createdAt: expect.any(Date),
 				name: 'Trip',
-				description: null,
 				currencyCode: 'PHP',
 				avatarIcon: null
 			}
@@ -83,7 +81,6 @@ describe('createGroupService', () => {
 
 		await service.createGroup({
 			name: 'Trip',
-			description: null,
 			currencyCode: undefined,
 			avatarIcon: null,
 			creatorUserId: userId
