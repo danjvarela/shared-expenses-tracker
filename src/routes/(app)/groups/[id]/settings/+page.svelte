@@ -4,15 +4,20 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import * as Field from '$lib/components/ui/field/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
+	import * as Alert from '$lib/components/ui/alert/index.js';
 	import IconPicker from '$lib/components/icon-picker.svelte';
-	import { ArrowLeft } from '@lucide/svelte';
+	import { ArrowLeft, CircleCheck } from '@lucide/svelte';
 	import { CURRENCIES } from '$lib/currency';
 	import { untrack } from 'svelte';
+	import { enhance } from '$app/forms';
 
 	const { data, form } = $props();
 
 	let avatarIcon: string | null = $state(untrack(() => data.group.avatarIcon));
 	let currencyCode = $state(untrack(() => data.group.currencyCode));
+
+	let detailsSaved = $state(false);
+	let percentsSaved = $state(false);
 
 	function currencyLabel() {
 		const currency = CURRENCIES.find((c) => c.code === currencyCode);
@@ -32,7 +37,18 @@
 			<Card.Title>Group details</Card.Title>
 		</Card.Header>
 		<Card.Content>
-			<form method="POST" action="?/details" class="flex flex-col gap-4">
+			<form
+				method="POST"
+				action="?/details"
+				class="flex flex-col gap-4"
+				use:enhance={() => {
+					detailsSaved = false;
+					return async ({ result, update }) => {
+						await update({ reset: false });
+						detailsSaved = result.type === 'success';
+					};
+				}}
+			>
 				<Field.Field>
 					<Field.FieldLabel for="name">Name</Field.FieldLabel>
 					<Input id="name" name="name" required value={data.group.name} />
@@ -59,6 +75,13 @@
 					<Field.FieldError>{form.error}</Field.FieldError>
 				{/if}
 
+				{#if detailsSaved}
+					<Alert.Root>
+						<CircleCheck class="size-4" />
+						<Alert.Title>Details saved</Alert.Title>
+					</Alert.Root>
+				{/if}
+
 				<Button type="submit">Save details</Button>
 			</form>
 		</Card.Content>
@@ -73,7 +96,18 @@
 			</Card.Description>
 		</Card.Header>
 		<Card.Content>
-			<form method="POST" action="?/percents" class="flex flex-col gap-4">
+			<form
+				method="POST"
+				action="?/percents"
+				class="flex flex-col gap-4"
+				use:enhance={() => {
+					percentsSaved = false;
+					return async ({ result, update }) => {
+						await update({ reset: false });
+						percentsSaved = result.type === 'success';
+					};
+				}}
+			>
 				{#each data.members as member (member.userId)}
 					<Field.Field>
 						<Field.FieldLabel for={`percent-${member.userId}`}>
@@ -94,6 +128,13 @@
 
 				{#if form?.error}
 					<Field.FieldError>{form.error}</Field.FieldError>
+				{/if}
+
+				{#if percentsSaved}
+					<Alert.Root>
+						<CircleCheck class="size-4" />
+						<Alert.Title>Percentages saved</Alert.Title>
+					</Alert.Root>
 				{/if}
 
 				<Button type="submit">Save</Button>
