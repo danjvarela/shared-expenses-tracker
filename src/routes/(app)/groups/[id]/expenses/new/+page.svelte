@@ -8,6 +8,7 @@
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { ArrowLeft } from '@lucide/svelte';
+	import { untrack } from 'svelte';
 
 	const { data, form } = $props();
 
@@ -15,14 +16,18 @@
 
 	const NO_CATEGORY = 'none';
 
-	let paidByUserId = $state(data.user?.id ?? data.members[0]?.userId ?? '');
+	let paidByUserId = $state(untrack(() => data.user?.id ?? data.members[0]?.userId ?? ''));
 	let categoryId = $state(NO_CATEGORY);
 	let splitMethod: 'equal' | 'percentage' | 'exact' = $state('equal');
 
-	let included = $state(Object.fromEntries(data.members.map((member) => [member.userId, true])));
+	let included = $state(
+		untrack(() => Object.fromEntries(data.members.map((member) => [member.userId, true])))
+	);
 	let percents = $state(
-		Object.fromEntries(
-			data.members.map((member) => [member.userId, member.defaultSplitPercent ?? ''])
+		untrack(() =>
+			Object.fromEntries(
+				data.members.map((member) => [member.userId, member.defaultSplitPercent ?? ''])
+			)
 		)
 	);
 
