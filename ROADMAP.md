@@ -4,7 +4,7 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 
 ## Groups
 
-- [ ] Not started — Group creation (name, optional description/avatarIcon, user-selected `currencyCode` display-only — see ADR-0007)
+- [x] Done — Group creation (name, optional `avatarIcon`, user-selected `currencyCode` display-only — see ADR-0007). Solo creation only, creator becomes sole member.
 - [ ] Not started — Update group detail (name, etc.)
 - [ ] Not started — Delete group (blocked while any nonzero `PairBalance` exists in the group; hard delete, cascades Expenses/Settlements/PairBalances once clear)
 - [ ] Not started — Invite user to group by email (domain already supports pre-login Users via `Identity` fallback-by-email match; UI/flow not built)
