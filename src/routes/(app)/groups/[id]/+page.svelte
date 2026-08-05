@@ -4,11 +4,12 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { ArrowLeft } from '@lucide/svelte';
 	import { resolve } from '$app/paths';
+	import { formatAmountCents } from '$lib/currency';
 
 	const { data } = $props();
 
 	function formatAmount(amountCents: number) {
-		return `₱${(amountCents / 100).toFixed(2)}`;
+		return formatAmountCents(amountCents, data.group.currencyCode);
 	}
 
 	function formatDate(date: Date) {

@@ -3,13 +3,14 @@
 	import * as Empty from '$lib/components/ui/empty/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { resolve } from '$app/paths';
+	import { formatAmountCents } from '$lib/currency';
 
 	const { data } = $props();
 
-	function formatBalance(netBalanceCents: number) {
-		const amount = (Math.abs(netBalanceCents) / 100).toFixed(2);
-		if (netBalanceCents > 0) return { text: `You're owed $${amount}`, class: 'text-green-600' };
-		if (netBalanceCents < 0) return { text: `You owe $${amount}`, class: 'text-red-600' };
+	function formatBalance(netBalanceCents: number, currencyCode: string) {
+		const amount = formatAmountCents(Math.abs(netBalanceCents), currencyCode);
+		if (netBalanceCents > 0) return { text: `You're owed ${amount}`, class: 'text-green-600' };
+		if (netBalanceCents < 0) return { text: `You owe ${amount}`, class: 'text-red-600' };
 		return { text: 'Settled up', class: 'text-muted-foreground' };
 	}
 </script>
@@ -27,8 +28,10 @@
 					<Card.Root class="transition-colors hover:bg-muted/50">
 						<Card.Header>
 							<Card.Title>{group.name}</Card.Title>
-							<Card.Description class={formatBalance(group.netCents).class}>
-								{formatBalance(group.netCents).text}
+							<Card.Description
+								class={formatBalance(group.netCents, group.currencyCode).class}
+							>
+								{formatBalance(group.netCents, group.currencyCode).text}
 							</Card.Description>
 						</Card.Header>
 					</Card.Root>

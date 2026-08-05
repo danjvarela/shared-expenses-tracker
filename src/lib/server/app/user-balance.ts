@@ -9,6 +9,7 @@ export interface UserBalanceDeps {
 export interface GroupWithNetBalance {
 	id: string;
 	name: string;
+	currencyCode: string;
 	createdAt: Date;
 	netCents: number;
 }

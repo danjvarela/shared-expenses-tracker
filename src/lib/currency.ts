@@ -9,3 +9,9 @@ export const CURRENCIES = [
 	{ code: 'SGD', name: 'Singapore Dollar' },
 	{ code: 'AUD', name: 'Australian Dollar' }
 ] as const;
+
+export function formatAmountCents(amountCents: number, currencyCode: string) {
+	return new Intl.NumberFormat(undefined, { style: 'currency', currency: currencyCode }).format(
+		amountCents / 100
+	);
+}

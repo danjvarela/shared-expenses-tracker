@@ -61,7 +61,7 @@
 				</Field.Field>
 
 				<Field.Field>
-					<Field.FieldLabel for="amount">Amount (₱)</Field.FieldLabel>
+					<Field.FieldLabel for="amount">Amount ({data.group.currencyCode})</Field.FieldLabel>
 					<Input id="amount" name="amount" type="number" step="0.01" min="0.01" required />
 				</Field.Field>
 
@@ -143,7 +143,7 @@
 									type="number"
 									step="0.01"
 									min="0"
-									placeholder="₱"
+									placeholder={data.group.currencyCode}
 									disabled={!included[member.userId]}
 								/>
 							{/if}
