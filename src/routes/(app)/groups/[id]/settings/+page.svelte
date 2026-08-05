@@ -7,11 +7,12 @@
 	import IconPicker from '$lib/components/icon-picker.svelte';
 	import { ArrowLeft } from '@lucide/svelte';
 	import { CURRENCIES } from '$lib/currency';
+	import { untrack } from 'svelte';
 
 	const { data, form } = $props();
 
-	let avatarIcon: string | null = $state(data.group.avatarIcon);
-	let currencyCode = $state(data.group.currencyCode);
+	let avatarIcon: string | null = $state(untrack(() => data.group.avatarIcon));
+	let currencyCode = $state(untrack(() => data.group.currencyCode));
 
 	function currencyLabel() {
 		const currency = CURRENCIES.find((c) => c.code === currencyCode);

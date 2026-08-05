@@ -5,7 +5,7 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 ## Groups
 
 - [x] Done — Group creation (name, optional `avatarIcon`, user-selected `currencyCode` display-only — see ADR-0007). Solo creation only, creator becomes sole member.
-- [ ] Not started — Update group detail (name, etc.)
+- [x] Done — Update group detail (name, currencyCode, avatarIcon). Any member may edit. App-wide membership guard added for `groups/[id]/*` routes as part of this work.
 - [ ] Not started — Delete group (blocked while any nonzero `PairBalance` exists in the group; hard delete, cascades Expenses/Settlements/PairBalances once clear)
 - [ ] Not started — Invite user to group by email (domain already supports pre-login Users via `Identity` fallback-by-email match; UI/flow not built)
 - [x] Done — Set default split percentages per member (`GroupMember.defaultSplitPercent`, prefill-only, unenforced sum — see ADR-0005). Schema, service, whole-group settings UI, and prefill into the expense-add split UI all done.
