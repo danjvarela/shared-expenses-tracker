@@ -2,7 +2,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Empty from '$lib/components/ui/empty/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft } from '@lucide/svelte';
+	import { ArrowLeft, Pencil } from '@lucide/svelte';
 	import { resolve } from '$app/paths';
 	import { formatAmountCents } from '$lib/currency';
 
@@ -43,8 +43,16 @@
 						<Card.Description>
 							Paid by {expense.paidByName} · {formatDate(expense.createdAt)}
 						</Card.Description>
-						<Card.Action class="text-lg font-semibold">
+						<Card.Action class="flex items-center gap-2 text-lg font-semibold">
 							{formatAmount(expense.amountCents)}
+							<Button
+								variant="ghost"
+								size="icon"
+								href="{data.group.id}/expenses/{expense.id}/edit"
+								aria-label="Edit expense"
+							>
+								<Pencil class="size-4" />
+							</Button>
 						</Card.Action>
 					</Card.Header>
 					{#if expense.categoryName}

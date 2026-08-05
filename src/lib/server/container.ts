@@ -73,4 +73,4 @@ export const groupMemberService = createGroupMemberService({ groupMemberRepo });
 
 export const groupService = createGroupService({ uow: groupUnitOfWork, groupRepo });
 
-export { groupRepo, groupMemberRepo, categoryRepo };
+export { groupRepo, groupMemberRepo, categoryRepo, expenseRepo };
