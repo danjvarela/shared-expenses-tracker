@@ -3,11 +3,16 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import * as Field from '$lib/components/ui/field/index.js';
+	import { ArrowLeft } from '@lucide/svelte';
 
 	const { data, form } = $props();
 </script>
 
 <div class="container mx-auto max-w-xl p-4">
+	<Button variant="ghost" href="/groups/{data.group.id}" class="mb-2 -ml-2">
+		<ArrowLeft class="size-4" />
+		Back
+	</Button>
 	<h1 class="mb-4 text-2xl font-semibold">{data.group.name} settings</h1>
 
 	<Card.Root>

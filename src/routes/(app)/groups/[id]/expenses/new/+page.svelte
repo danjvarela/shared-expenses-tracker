@@ -7,6 +7,7 @@
 	import * as RadioGroup from '$lib/components/ui/radio-group/index.js';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
+	import { ArrowLeft } from '@lucide/svelte';
 
 	const { data, form } = $props();
 
@@ -40,6 +41,10 @@
 </script>
 
 <div class="container mx-auto max-w-xl p-4">
+	<Button variant="ghost" href="/groups/{data.group.id}" class="mb-2 -ml-2">
+		<ArrowLeft class="size-4" />
+		Back
+	</Button>
 	<h1 class="mb-4 text-2xl font-semibold">Add expense</h1>
 
 	<Card.Root>

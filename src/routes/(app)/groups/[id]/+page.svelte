@@ -2,6 +2,8 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Empty from '$lib/components/ui/empty/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
+	import { ArrowLeft } from '@lucide/svelte';
+	import { resolve } from '$app/paths';
 
 	const { data } = $props();
 
@@ -19,6 +21,10 @@
 </script>
 
 <div class="container mx-auto max-w-xl p-4">
+	<Button variant="ghost" href={resolve('/')} class="mb-2 -ml-2">
+		<ArrowLeft class="size-4" />
+		Back
+	</Button>
 	<div class="mb-4 flex items-center justify-between">
 		<h1 class="text-2xl font-semibold">{data.group.name}</h1>
 		<div class="flex gap-2">
