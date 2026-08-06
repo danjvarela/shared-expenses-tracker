@@ -24,7 +24,7 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
   - Each child is a plain, full `Expense` — own category, own payer, own splits, independently editable after creation (no live inheritance)
   - UI collapses an `ExpenseGroup`'s children into one row so a 30-item receipt doesn't flood the expense list
 - [x] Done — Update expense
-- [ ] Not started — Delete expense
+- [x] Done — Delete expense
 - [ ] Not started — Duplicate expense (duplicates a single `Expense` + its splits, not the whole `ExpenseGroup`)
 - [ ] Not started — Settlement recording UI (domain model already exists, no UI)
 
