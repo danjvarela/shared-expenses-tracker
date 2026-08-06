@@ -40,5 +40,20 @@ export const actions: Actions = {
 		await expenseService.updateExpense(params.expenseId, result.data);
 
 		redirect(303, `/groups/${params.id}`);
+	},
+
+	delete: async ({ params }) => {
+		const expense = await expenseRepo.getWithSplits(params.expenseId);
+		if (!expense || expense.groupId !== params.id) {
+			error(404, 'Expense not found');
+		}
+
+		try {
+			await expenseService.deleteExpense(params.expenseId);
+		} catch {
+			return fail(400, { error: 'Failed to delete expense' });
+		}
+
+		redirect(303, `/groups/${params.id}`);
 	}
 };
