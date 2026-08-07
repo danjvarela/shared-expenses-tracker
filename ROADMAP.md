@@ -26,6 +26,7 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 - [x] Done — Update expense
 - [x] Done — Delete expense
 - [x] Done — Settlement recording UI (`/settle` page: per-counterparty-per-group debt cards, partial settlement dialog, homepage "pending balances" banner)
+- [x] Done — Per-group settlement UI (`/groups/[id]/settle`, scoped to that group's debts, "pending balances" banner on group page)
 
 ## Account settings
 
