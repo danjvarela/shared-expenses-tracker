@@ -25,7 +25,7 @@
 	{#if data.hasOutstandingDebt}
 		<Alert.Root class="mb-4">
 			<Alert.Title>You have pending balances</Alert.Title>
-			<Alert.Action>
+			<Alert.Action class="top-1/2 -translate-y-1/2">
 				<Button size="sm" href="/settle">Settle up</Button>
 			</Alert.Action>
 		</Alert.Root>
