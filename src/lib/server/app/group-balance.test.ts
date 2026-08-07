@@ -4,7 +4,10 @@ import type {
 	ExpenseWithSplits
 } from '$lib/server/app/interfaces/repositories/expense';
 import type { ISettlementRepository } from '$lib/server/app/interfaces/repositories/settlement';
-import type { IPairBalanceRepository } from '$lib/server/app/interfaces/repositories/pair-balance';
+import type {
+	IPairBalanceRepository,
+	UserDebt
+} from '$lib/server/app/interfaces/repositories/pair-balance';
 import type { PairBalance } from '$lib/server/domain/pair-balance';
 import { createGroupBalanceService } from './group-balance';
 
@@ -46,7 +49,9 @@ function fakeSettlementRepo(): ISettlementRepository {
 	};
 }
 
-function fakePairBalanceRepo(): IPairBalanceRepository & { replaced: Array<Array<unknown>> } {
+function fakePairBalanceRepo(
+	debts: Array<UserDebt> = []
+): IPairBalanceRepository & { replaced: Array<Array<unknown>> } {
 	let stored: Array<PairBalance> = [];
 	const replaced: Array<Array<unknown>> = [];
 
@@ -64,6 +69,9 @@ function fakePairBalanceRepo(): IPairBalanceRepository & { replaced: Array<Array
 		},
 		async getDebtsForUser() {
 			return [];
+		},
+		async getDebtsForUserInGroup(_userId, groupId) {
+			return debts.filter((debt) => debt.groupId === groupId);
 		},
 		async replaceAllForGroup(groupId, balances) {
 			replaced.push(balances);
@@ -120,5 +128,25 @@ describe('createGroupBalanceService', () => {
 			[{ fromUserId: bob, toUserId: alice, amountCents: 500 }]
 		]);
 		expect(await service.getGroupBalances(groupId)).toHaveLength(1);
+	});
+
+	it('delegates getDebtsForUserInGroup to the repository, scoped to the group', async () => {
+		const debt: UserDebt = {
+			groupId,
+			groupName: 'Trip',
+			groupCurrencyCode: 'USD',
+			groupAvatarIcon: null,
+			counterpartyId: bob,
+			counterpartyName: 'Bob',
+			amountCents: 500
+		};
+		const otherGroupDebt: UserDebt = { ...debt, groupId: 'group-2' };
+		const service = createGroupBalanceService({
+			expenseRepo: fakeExpenseRepo([]),
+			settlementRepo: fakeSettlementRepo(),
+			pairBalanceRepo: fakePairBalanceRepo([debt, otherGroupDebt])
+		});
+
+		expect(await service.getDebtsForUserInGroup(alice, groupId)).toEqual([debt]);
 	});
 });

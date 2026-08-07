@@ -30,6 +30,8 @@ export interface IPairBalanceRepository {
 
 	getDebtsForUser(userId: string): Promise<Array<UserDebt>>;
 
+	getDebtsForUserInGroup(userId: string, groupId: string): Promise<Array<UserDebt>>;
+
 	replaceAllForGroup(
 		groupId: string,
 		balances: Array<{ fromUserId: string; toUserId: string; amountCents: number }>

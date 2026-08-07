@@ -1,6 +1,9 @@
 import type { IExpenseRepository } from '$lib/server/app/interfaces/repositories/expense';
 import type { ISettlementRepository } from '$lib/server/app/interfaces/repositories/settlement';
-import type { IPairBalanceRepository } from '$lib/server/app/interfaces/repositories/pair-balance';
+import type {
+	IPairBalanceRepository,
+	UserDebt
+} from '$lib/server/app/interfaces/repositories/pair-balance';
 import { recomputeGroupBalances as recompute } from '$lib/server/app/pair-balance';
 
 export interface GroupBalanceDeps {
@@ -21,7 +24,11 @@ export function createGroupBalanceService(deps: GroupBalanceDeps) {
 		return deps.pairBalanceRepo.getAllForGroup(groupId);
 	}
 
-	return { recomputeGroupBalances, getGroupBalances };
+	async function getDebtsForUserInGroup(userId: string, groupId: string): Promise<Array<UserDebt>> {
+		return deps.pairBalanceRepo.getDebtsForUserInGroup(userId, groupId);
+	}
+
+	return { recomputeGroupBalances, getGroupBalances, getDebtsForUserInGroup };
 }
 
 export type GroupBalanceService = ReturnType<typeof createGroupBalanceService>;

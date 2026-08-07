@@ -102,6 +102,31 @@ const getDebtsForUser =
 			.where(and(eq(pairBalance.fromUserId, userId), gt(pairBalance.amountCents, 0)));
 	};
 
+const getDebtsForUserInGroup =
+	(db: Database): IPairBalanceRepository['getDebtsForUserInGroup'] =>
+	async (userId, groupId) => {
+		return await db
+			.select({
+				groupId: pairBalance.groupId,
+				groupName: group.name,
+				groupCurrencyCode: group.currencyCode,
+				groupAvatarIcon: group.avatarIcon,
+				counterpartyId: pairBalance.toUserId,
+				counterpartyName: user.displayName,
+				amountCents: pairBalance.amountCents
+			})
+			.from(pairBalance)
+			.innerJoin(group, eq(group.id, pairBalance.groupId))
+			.innerJoin(user, eq(user.id, pairBalance.toUserId))
+			.where(
+				and(
+					eq(pairBalance.groupId, groupId),
+					eq(pairBalance.fromUserId, userId),
+					gt(pairBalance.amountCents, 0)
+				)
+			);
+	};
+
 const replaceAllForGroup =
 	(db: Database): IPairBalanceRepository['replaceAllForGroup'] =>
 	async (groupId, balances) => {
@@ -119,6 +144,7 @@ export function createPairBalanceRepository(db: Database): IPairBalanceRepositor
 		getAllForGroup: getAllForGroup(db),
 		getNetForUserInGroups: getNetForUserInGroups(db),
 		getDebtsForUser: getDebtsForUser(db),
+		getDebtsForUserInGroup: getDebtsForUserInGroup(db),
 		replaceAllForGroup: replaceAllForGroup(db)
 	};
 }

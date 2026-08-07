@@ -42,6 +42,9 @@ function fakePairBalanceRepo(): IPairBalanceRepository {
 		async getDebtsForUser() {
 			return [];
 		},
+		async getDebtsForUserInGroup() {
+			return [];
+		},
 		async replaceAllForGroup(_groupId, balances) {
 			rows.clear();
 			for (const balance of balances) {

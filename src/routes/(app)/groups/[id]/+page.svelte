@@ -43,6 +43,15 @@
 		</Alert.Root>
 	{/if}
 
+	{#if data.hasOutstandingDebt}
+		<Alert.Root class="mb-4">
+			<Alert.Title>You have pending balances</Alert.Title>
+			<Alert.Action class="top-1/2 -translate-y-1/2">
+				<Button size="sm" href="{data.group.id}/settle">Settle up</Button>
+			</Alert.Action>
+		</Alert.Root>
+	{/if}
+
 	{#if data.groupExpenses.length}
 		<div class="flex flex-col gap-3">
 			{#each data.groupExpenses as expense (expense.id)}
