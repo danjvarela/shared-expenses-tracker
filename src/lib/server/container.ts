@@ -57,6 +57,8 @@ export const authService = createAuthService({
 	oauthProviders
 });
 
+export { settlementRepo };
+
 export const groupBalanceService = createGroupBalanceService({
 	expenseRepo,
 	settlementRepo,

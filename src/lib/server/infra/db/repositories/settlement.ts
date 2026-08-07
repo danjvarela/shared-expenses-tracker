@@ -16,9 +16,17 @@ const getAllForGroup =
 		return await db.select().from(settlement).where(eq(settlement.groupId, groupId));
 	};
 
+const getById =
+	(db: Database): ISettlementRepository['getById'] =>
+	async (id) => {
+		const [row] = await db.select().from(settlement).where(eq(settlement.id, id));
+		return row;
+	};
+
 export function createSettlementRepository(db: Database): ISettlementRepository {
 	return {
 		create: create(db),
-		getAllForGroup: getAllForGroup(db)
+		getAllForGroup: getAllForGroup(db),
+		getById: getById(db)
 	};
 }

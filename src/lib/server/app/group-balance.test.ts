@@ -45,6 +45,9 @@ function fakeSettlementRepo(): ISettlementRepository {
 		},
 		async getAllForGroup() {
 			return [];
+		},
+		async getById() {
+			throw new Error('not implemented');
 		}
 	};
 }

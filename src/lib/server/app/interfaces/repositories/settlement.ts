@@ -9,4 +9,6 @@ export interface ISettlementRepository {
 	}): Promise<Settlement>;
 
 	getAllForGroup(groupId: string): Promise<Array<Settlement>>;
+
+	getById(id: string): Promise<Settlement | undefined>;
 }

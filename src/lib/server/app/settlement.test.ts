@@ -34,6 +34,9 @@ function fakeSettlementRepo(): ISettlementRepository {
 		},
 		async getAllForGroup(groupId) {
 			return rows.filter((row) => row.groupId === groupId);
+		},
+		async getById(id) {
+			return rows.find((row) => row.id === id);
 		}
 	};
 }
