@@ -74,6 +74,9 @@ function fakePairBalanceRepo(): IPairBalanceRepository & {
 		async getNetForUserInGroups() {
 			return new Map();
 		},
+		async getDebtsForUser() {
+			return [];
+		},
 		async replaceAllForGroup() {}
 	};
 }

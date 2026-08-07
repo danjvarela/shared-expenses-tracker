@@ -1,7 +1,9 @@
 import type { IPairBalanceRepository } from '$lib/server/app/interfaces/repositories/pair-balance';
 import type { Database } from '$lib/server/infra/db/types';
 import { pairBalance } from '$lib/server/infra/db/schema/pair-balance';
-import { and, eq, inArray, or } from 'drizzle-orm';
+import { group } from '$lib/server/infra/db/schema/group';
+import { user } from '$lib/server/infra/db/schema/user';
+import { and, eq, gt, inArray, or } from 'drizzle-orm';
 
 const getForPair =
 	(db: Database): IPairBalanceRepository['getForPair'] =>
@@ -81,6 +83,25 @@ const getNetForUserInGroups =
 		return net;
 	};
 
+const getDebtsForUser =
+	(db: Database): IPairBalanceRepository['getDebtsForUser'] =>
+	async (userId) => {
+		return await db
+			.select({
+				groupId: pairBalance.groupId,
+				groupName: group.name,
+				groupCurrencyCode: group.currencyCode,
+				groupAvatarIcon: group.avatarIcon,
+				counterpartyId: pairBalance.toUserId,
+				counterpartyName: user.displayName,
+				amountCents: pairBalance.amountCents
+			})
+			.from(pairBalance)
+			.innerJoin(group, eq(group.id, pairBalance.groupId))
+			.innerJoin(user, eq(user.id, pairBalance.toUserId))
+			.where(and(eq(pairBalance.fromUserId, userId), gt(pairBalance.amountCents, 0)));
+	};
+
 const replaceAllForGroup =
 	(db: Database): IPairBalanceRepository['replaceAllForGroup'] =>
 	async (groupId, balances) => {
@@ -97,6 +118,7 @@ export function createPairBalanceRepository(db: Database): IPairBalanceRepositor
 		replaceForPair: replaceForPair(db),
 		getAllForGroup: getAllForGroup(db),
 		getNetForUserInGroups: getNetForUserInGroups(db),
+		getDebtsForUser: getDebtsForUser(db),
 		replaceAllForGroup: replaceAllForGroup(db)
 	};
 }

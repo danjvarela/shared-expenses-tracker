@@ -1,43 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button/index.js';
-	import {
-		Users,
-		Home,
-		Plane,
-		UtensilsCrossed,
-		Car,
-		ShoppingBag,
-		PartyPopper,
-		Heart,
-		Briefcase,
-		Gift
-	} from '@lucide/svelte';
-
-	export const ICON_NAMES = [
-		'Users',
-		'Home',
-		'Plane',
-		'UtensilsCrossed',
-		'Car',
-		'ShoppingBag',
-		'PartyPopper',
-		'Heart',
-		'Briefcase',
-		'Gift'
-	] as const;
-
-	const icons: Record<(typeof ICON_NAMES)[number], typeof Users> = {
-		Users,
-		Home,
-		Plane,
-		UtensilsCrossed,
-		Car,
-		ShoppingBag,
-		PartyPopper,
-		Heart,
-		Briefcase,
-		Gift
-	};
+	import { ICON_NAMES, GROUP_ICONS } from '$lib/group-icons';
 
 	let { value = $bindable(null), name }: { value: string | null; name: string } = $props();
 </script>
@@ -45,7 +8,7 @@
 <input type="hidden" {name} {value} />
 <div class="flex flex-wrap gap-2">
 	{#each ICON_NAMES as iconName (iconName)}
-		{@const Icon = icons[iconName]}
+		{@const Icon = GROUP_ICONS[iconName]}
 		<Button
 			type="button"
 			variant={value === iconName ? 'default' : 'outline'}

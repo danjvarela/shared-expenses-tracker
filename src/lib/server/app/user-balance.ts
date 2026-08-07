@@ -1,5 +1,8 @@
 import type { IGroupRepository } from '$lib/server/app/interfaces/repositories/group';
-import type { IPairBalanceRepository } from '$lib/server/app/interfaces/repositories/pair-balance';
+import type {
+	IPairBalanceRepository,
+	UserDebt
+} from '$lib/server/app/interfaces/repositories/pair-balance';
 
 export interface UserBalanceDeps {
 	groupRepo: IGroupRepository;
@@ -28,7 +31,12 @@ export function createUserBalanceService(deps: UserBalanceDeps) {
 		}));
 	}
 
-	return { getUserGroupBalances };
+	async function getUserDebts(userId: string): Promise<Array<UserDebt>> {
+		const debts = await deps.pairBalanceRepo.getDebtsForUser(userId);
+		return debts.toSorted((a, b) => b.amountCents - a.amountCents);
+	}
+
+	return { getUserGroupBalances, getUserDebts };
 }
 
 export type UserBalanceService = ReturnType<typeof createUserBalanceService>;

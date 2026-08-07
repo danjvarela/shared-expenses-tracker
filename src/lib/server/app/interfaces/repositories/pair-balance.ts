@@ -1,5 +1,15 @@
 import type { PairBalance } from '$lib/server/domain/pair-balance';
 
+export interface UserDebt {
+	groupId: string;
+	groupName: string;
+	groupCurrencyCode: string;
+	groupAvatarIcon: string | null;
+	counterpartyId: string;
+	counterpartyName: string;
+	amountCents: number;
+}
+
 export interface IPairBalanceRepository {
 	getForPair(
 		groupId: string,
@@ -17,6 +27,8 @@ export interface IPairBalanceRepository {
 	getAllForGroup(groupId: string): Promise<Array<PairBalance>>;
 
 	getNetForUserInGroups(userId: string, groupIds: Array<string>): Promise<Map<string, number>>;
+
+	getDebtsForUser(userId: string): Promise<Array<UserDebt>>;
 
 	replaceAllForGroup(
 		groupId: string,

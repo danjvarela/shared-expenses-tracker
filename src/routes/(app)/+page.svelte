@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Empty from '$lib/components/ui/empty/index.js';
+	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { resolve } from '$app/paths';
 	import { formatAmountCents } from '$lib/currency';
@@ -21,6 +22,15 @@
 		<Button href="/groups/new">Create group</Button>
 	</div>
 
+	{#if data.hasOutstandingDebt}
+		<Alert.Root class="mb-4">
+			<Alert.Title>You have pending balances</Alert.Title>
+			<Alert.Action>
+				<Button size="sm" href="/settle">Settle up</Button>
+			</Alert.Action>
+		</Alert.Root>
+	{/if}
+
 	{#if data.userGroupBalances.length}
 		<div class="flex flex-col gap-3">
 			{#each data.userGroupBalances as group (group.id)}
@@ -28,9 +38,7 @@
 					<Card.Root class="transition-colors hover:bg-muted/50">
 						<Card.Header>
 							<Card.Title>{group.name}</Card.Title>
-							<Card.Description
-								class={formatBalance(group.netCents, group.currencyCode).class}
-							>
+							<Card.Description class={formatBalance(group.netCents, group.currencyCode).class}>
 								{formatBalance(group.netCents, group.currencyCode).text}
 							</Card.Description>
 						</Card.Header>

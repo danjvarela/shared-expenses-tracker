@@ -20,12 +20,12 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 - [ ] Not started — Scan receipt to add multiple expenses (OCR/AI)
 - [ ] Not started — `ExpenseGroup` entity — new domain concept, needs a `CONTEXT.md` entry + ADR before/while building:
   - Every `Expense.expenseGroupId` is non-null (manual single-add creates a group of one too — no nullable special case)
-  - `ExpenseGroup` supplies *defaults only* (payer, split arrangement), copied down into each child `Expense`/`ExpenseSplit` at creation time
+  - `ExpenseGroup` supplies _defaults only_ (payer, split arrangement), copied down into each child `Expense`/`ExpenseSplit` at creation time
   - Each child is a plain, full `Expense` — own category, own payer, own splits, independently editable after creation (no live inheritance)
   - UI collapses an `ExpenseGroup`'s children into one row so a 30-item receipt doesn't flood the expense list
 - [x] Done — Update expense
 - [x] Done — Delete expense
-- [ ] Not started — Settlement recording UI (domain model already exists, no UI)
+- [x] Done — Settlement recording UI (`/settle` page: per-counterparty-per-group debt cards, partial settlement dialog, homepage "pending balances" banner)
 
 ## Account settings
 
