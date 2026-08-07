@@ -48,11 +48,18 @@ const update =
 		return row;
 	};
 
+const deleteGroup =
+	(db: Database): IGroupRepository['delete'] =>
+	async (id) => {
+		await db.delete(group).where(eq(group.id, id));
+	};
+
 export function createGroupRepository(db: Database): IGroupRepository {
 	return {
 		getAll: getAll(db),
 		getById: getById(db),
 		create: create(db),
-		update: update(db)
+		update: update(db),
+		delete: deleteGroup(db)
 	};
 }

@@ -12,4 +12,5 @@ export interface IGroupRepository {
 		id: string,
 		input: { name: string; currencyCode: string; avatarIcon: string | null }
 	): Promise<Group>;
+	delete(id: string): Promise<void>;
 }

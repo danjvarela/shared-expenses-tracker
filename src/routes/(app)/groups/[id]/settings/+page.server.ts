@@ -1,5 +1,6 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { groupService, groupMemberService } from '$lib/server/container';
+import { GroupHasOutstandingBalanceError } from '$lib/server/app/group';
 import { CURRENCIES } from '$lib/currency';
 import type { PageServerLoad, Actions } from './$types';
 
@@ -11,8 +12,9 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 	const { group } = await parent();
 
 	const members = await groupMemberService.getGroupMembers(params.id);
+	const hasOutstandingBalance = await groupService.hasOutstandingBalance(params.id);
 
-	return { group, members };
+	return { group, members, hasOutstandingBalance };
 };
 
 export const actions: Actions = {
@@ -64,5 +66,18 @@ export const actions: Actions = {
 		}
 
 		return { success: true };
+	},
+
+	delete: async ({ params }) => {
+		try {
+			await groupService.deleteGroup(params.id);
+		} catch (err) {
+			if (err instanceof GroupHasOutstandingBalanceError) {
+				return fail(400, { error: 'This group still has an outstanding balance to settle' });
+			}
+			throw err;
+		}
+
+		redirect(303, '/');
 	}
 };

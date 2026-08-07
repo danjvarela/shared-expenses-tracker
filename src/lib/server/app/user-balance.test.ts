@@ -21,6 +21,9 @@ function fakeGroupRepo(): IGroupRepository {
 		},
 		async update() {
 			throw new Error('not implemented');
+		},
+		async delete() {
+			throw new Error('not implemented');
 		}
 	};
 }

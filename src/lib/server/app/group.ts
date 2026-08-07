@@ -1,6 +1,7 @@
 import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
 import type { IGroupRepository } from '$lib/server/app/interfaces/repositories/group';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
+import type { IPairBalanceRepository } from '$lib/server/app/interfaces/repositories/pair-balance';
 import type { Group } from '$lib/server/domain/group';
 import { DEFAULT_CURRENCY_CODE } from '$lib/currency';
 
@@ -23,9 +24,16 @@ export interface GroupRepos {
 	groupMemberRepo: IGroupMemberRepository;
 }
 
+export class GroupHasOutstandingBalanceError extends Error {
+	constructor(groupId: string) {
+		super(`Group ${groupId} has an outstanding balance and cannot be deleted`);
+	}
+}
+
 export function createGroupService(deps: {
 	uow: IUnitOfWork<GroupRepos>;
 	groupRepo: IGroupRepository;
+	pairBalanceRepo: IPairBalanceRepository;
 }) {
 	async function createGroup(input: GroupInput): Promise<Group> {
 		return deps.uow.run(async ({ groupRepo, groupMemberRepo }) => {
@@ -49,7 +57,20 @@ export function createGroupService(deps: {
 		});
 	}
 
-	return { createGroup, updateGroup };
+	async function hasOutstandingBalance(id: string): Promise<boolean> {
+		const balances = await deps.pairBalanceRepo.getAllForGroup(id);
+		return balances.length > 0;
+	}
+
+	async function deleteGroup(id: string): Promise<void> {
+		if (await hasOutstandingBalance(id)) {
+			throw new GroupHasOutstandingBalanceError(id);
+		}
+
+		await deps.groupRepo.delete(id);
+	}
+
+	return { createGroup, updateGroup, deleteGroup, hasOutstandingBalance };
 }
 
 export type GroupService = ReturnType<typeof createGroupService>;
