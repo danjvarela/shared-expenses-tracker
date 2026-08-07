@@ -36,6 +36,7 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 ## Receipts
 
 - [ ] Flagged — Receipt image storage: pluggable backend selected via config/env (e.g. Cloudflare R2 for a published deployment, Google Drive for personal use). Needs a storage adapter interface before backend choice is locked in.
+- [ ] Not started — Display receipts on the expense detail page (`/groups/[id]/expenses/[expenseId]`), once storage backend above is chosen.
 
 ## Additional suggested features
 

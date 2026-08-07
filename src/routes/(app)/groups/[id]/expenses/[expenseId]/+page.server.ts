@@ -1,11 +1,5 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import {
-	expenseService,
-	expenseRepo,
-	groupMemberService,
-	categoryRepo
-} from '$lib/server/container';
-import { validateExpenseForm } from '$lib/server/app/expense-form';
+import { expenseService, expenseRepo, groupMemberService, categoryRepo } from '$lib/server/container';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ params, parent }) => {
@@ -23,21 +17,17 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 };
 
 export const actions: Actions = {
-	update: async ({ request, params }) => {
+	delete: async ({ params }) => {
 		const expense = await expenseRepo.getWithSplits(params.expenseId);
 		if (!expense || expense.groupId !== params.id) {
 			error(404, 'Expense not found');
 		}
 
-		const members = await groupMemberService.getGroupMembers(params.id);
-		const formData = await request.formData();
-
-		const result = validateExpenseForm(formData, members);
-		if ('error' in result) {
-			return fail(400, { error: result.error });
+		try {
+			await expenseService.deleteExpense(params.expenseId);
+		} catch {
+			return fail(400, { error: 'Failed to delete expense' });
 		}
-
-		await expenseService.updateExpense(params.expenseId, result.data);
 
 		redirect(303, `/groups/${params.id}`);
 	}
