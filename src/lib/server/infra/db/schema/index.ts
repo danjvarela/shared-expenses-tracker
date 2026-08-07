@@ -8,3 +8,4 @@ export * from './expense';
 export * from './expense-split';
 export * from './settlement';
 export * from './pair-balance';
+export * from './notification';

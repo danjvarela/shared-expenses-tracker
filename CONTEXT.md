@@ -34,6 +34,10 @@ _Avoid_: Share, portion
 The cached, directed net debt between two Users within a Group (`fromUserId` owes `toUserId` `amountCents`), incrementally maintained on every Expense/Settlement write rather than summed from ExpenseSplit/Settlement at read time. At most one nonzero row exists per unordered User pair per Group — see ADR-0004.
 _Avoid_: Balance (ambiguous between net-per-user and pairwise — this context only has the pairwise shape), debt
 
+**Notification**:
+A record telling one User (`userId`, the recipient) that something happened in a Group — an Expense or Settlement was created. Carries a `type` (`expense_created`, `settlement_created`), a pre-rendered `message`, an optional `expenseId`/`settlementId` link (whichever the type implies), and a nullable `readAt`. Created as a side effect of the Expense/Settlement write, never as part of its transaction — see ADR-0008.
+_Avoid_: Alert, activity (too broad — this is specifically per-recipient and per-User-scoped)
+
 **Split type**:
 How an Expense's total is divided into ExpenseSplits (equal, percentage, by shares, exact). This is a presentation-layer concern only — it must resolve to exact per-user `amountCents` before an ExpenseSplit is created. The domain has no `splitType` field.
 _Avoid_: Split method, division strategy
