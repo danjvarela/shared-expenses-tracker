@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { Wallet, Sun, Moon, Settings, LogOut } from '@lucide/svelte';
+	import { Wallet, Sun, Moon, Settings, LogOut, Bell } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
+	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { toggleMode } from 'mode-watcher';
@@ -8,7 +9,8 @@
 	import { goto } from '$app/navigation';
 	import type { User } from '$lib/server/domain/user';
 
-	let { user }: { user: User } = $props();
+	let { user, unreadCount }: { user: User; unreadCount: number } = $props();
+	let unreadBadge = $derived(unreadCount > 9 ? '9+' : String(unreadCount));
 
 	async function logout() {
 		await fetch('/logout', { method: 'POST' });
@@ -26,7 +28,7 @@
 </script>
 
 <header class="flex items-center justify-center border-b">
-	<div class="container flex justify-between items-center max-w-xl p-4">
+	<div class="container flex max-w-xl items-center justify-between p-4">
 		<a href={resolve('/')} class="flex items-center gap-2 no-underline">
 			<div
 				class="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground"
@@ -42,6 +44,24 @@
 				<Moon class="absolute size-4 scale-0 dark:scale-100" />
 			</Button>
 
+			<Button
+				variant="ghost"
+				size="icon"
+				class="relative"
+				href={resolve('/(app)/notifications')}
+				aria-label="Notifications"
+			>
+				<Bell class="size-4" />
+				{#if unreadCount > 0}
+					<Badge
+						variant="destructive"
+						class="absolute -top-1 -right-1 h-4 min-w-4 justify-center rounded-full px-1 text-[10px]"
+					>
+						{unreadBadge}
+					</Badge>
+				{/if}
+			</Button>
+
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
 					<Avatar.Root>
@@ -50,8 +70,8 @@
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Content align="end" class="w-[200px]">
 					<DropdownMenu.Label>
-            You are logged in as <span class="font-bold">{user.displayName}</span>
-          </DropdownMenu.Label>
+						You are logged in as <span class="font-bold">{user.displayName}</span>
+					</DropdownMenu.Label>
 					<DropdownMenu.Separator />
 					<DropdownMenu.Item>
 						{#snippet child({ props })}

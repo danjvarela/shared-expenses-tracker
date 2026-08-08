@@ -5,11 +5,84 @@ import type {
 	ExpenseWithSplits
 } from '$lib/server/app/interfaces/repositories/expense';
 import type { IPairBalanceRepository } from '$lib/server/app/interfaces/repositories/pair-balance';
+import type {
+	IGroupMemberRepository,
+	GroupMemberWithUser
+} from '$lib/server/app/interfaces/repositories/group-member';
+import type { IGroupRepository } from '$lib/server/app/interfaces/repositories/group';
+import type {
+	INotificationRepository,
+	NotificationCreateInput
+} from '$lib/server/app/interfaces/repositories/notification';
+import type { Notification } from '$lib/server/domain/notification';
 import { createExpenseService, type ExpenseRepos } from './expense';
 
 const alice = 'alice';
 const bob = 'bob';
 const groupId = 'group-1';
+
+function fakeGroupRepo(currencyCode = 'USD'): IGroupRepository {
+	return {
+		async getAll() {
+			return [];
+		},
+		async getById(id) {
+			return {
+				id,
+				name: 'Group',
+				currencyCode,
+				avatarIcon: null,
+				createdAt: new Date()
+			};
+		},
+		async create() {
+			throw new Error('not implemented');
+		},
+		async update() {
+			throw new Error('not implemented');
+		},
+		async delete() {}
+	};
+}
+
+function fakeGroupMemberRepo(members: Array<GroupMemberWithUser>): IGroupMemberRepository {
+	return {
+		async getAllForGroupWithUser() {
+			return members;
+		},
+		async create() {},
+		async updateDefaultSplitPercents() {},
+		async isMember() {
+			return true;
+		}
+	};
+}
+
+function fakeNotificationRepo(): INotificationRepository & {
+	created: Array<NotificationCreateInput>;
+} {
+	const created: Array<NotificationCreateInput> = [];
+	return {
+		created,
+		async create(input) {
+			created.push(input);
+			return {
+				...input,
+				id: `notification-${created.length}`,
+				readAt: null,
+				createdAt: new Date()
+			} satisfies Notification;
+		},
+		async listForUser() {
+			return [];
+		},
+		async getUnreadCountForUser() {
+			return 0;
+		},
+		async markRead() {},
+		async markAllReadForUser() {}
+	};
+}
 
 function fakeUnitOfWork(repos: ExpenseRepos): IUnitOfWork<ExpenseRepos> {
 	return {
@@ -147,7 +220,10 @@ describe('createExpenseService', () => {
 		const expenseRepo = fakeExpenseRepo([seed]);
 		const service = createExpenseService({
 			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo: fakePairBalanceRepo() }),
-			expenseRepo
+			expenseRepo,
+			groupRepo: fakeGroupRepo(),
+			groupMemberRepo: fakeGroupMemberRepo([]),
+			notificationRepo: fakeNotificationRepo()
 		});
 
 		expect(await service.getGroupExpenses(groupId)).toEqual([
@@ -161,26 +237,112 @@ describe('createExpenseService', () => {
 		const pairBalanceRepo = fakePairBalanceRepo();
 		const service = createExpenseService({
 			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo }),
-			expenseRepo
+			expenseRepo,
+			groupRepo: fakeGroupRepo(),
+			groupMemberRepo: fakeGroupMemberRepo([]),
+			notificationRepo: fakeNotificationRepo()
 		});
 
-		const created = await service.createExpense({
-			groupId,
-			paidByUserId: alice,
-			categoryId: null,
-			description: 'Dinner',
-			amountCents: 1000,
-			date: new Date(),
-			splits: [
-				{ userId: alice, amountCents: 500 },
-				{ userId: bob, amountCents: 500 }
-			]
-		});
+		const created = await service.createExpense(
+			{
+				groupId,
+				paidByUserId: alice,
+				categoryId: null,
+				description: 'Dinner',
+				amountCents: 1000,
+				date: new Date(),
+				splits: [
+					{ userId: alice, amountCents: 500 },
+					{ userId: bob, amountCents: 500 }
+				]
+			},
+			alice
+		);
 
 		expect(created.id).toBeDefined();
 		expect(pairBalanceRepo.deltasApplied).toEqual([
 			{ groupId, fromUserId: bob, toUserId: alice, amountCents: 500 }
 		]);
+	});
+
+	it('notifies other group members but not the actor when an expense is created', async () => {
+		const expenseRepo = fakeExpenseRepo();
+		const notificationRepo = fakeNotificationRepo();
+		const service = createExpenseService({
+			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo: fakePairBalanceRepo() }),
+			expenseRepo,
+			groupRepo: fakeGroupRepo('USD'),
+			groupMemberRepo: fakeGroupMemberRepo([
+				{ userId: alice, displayName: 'Alice', defaultSplitPercent: null },
+				{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
+			]),
+			notificationRepo
+		});
+
+		const created = await service.createExpense(
+			{
+				groupId,
+				paidByUserId: alice,
+				categoryId: null,
+				description: 'Dinner',
+				amountCents: 1000,
+				date: new Date(),
+				splits: [
+					{ userId: alice, amountCents: 500 },
+					{ userId: bob, amountCents: 500 }
+				]
+			},
+			alice
+		);
+
+		expect(notificationRepo.created).toEqual([
+			{
+				userId: bob,
+				groupId,
+				type: 'expense_created',
+				expenseId: created.id,
+				settlementId: null,
+				message: 'Alice added Dinner ($10.00)'
+			}
+		]);
+	});
+
+	it('swallows notification failures without failing expense creation', async () => {
+		const expenseRepo = fakeExpenseRepo();
+		const notificationRepo = fakeNotificationRepo();
+		const groupMemberRepo: IGroupMemberRepository = {
+			async getAllForGroupWithUser() {
+				throw new Error('boom');
+			},
+			async create() {},
+			async updateDefaultSplitPercents() {},
+			async isMember() {
+				return true;
+			}
+		};
+		const service = createExpenseService({
+			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo: fakePairBalanceRepo() }),
+			expenseRepo,
+			groupRepo: fakeGroupRepo(),
+			groupMemberRepo,
+			notificationRepo
+		});
+
+		const created = await service.createExpense(
+			{
+				groupId,
+				paidByUserId: alice,
+				categoryId: null,
+				description: 'Dinner',
+				amountCents: 1000,
+				date: new Date(),
+				splits: []
+			},
+			alice
+		);
+
+		expect(created.id).toBeDefined();
+		expect(notificationRepo.created).toEqual([]);
 	});
 
 	it('throws when updating an expense that does not exist', async () => {
@@ -190,7 +352,10 @@ describe('createExpenseService', () => {
 				expenseRepo,
 				pairBalanceRepo: fakePairBalanceRepo()
 			}),
-			expenseRepo
+			expenseRepo,
+			groupRepo: fakeGroupRepo(),
+			groupMemberRepo: fakeGroupMemberRepo([]),
+			notificationRepo: fakeNotificationRepo()
 		});
 
 		await expect(
@@ -237,7 +402,10 @@ describe('createExpenseService', () => {
 		const pairBalanceRepo = fakePairBalanceRepo();
 		const service = createExpenseService({
 			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo }),
-			expenseRepo
+			expenseRepo,
+			groupRepo: fakeGroupRepo(),
+			groupMemberRepo: fakeGroupMemberRepo([]),
+			notificationRepo: fakeNotificationRepo()
 		});
 
 		await service.deleteExpense('expense-0');

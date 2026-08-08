@@ -9,6 +9,7 @@ import { createSettlementRepository } from '$lib/server/infra/db/repositories/se
 import { createPairBalanceRepository } from '$lib/server/infra/db/repositories/pair-balance';
 import { createGroupMemberRepository } from '$lib/server/infra/db/repositories/group-member';
 import { createCategoryRepository } from '$lib/server/infra/db/repositories/category';
+import { createNotificationRepository } from '$lib/server/infra/db/repositories/notification';
 import { createGoogleOAuthProvider } from '$lib/server/infra/oauth/google';
 
 import { createAuthService } from '$lib/server/app/auth';
@@ -18,6 +19,7 @@ import { createExpenseService, type ExpenseRepos } from '$lib/server/app/expense
 import { createGroupService, type GroupRepos } from '$lib/server/app/group';
 import { createSettlementService, type SettlementRepos } from '$lib/server/app/settlement';
 import { createGroupMemberService } from '$lib/server/app/group-member';
+import { createNotificationService } from '$lib/server/app/notification';
 import type { IOAuthProvider } from '$lib/server/app/interfaces/oauth-provider';
 
 const userRepo = createUserRepository(db);
@@ -29,6 +31,7 @@ const settlementRepo = createSettlementRepository(db);
 const pairBalanceRepo = createPairBalanceRepository(db);
 const groupMemberRepo = createGroupMemberRepository(db);
 const categoryRepo = createCategoryRepository(db);
+const notificationRepo = createNotificationRepository(db);
 
 const googleOAuthProvider = createGoogleOAuthProvider();
 const oauthProviders: Record<string, IOAuthProvider> = {
@@ -67,7 +70,13 @@ export const groupBalanceService = createGroupBalanceService({
 
 export const userBalanceService = createUserBalanceService({ groupRepo, pairBalanceRepo });
 
-export const expenseService = createExpenseService({ uow: expenseUnitOfWork, expenseRepo });
+export const expenseService = createExpenseService({
+	uow: expenseUnitOfWork,
+	expenseRepo,
+	groupRepo,
+	groupMemberRepo,
+	notificationRepo
+});
 
 export const settlementService = createSettlementService({ uow: settlementUnitOfWork });
 
@@ -79,4 +88,6 @@ export const groupService = createGroupService({
 	pairBalanceRepo
 });
 
-export { groupRepo, groupMemberRepo, categoryRepo, expenseRepo, pairBalanceRepo };
+export const notificationService = createNotificationService({ notificationRepo });
+
+export { groupRepo, groupMemberRepo, categoryRepo, expenseRepo, pairBalanceRepo, notificationRepo };

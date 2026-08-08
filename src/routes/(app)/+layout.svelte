@@ -4,5 +4,5 @@
 	let { data, children } = $props();
 </script>
 
-<Header user={data.user} />
+<Header user={data.user} unreadCount={data.unreadCount} />
 {@render children()}

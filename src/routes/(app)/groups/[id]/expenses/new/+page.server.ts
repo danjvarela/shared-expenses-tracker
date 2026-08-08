@@ -13,7 +13,7 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 };
 
 async function createExpense(
-	{ request, params }: { request: Request; params: { id: string } },
+	{ request, params, locals }: { request: Request; params: { id: string }; locals: App.Locals },
 	redirectTo: string
 ) {
 	const members = await groupMemberService.getGroupMembers(params.id);
@@ -24,10 +24,13 @@ async function createExpense(
 		return fail(400, { error: result.error });
 	}
 
-	await expenseService.createExpense({
-		groupId: params.id,
-		...result.data
-	});
+	await expenseService.createExpense(
+		{
+			groupId: params.id,
+			...result.data
+		},
+		locals.user!.id
+	);
 
 	redirect(303, redirectTo);
 }
