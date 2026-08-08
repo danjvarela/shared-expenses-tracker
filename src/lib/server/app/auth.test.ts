@@ -7,18 +7,33 @@ import type { User } from '$lib/server/domain/user';
 import type { Session } from '$lib/server/domain/session';
 import { createAuthService } from './auth';
 
-function fakeUserRepo(seed: Array<User> = []): IUserRepository {
+function fakeUserRepo(seed: Array<User> = []): IUserRepository & {
+	updatedDisplayNames: Array<{ userId: string; displayName: string }>;
+} {
 	const rows = new Map(seed.map((row) => [row.id, row]));
 	let nextId = seed.length;
+	const updatedDisplayNames: Array<{ userId: string; displayName: string }> = [];
+	const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 	return {
+		updatedDisplayNames,
 		async findByEmail(email) {
-			return Array.from(rows.values()).find((row) => row.email === email) ?? null;
+			const target = normalizeEmail(email);
+			return Array.from(rows.values()).find((row) => row.email === target) ?? null;
 		},
 		async create(input) {
-			const row: User = { id: `user-${nextId++}`, ...input };
+			const row: User = {
+				id: `user-${nextId++}`,
+				displayName: input.displayName,
+				email: normalizeEmail(input.email)
+			};
 			rows.set(row.id, row);
 			return row;
+		},
+		async updateDisplayName(userId, displayName) {
+			updatedDisplayNames.push({ userId, displayName });
+			const row = rows.get(userId);
+			if (row) row.displayName = displayName;
 		}
 	};
 }
@@ -136,6 +151,82 @@ describe('createAuthService', () => {
 		);
 
 		expect(userId).toBe(existingUser.id);
+	});
+
+	it("replaces a pre-login user's email-seeded displayName with the Google name on first login", async () => {
+		const existingUser: User = {
+			id: 'user-invited',
+			displayName: googleProfile.email,
+			email: googleProfile.email
+		};
+		const userRepo = fakeUserRepo([existingUser]);
+		const service = createAuthService({
+			userRepo,
+			identityRepo: fakeIdentityRepo(),
+			sessionRepo: fakeSessionRepo(new Map()),
+			oauthProviders: { google: fakeOAuthProvider(googleProfile) }
+		});
+
+		const { userId } = await service.handleAuthorizationCallback(
+			'google',
+			'code',
+			'verifier',
+			'https://app.example/callback'
+		);
+
+		expect(userId).toBe(existingUser.id);
+		expect(userRepo.updatedDisplayNames).toEqual([
+			{ userId: existingUser.id, displayName: googleProfile.name }
+		]);
+		const user = await userRepo.findByEmail(googleProfile.email);
+		expect(user?.displayName).toBe(googleProfile.name);
+	});
+
+	it('does not clobber a matching displayName when linking by email', async () => {
+		const existingUser: User = {
+			id: 'user-existing',
+			displayName: googleProfile.name,
+			email: googleProfile.email
+		};
+		const userRepo = fakeUserRepo([existingUser]);
+		const service = createAuthService({
+			userRepo,
+			identityRepo: fakeIdentityRepo(),
+			sessionRepo: fakeSessionRepo(new Map()),
+			oauthProviders: { google: fakeOAuthProvider(googleProfile) }
+		});
+
+		await service.handleAuthorizationCallback(
+			'google',
+			'code',
+			'verifier',
+			'https://app.example/callback'
+		);
+
+		expect(userRepo.updatedDisplayNames).toEqual([]);
+	});
+
+	it('normalizes email case when matching and creating a user', async () => {
+		const userRepo = fakeUserRepo();
+		const service = createAuthService({
+			userRepo,
+			identityRepo: fakeIdentityRepo(),
+			sessionRepo: fakeSessionRepo(new Map()),
+			oauthProviders: {
+				google: fakeOAuthProvider({ ...googleProfile, email: 'Alice@Example.com' })
+			}
+		});
+
+		const { userId } = await service.handleAuthorizationCallback(
+			'google',
+			'code',
+			'verifier',
+			'https://app.example/callback'
+		);
+
+		const user = await userRepo.findByEmail('alice@example.com');
+		expect(user?.id).toBe(userId);
+		expect(user?.email).toBe('alice@example.com');
 	});
 
 	it('rejects an unverified OAuth email', async () => {

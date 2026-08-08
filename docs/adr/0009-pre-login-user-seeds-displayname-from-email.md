@@ -1,0 +1,9 @@
+# A pre-login User's `displayName` is seeded from its email, replaced on first login
+
+A User can exist before ever logging in: the invite flow creates one from an email address so it can be added to a Group immediately. `displayName` is `notNull` in the schema and read at ~12 render sites (header, settle, expense new/edit, settings, settlement detail, repo projections), so a nullable `displayName` would force null-handling across all of them.
+
+Decision: at invite time, seed `displayName = normalizeEmail(email)` (the email itself, lowercased — see `normalizeEmail` in `src/lib/server/domain/user.ts`). The pre-login member then appears in member lists and expense-split dropdowns as its email until the person logs in. On first Google login, the auth email-fallback branch — the path where no `existingIdentity` is found but an `existingUser` matches by email — overwrites `displayName` with `profile.name`. That branch fires exactly once per pre-login User: subsequent logins resolve an existing Identity and skip the overwrite, so manual name edits made after first login are never clobbered. A pre-login User cannot log in to edit its name first, so nothing manual can be lost in the overwrite.
+
+Email is normalized (lowercased, trimmed) before both lookup and insert, in the invite service and in `auth.ts`, so a case-variant email entered at invite time still links to the same User row on first login and the unique-email constraint is guarded.
+
+Rejected: a nullable `displayName` (schema migration plus null-handling blast radius across ~12 render sites); a status / `invitedAt` flag on User (redundant — the existence of an `Identity` already distinguishes a User who has logged in from one who has not). `PairBalance` is keyed on `userId`, so balances involving a pre-login member work without special handling.

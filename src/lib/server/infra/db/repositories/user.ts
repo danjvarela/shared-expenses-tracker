@@ -3,23 +3,45 @@ import type { Database } from '$lib/server/infra/db/types';
 import { user } from '$lib/server/infra/db/schema/user';
 import { eq } from 'drizzle-orm';
 
+function normalizeEmail(email: string): string {
+	return email.trim().toLowerCase();
+}
+
 const findByEmail =
 	(db: Database): IUserRepository['findByEmail'] =>
 	async (email) => {
-		const rows = await db.select().from(user).where(eq(user.email, email));
+		const normalizedEmail = normalizeEmail(email);
+		const rows = await db.select().from(user).where(eq(user.email, normalizedEmail));
 		return rows[0] ?? null;
 	};
 
 const create =
 	(db: Database): IUserRepository['create'] =>
 	async (input) => {
-		const [row] = await db.insert(user).values(input).returning();
+		const normalizedEmail = normalizeEmail(input.email);
+
+    // when creating from invite, displayName is email so we normalize it first
+		const resolvedDisplayName = input.fromInvite
+			? normalizeEmail(input.displayName)
+			: input.displayName;
+
+		const [row] = await db
+			.insert(user)
+			.values({ displayName: resolvedDisplayName, email: normalizedEmail })
+			.returning();
 		return row;
+	};
+
+const updateDisplayName =
+	(db: Database): IUserRepository['updateDisplayName'] =>
+	async (userId, displayName) => {
+		await db.update(user).set({ displayName }).where(eq(user.id, userId));
 	};
 
 export function createUserRepository(db: Database): IUserRepository {
 	return {
 		findByEmail: findByEmail(db),
-		create: create(db)
+		create: create(db),
+		updateDisplayName: updateDisplayName(db)
 	};
 }

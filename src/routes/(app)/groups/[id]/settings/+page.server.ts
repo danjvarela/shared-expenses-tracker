@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { groupService, groupMemberService } from '$lib/server/container';
+import { groupService, groupMemberService, groupInviteService } from '$lib/server/container';
 import { GroupHasOutstandingBalanceError } from '$lib/server/app/group';
+import { InvalidInviteEmailError } from '$lib/server/app/group-invite';
 import { CURRENCIES } from '$lib/currency';
 import type { PageServerLoad, Actions } from './$types';
 
@@ -55,7 +56,11 @@ export const actions: Actions = {
 			};
 		});
 
-		if (entries.some((entry) => entry.defaultSplitPercent !== null && Number.isNaN(entry.defaultSplitPercent))) {
+		if (
+			entries.some(
+				(entry) => entry.defaultSplitPercent !== null && Number.isNaN(entry.defaultSplitPercent)
+			)
+		) {
 			return fail(400, { error: 'Percentages must be numbers' });
 		}
 
@@ -66,6 +71,27 @@ export const actions: Actions = {
 		}
 
 		return { success: true };
+	},
+
+	invite: async ({ request, params }) => {
+		const formData = await request.formData();
+		const email = formData.get('email');
+
+		if (typeof email !== 'string' || email.trim() === '') {
+			return fail(400, { inviteError: 'Enter an email address' });
+		}
+
+		let result;
+		try {
+			result = await groupInviteService.inviteByEmail(params.id, email.trim());
+		} catch (err) {
+			if (err instanceof InvalidInviteEmailError) {
+				return fail(400, { inviteError: 'Enter a valid email address' });
+			}
+			throw err;
+		}
+
+		return { invite: { status: result.status, email: email.trim() } };
 	},
 
 	delete: async ({ params }) => {

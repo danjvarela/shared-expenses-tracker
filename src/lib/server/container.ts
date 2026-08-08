@@ -19,6 +19,7 @@ import { createExpenseService, type ExpenseRepos } from '$lib/server/app/expense
 import { createGroupService, type GroupRepos } from '$lib/server/app/group';
 import { createSettlementService, type SettlementRepos } from '$lib/server/app/settlement';
 import { createGroupMemberService } from '$lib/server/app/group-member';
+import { createGroupInviteService, type InviteRepos } from '$lib/server/app/group-invite';
 import { createNotificationService } from '$lib/server/app/notification';
 import type { IOAuthProvider } from '$lib/server/app/interfaces/oauth-provider';
 
@@ -50,6 +51,11 @@ const settlementUnitOfWork = createUnitOfWork<SettlementRepos>((tx) => ({
 
 const groupUnitOfWork = createUnitOfWork<GroupRepos>((tx) => ({
 	groupRepo: createGroupRepository(tx),
+	groupMemberRepo: createGroupMemberRepository(tx)
+}));
+
+const inviteUnitOfWork = createUnitOfWork<InviteRepos>((tx) => ({
+	userRepo: createUserRepository(tx),
 	groupMemberRepo: createGroupMemberRepository(tx)
 }));
 
@@ -86,6 +92,8 @@ export const settlementService = createSettlementService({
 });
 
 export const groupMemberService = createGroupMemberService({ groupMemberRepo });
+
+export const groupInviteService = createGroupInviteService({ uow: inviteUnitOfWork });
 
 export const groupService = createGroupService({
 	uow: groupUnitOfWork,

@@ -54,6 +54,9 @@ export function createAuthService(deps: AuthDeps) {
 				provider: profile.provider,
 				providerSubject: profile.subject
 			});
+			if (existingUser.displayName !== profile.name) {
+				await deps.userRepo.updateDisplayName(existingUser.id, profile.name);
+			}
 			return { userId: existingUser.id };
 		}
 

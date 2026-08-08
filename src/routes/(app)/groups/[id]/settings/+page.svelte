@@ -14,6 +14,12 @@
 
 	const { data, form } = $props();
 
+	type InviteForm = {
+		invite?: { status: string; email: string };
+		inviteError?: string;
+	};
+	const inviteForm = $derived(form as InviteForm | null);
+
 	let avatarIcon: string | null = $state(untrack(() => data.group.avatarIcon));
 	let currencyCode = $state(untrack(() => data.group.currencyCode));
 
@@ -90,6 +96,50 @@
 
 	<Card.Root>
 		<Card.Header>
+			<Card.Title>Invite member</Card.Title>
+			<Card.Description>
+				Add someone to this group by email. If they haven't signed in yet, they'll appear as their
+				email until their first login.
+			</Card.Description>
+		</Card.Header>
+		<Card.Content>
+			<form
+				method="POST"
+				action="?/invite"
+				class="flex flex-col gap-4"
+				use:enhance={() => {
+					return async ({ update }) => {
+						await update({ reset: false });
+					};
+				}}
+			>
+				<Field.Field>
+					<Field.FieldLabel for="email">Email</Field.FieldLabel>
+					<Input id="email" name="email" type="email" required placeholder="friend@example.com" />
+				</Field.Field>
+
+				{#if inviteForm?.inviteError}
+					<Field.FieldError>{inviteForm.inviteError}</Field.FieldError>
+				{/if}
+
+				{#if inviteForm?.invite?.status === 'invited'}
+					<Alert.Root>
+						<CircleCheck class="size-4" />
+						<Alert.Title>Invited {inviteForm.invite.email}</Alert.Title>
+					</Alert.Root>
+				{:else if inviteForm?.invite?.status === 'already_member'}
+					<Alert.Root>
+						<Alert.Title>{inviteForm.invite.email} is already a member</Alert.Title>
+					</Alert.Root>
+				{/if}
+
+				<Button type="submit">Send invite</Button>
+			</form>
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root>
+		<Card.Header>
 			<Card.Title>Default split percentages</Card.Title>
 			<Card.Description>
 				Prefills new expense splits. Leave a member blank to fall back to an equal split; any
@@ -148,11 +198,11 @@
 			<Card.Title>Danger zone</Card.Title>
 			<Card.Description>
 				{#if data.hasOutstandingBalance}
-					This group can't be deleted yet. You or other members still have an outstanding
-					balance to settle.
+					This group can't be deleted yet. You or other members still have an outstanding balance to
+					settle.
 				{:else}
-					Deleting this group permanently removes it, along with all its expenses,
-					settlements, and balances. This action cannot be undone.
+					Deleting this group permanently removes it, along with all its expenses, settlements, and
+					balances. This action cannot be undone.
 				{/if}
 			</Card.Description>
 		</Card.Header>
@@ -175,8 +225,8 @@
 					<AlertDialog.Header>
 						<AlertDialog.Title>Delete "{data.group.name}"?</AlertDialog.Title>
 						<AlertDialog.Description>
-							This will permanently delete this group, along with all its expenses,
-							settlements, and balances. This action cannot be undone.
+							This will permanently delete this group, along with all its expenses, settlements, and
+							balances. This action cannot be undone.
 						</AlertDialog.Description>
 					</AlertDialog.Header>
 					<AlertDialog.Footer>
