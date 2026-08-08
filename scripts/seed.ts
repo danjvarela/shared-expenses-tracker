@@ -16,6 +16,7 @@ const client = createClient({ url: databaseUrl });
 const db = drizzle(client, { schema, casing: 'snake_case' });
 
 async function main() {
+	await db.delete(schema.notification);
 	await db.delete(schema.expenseSplit);
 	await db.delete(schema.settlement);
 	await db.delete(schema.expense);
@@ -139,9 +140,37 @@ async function main() {
 		{ expenseId: karaokeExpense.id, userId: bob.id, amountCents: 3000 }
 	]);
 
-	await db
+	const [settlement] = await db
 		.insert(schema.settlement)
-		.values([{ groupId: apartment.id, fromUserId: bob.id, toUserId: alice.id, amountCents: 5000 }]);
+		.values([{ groupId: apartment.id, fromUserId: bob.id, toUserId: alice.id, amountCents: 5000 }])
+		.returning();
+
+	await db.insert(schema.notification).values([
+		{
+			userId: alice.id,
+			groupId: apartment.id,
+			type: 'expense_created',
+			expenseId: electricExpense.id,
+			settlementId: null,
+			message: 'Nelie added Electric bill (₱64.00)'
+		},
+		{
+			userId: alice.id,
+			groupId: tripToOsaka.id,
+			type: 'expense_created',
+			expenseId: taxiExpense.id,
+			settlementId: null,
+			message: 'Nelie added Airport taxi (₱45.00)'
+		},
+		{
+			userId: alice.id,
+			groupId: apartment.id,
+			type: 'settlement_created',
+			expenseId: null,
+			settlementId: settlement.id,
+			message: 'Nelie settled up ₱50.00'
+		}
+	]);
 
 	console.log('Seeded database.');
 	client.close();
