@@ -2,6 +2,13 @@ import { describe, it, expect } from 'vitest';
 import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
 import type { ISettlementRepository } from '$lib/server/app/interfaces/repositories/settlement';
 import type { IPairBalanceRepository } from '$lib/server/app/interfaces/repositories/pair-balance';
+import type { IGroupRepository } from '$lib/server/app/interfaces/repositories/group';
+import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
+import type {
+	INotificationRepository,
+	NotificationCreateInput
+} from '$lib/server/app/interfaces/repositories/notification';
+import type { Notification } from '$lib/server/domain/notification';
 import { createSettlementService, type SettlementRepos } from './settlement';
 
 const alice = 'alice';
@@ -87,12 +94,68 @@ function fakePairBalanceRepo(): IPairBalanceRepository & {
 	};
 }
 
+function fakeGroupRepo(): IGroupRepository {
+	return {
+		async getAll() {
+			return [];
+		},
+		async getById(id) {
+			return { id, name: 'Trip', currencyCode: 'USD', avatarIcon: null, createdAt: new Date() };
+		},
+		async create(input) {
+			return { id: 'group-x', createdAt: new Date(), ...input };
+		},
+		async update(id, input) {
+			return { id, createdAt: new Date(), ...input };
+		},
+		async delete() {}
+	};
+}
+
+function fakeGroupMemberRepo(): IGroupMemberRepository {
+	return {
+		async getAllForGroupWithUser() {
+			return [
+				{ userId: alice, displayName: 'Alice', defaultSplitPercent: null },
+				{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
+			];
+		},
+		async create() {},
+		async updateDefaultSplitPercents() {},
+		async isMember() {
+			return true;
+		}
+	};
+}
+
+function fakeNotificationRepo(): INotificationRepository & { created: Array<NotificationCreateInput> } {
+	const created: Array<NotificationCreateInput> = [];
+	return {
+		created,
+		async create(input) {
+			created.push(input);
+			return { id: `notification-${created.length}`, readAt: null, createdAt: new Date(), ...input } as Notification;
+		},
+		async listForUser() {
+			return [];
+		},
+		async getUnreadCountForUser() {
+			return 0;
+		},
+		async markRead() {},
+		async markAllReadForUser() {}
+	};
+}
+
 describe('createSettlementService', () => {
 	it('creates a settlement and reduces the payer debt within the unit of work', async () => {
 		const settlementRepo = fakeSettlementRepo();
 		const pairBalanceRepo = fakePairBalanceRepo();
 		const service = createSettlementService({
-			uow: fakeUnitOfWork({ settlementRepo, pairBalanceRepo })
+			uow: fakeUnitOfWork({ settlementRepo, pairBalanceRepo }),
+			groupRepo: fakeGroupRepo(),
+			groupMemberRepo: fakeGroupMemberRepo(),
+			notificationRepo: fakeNotificationRepo()
 		});
 
 		const created = await service.createSettlement({
@@ -106,5 +169,52 @@ describe('createSettlementService', () => {
 		expect(pairBalanceRepo.deltasApplied).toEqual([
 			{ groupId, fromUserId: alice, toUserId: bob, amountCents: 300 }
 		]);
+	});
+
+	it('notifies only the counterparty, not the actor', async () => {
+		const settlementRepo = fakeSettlementRepo();
+		const pairBalanceRepo = fakePairBalanceRepo();
+		const notificationRepo = fakeNotificationRepo();
+		const service = createSettlementService({
+			uow: fakeUnitOfWork({ settlementRepo, pairBalanceRepo }),
+			groupRepo: fakeGroupRepo(),
+			groupMemberRepo: fakeGroupMemberRepo(),
+			notificationRepo
+		});
+
+		const created = await service.createSettlement({
+			groupId,
+			fromUserId: bob,
+			toUserId: alice,
+			amountCents: 300
+		});
+
+		expect(notificationRepo.created).toEqual([
+			{
+				userId: alice,
+				groupId,
+				type: 'settlement_created',
+				expenseId: null,
+				settlementId: created.id,
+				message: 'Bob settled $3.00 with you'
+			}
+		]);
+	});
+
+	it('does not throw if notification creation fails', async () => {
+		const settlementRepo = fakeSettlementRepo();
+		const pairBalanceRepo = fakePairBalanceRepo();
+		const groupRepo = fakeGroupRepo();
+		groupRepo.getById = async () => null;
+		const service = createSettlementService({
+			uow: fakeUnitOfWork({ settlementRepo, pairBalanceRepo }),
+			groupRepo,
+			groupMemberRepo: fakeGroupMemberRepo(),
+			notificationRepo: fakeNotificationRepo()
+		});
+
+		await expect(
+			service.createSettlement({ groupId, fromUserId: bob, toUserId: alice, amountCents: 300 })
+		).resolves.toBeDefined();
 	});
 });

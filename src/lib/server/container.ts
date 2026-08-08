@@ -78,7 +78,12 @@ export const expenseService = createExpenseService({
 	notificationRepo
 });
 
-export const settlementService = createSettlementService({ uow: settlementUnitOfWork });
+export const settlementService = createSettlementService({
+	uow: settlementUnitOfWork,
+	groupRepo,
+	groupMemberRepo,
+	notificationRepo
+});
 
 export const groupMemberService = createGroupMemberService({ groupMemberRepo });
 
