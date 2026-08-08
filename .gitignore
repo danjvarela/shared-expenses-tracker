@@ -34,3 +34,6 @@ devenv.local.yaml
 
 # pre-commit
 .pre-commit-config.yaml
+
+# Local ticket tracking (never committed)
+.tickets

@@ -42,7 +42,7 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 
 - [ ] Not started — Expense comments/notes (free-text per expense, beyond category)
 - [ ] Not started — Activity/audit log per group (who added/edited/deleted what, when)
-- [ ] Not started — Notifications (push/email on new expense, invite, settlement)
+- [x] Done — In-app notifications on new expense and settlement (`Notification` row + bell/badge + `/notifications` list, fire-and-forget from `app/expense.ts`/`app/settlement.ts`). Push/email and group-invite notifications not started — would need a provider ADR and `NotificationPreference` concept first.
 - [ ] Not started — Recurring expenses (auto-create on a schedule, e.g. monthly rent)
 - [ ] Not started — Export group data (CSV/PDF of expenses and balances)
 - [ ] Not started — Multi-group dashboard (cross-group total owed / owed-to-you)
