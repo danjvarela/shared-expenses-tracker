@@ -1,16 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 import { notificationService } from '$lib/server/container';
-import type { Notification } from '$lib/server/domain/notification';
 import type { PageServerLoad, Actions } from './$types';
-
-export function notificationLink(notification: Notification): string {
-	switch (notification.type) {
-		case 'expense_created':
-			return `/groups/${notification.groupId}/expenses/${notification.expenseId}`;
-		case 'settlement_created':
-			return `/groups/${notification.groupId}/settlements/${notification.settlementId}`;
-	}
-}
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const notifications = await notificationService.listForUser(locals.user!.id);
@@ -34,7 +24,7 @@ export const actions: Actions = {
 
 		await notificationService.markRead(notificationId);
 
-		redirect(303, notificationLink(notification));
+		redirect(303, notificationService.resolveNotificationUrl(notification));
 	},
 
 	readAll: async ({ locals }) => {

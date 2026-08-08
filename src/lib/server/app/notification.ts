@@ -18,7 +18,16 @@ export function createNotificationService(deps: { notificationRepo: INotificatio
 		await deps.notificationRepo.markAllReadForUser(userId);
 	}
 
-	return { listForUser, getUnreadCount, markRead, markAllRead };
+	function resolveNotificationUrl(notification: Notification): string {
+		switch (notification.type) {
+			case 'expense_created':
+				return `/groups/${notification.groupId}/expenses/${notification.expenseId}`;
+			case 'settlement_created':
+				return `/groups/${notification.groupId}/settlements/${notification.settlementId}`;
+		}
+	}
+
+	return { listForUser, getUnreadCount, markRead, markAllRead, resolveNotificationUrl };
 }
 
 export type NotificationService = ReturnType<typeof createNotificationService>;
