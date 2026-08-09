@@ -26,8 +26,8 @@ export interface GroupRepos {
 }
 
 export class GroupHasOutstandingBalanceError extends AppError {
-	constructor(groupId: string) {
-		super(`Group ${groupId} has an outstanding balance and cannot be deleted`);
+	constructor() {
+		super('This group still has an outstanding balance to settle');
 	}
 }
 
@@ -65,7 +65,7 @@ export function createGroupService(deps: {
 
 	async function deleteGroup(id: string): Promise<void> {
 		if (await hasOutstandingBalance(id)) {
-			throw new GroupHasOutstandingBalanceError(id);
+			throw new GroupHasOutstandingBalanceError();
 		}
 
 		await deps.groupRepo.delete(id);

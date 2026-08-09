@@ -11,14 +11,14 @@ const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 30;
 const SESSION_RENEWAL_THRESHOLD_MS = 1000 * 60 * 60 * 24 * 15;
 
 export class UnknownOAuthProviderError extends AppError {
-	constructor(name: string) {
-		super(`Unknown OAuth provider: ${name}`, 500);
+	constructor() {
+		super('Sign-in provider not supported', 500);
 	}
 }
 
 export class OAuthEmailNotVerifiedError extends AppError {
 	constructor() {
-		super('OAuth email is not verified');
+		super('Your email is not verified');
 	}
 }
 
@@ -32,7 +32,7 @@ export interface AuthDeps {
 export function createAuthService(deps: AuthDeps) {
 	function getOAuthProvider(name: string): IOAuthProvider {
 		const provider = deps.oauthProviders[name];
-		if (!provider) throw new UnknownOAuthProviderError(name);
+		if (!provider) throw new UnknownOAuthProviderError();
 		return provider;
 	}
 

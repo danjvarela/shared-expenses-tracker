@@ -246,7 +246,7 @@ describe('createAuthService', () => {
 				'verifier',
 				'https://app.example/callback'
 			)
-		).rejects.toThrow('OAuth email is not verified');
+		).rejects.toThrow('Your email is not verified');
 	});
 
 	it('rejects a session past its expiry and deletes it', async () => {

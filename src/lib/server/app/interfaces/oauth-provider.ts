@@ -17,19 +17,19 @@ export interface IOAuthProvider {
 }
 
 export class OAuthConfigError extends AppError {
-	constructor(message: string) {
-		super(message, 500);
+	constructor() {
+		super('Sign-in is not available right now', 500);
 	}
 }
 
 export class OAuthTokenExchangeError extends AppError {
-	constructor(message: string) {
-		super(message, 502);
+	constructor() {
+		super('Sign-in failed, please try again', 502);
 	}
 }
 
 export class OAuthUserinfoFetchError extends AppError {
-	constructor(message: string) {
-		super(message, 502);
+	constructor() {
+		super('Sign-in failed, please try again', 502);
 	}
 }

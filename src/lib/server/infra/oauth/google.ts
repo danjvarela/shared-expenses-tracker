@@ -13,7 +13,10 @@ const USERINFO_URL = 'https://openidconnect.googleapis.com/v1/userinfo';
 
 function requireEnv(name: string): string {
 	const value = env[name];
-	if (!value) throw new OAuthConfigError(`${name} is not set`);
+	if (!value) {
+		console.error('OAuth config missing', `${name} is not set`);
+		throw new OAuthConfigError();
+	}
 	return value;
 }
 
@@ -31,7 +34,10 @@ async function exchangeCodeForAccessToken(code: string, codeVerifier: string, re
 		})
 	});
 
-	if (!response.ok) throw new OAuthTokenExchangeError(`Google token exchange failed: ${response.status}`);
+	if (!response.ok) {
+		console.error('OAuth token exchange failed', response.status);
+		throw new OAuthTokenExchangeError();
+	}
 	const body = (await response.json()) as { access_token: string };
 	return body.access_token;
 }
@@ -41,7 +47,10 @@ async function fetchProfile(accessToken: string) {
 		headers: { Authorization: `Bearer ${accessToken}` }
 	});
 
-	if (!response.ok) throw new OAuthUserinfoFetchError(`Google userinfo fetch failed: ${response.status}`);
+	if (!response.ok) {
+		console.error('OAuth userinfo fetch failed', response.status);
+		throw new OAuthUserinfoFetchError();
+	}
 	return (await response.json()) as {
 		sub: string;
 		email: string;

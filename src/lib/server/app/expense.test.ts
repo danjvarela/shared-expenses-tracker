@@ -367,7 +367,7 @@ describe('createExpenseService', () => {
 				date: new Date(),
 				splits: []
 			})
-		).rejects.toThrow('Expense not found: missing');
+		).rejects.toThrow('Expense not found');
 	});
 
 	it('reverses old deltas and applies new ones on delete', async () => {

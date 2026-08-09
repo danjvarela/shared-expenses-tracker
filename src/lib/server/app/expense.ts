@@ -28,8 +28,8 @@ export interface ExpenseRepos {
 }
 
 export class ExpenseNotFoundError extends AppError {
-	constructor(id: string) {
-		super(`Expense not found: ${id}`, 404);
+	constructor() {
+		super('Expense not found', 404);
 	}
 }
 
@@ -103,7 +103,7 @@ export function createExpenseService(deps: {
 	): Promise<ExpenseWithSplits> {
 		return deps.uow.run(async ({ expenseRepo, pairBalanceRepo }) => {
 			const existing = await expenseRepo.getWithSplits(id);
-			if (!existing) throw new ExpenseNotFoundError(id);
+			if (!existing) throw new ExpenseNotFoundError();
 
 			const updated = await expenseRepo.update(id, input);
 
@@ -124,7 +124,7 @@ export function createExpenseService(deps: {
 	async function deleteExpense(id: string): Promise<void> {
 		return deps.uow.run(async ({ expenseRepo, pairBalanceRepo }) => {
 			const existing = await expenseRepo.getWithSplits(id);
-			if (!existing) throw new ExpenseNotFoundError(id);
+			if (!existing) throw new ExpenseNotFoundError();
 
 			await expenseRepo.delete(id);
 

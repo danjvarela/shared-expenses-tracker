@@ -13,15 +13,15 @@ export type InviteResult =
 	{ status: 'invited'; userId: string } | { status: 'already_member'; userId: string };
 
 export class InvalidInviteEmailError extends AppError {
-	constructor(email: string) {
-		super(`Invalid email address: ${email}`);
+	constructor() {
+		super('Enter a valid email address');
 	}
 }
 
 export function createGroupInviteService(deps: { uow: IUnitOfWork<InviteRepos> }) {
 	async function inviteByEmail(groupId: string, rawEmail: string): Promise<InviteResult> {
 		const parsed = z.email().safeParse(rawEmail.trim());
-		if (!parsed.success) throw new InvalidInviteEmailError(rawEmail);
+		if (!parsed.success) throw new InvalidInviteEmailError();
 
 		const email = parsed.data;
 
