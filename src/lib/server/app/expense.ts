@@ -1,3 +1,4 @@
+import { AppError } from '$lib/server/app/error';
 import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
 import type {
 	IExpenseRepository,
@@ -24,6 +25,12 @@ export interface ExpenseInput {
 export interface ExpenseRepos {
 	expenseRepo: IExpenseRepository;
 	pairBalanceRepo: IPairBalanceRepository;
+}
+
+export class ExpenseNotFoundError extends AppError {
+	constructor(id: string) {
+		super(`Expense not found: ${id}`, 404);
+	}
 }
 
 export function createExpenseService(deps: {
@@ -96,7 +103,7 @@ export function createExpenseService(deps: {
 	): Promise<ExpenseWithSplits> {
 		return deps.uow.run(async ({ expenseRepo, pairBalanceRepo }) => {
 			const existing = await expenseRepo.getWithSplits(id);
-			if (!existing) throw new Error(`Expense not found: ${id}`);
+			if (!existing) throw new ExpenseNotFoundError(id);
 
 			const updated = await expenseRepo.update(id, input);
 
@@ -117,7 +124,7 @@ export function createExpenseService(deps: {
 	async function deleteExpense(id: string): Promise<void> {
 		return deps.uow.run(async ({ expenseRepo, pairBalanceRepo }) => {
 			const existing = await expenseRepo.getWithSplits(id);
-			if (!existing) throw new Error(`Expense not found: ${id}`);
+			if (!existing) throw new ExpenseNotFoundError(id);
 
 			await expenseRepo.delete(id);
 

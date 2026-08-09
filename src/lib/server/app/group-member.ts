@@ -2,8 +2,15 @@ import type {
 	IGroupMemberRepository,
 	GroupMemberWithUser
 } from '$lib/server/app/interfaces/repositories/group-member';
+import { AppError } from '$lib/server/app/error';
 
 const SUM_TOLERANCE = 0.01;
+
+export class InvalidDefaultSplitError extends AppError {
+	constructor(sum: number) {
+		super(`Default split percentages must sum to 100, got ${sum}`);
+	}
+}
 
 export function createGroupMemberService(deps: { groupMemberRepo: IGroupMemberRepository }) {
 	async function getGroupMembers(groupId: string): Promise<Array<GroupMemberWithUser>> {
@@ -22,7 +29,7 @@ export function createGroupMemberService(deps: { groupMemberRepo: IGroupMemberRe
 		if (set.length > 0) {
 			const sum = set.reduce((total, entry) => total + entry.defaultSplitPercent, 0);
 			if (Math.abs(sum - 100) > SUM_TOLERANCE) {
-				throw new Error(`Default split percentages must sum to 100, got ${sum}`);
+				throw new InvalidDefaultSplitError(sum);
 			}
 		}
 

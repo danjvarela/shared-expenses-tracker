@@ -1,4 +1,5 @@
 import { randomToken, sha256Hex } from '$lib/server/infra/crypto';
+import { AppError } from '$lib/server/app/error';
 import type { IUserRepository } from '$lib/server/app/interfaces/repositories/user';
 import type { IIdentityRepository } from '$lib/server/app/interfaces/repositories/identity';
 import type { ISessionRepository } from '$lib/server/app/interfaces/repositories/session';
@@ -8,6 +9,18 @@ import type { User } from '$lib/server/domain/user';
 
 const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 30;
 const SESSION_RENEWAL_THRESHOLD_MS = 1000 * 60 * 60 * 24 * 15;
+
+export class UnknownOAuthProviderError extends AppError {
+	constructor(name: string) {
+		super(`Unknown OAuth provider: ${name}`, 500);
+	}
+}
+
+export class OAuthEmailNotVerifiedError extends AppError {
+	constructor() {
+		super('OAuth email is not verified');
+	}
+}
 
 export interface AuthDeps {
 	userRepo: IUserRepository;
@@ -19,7 +32,7 @@ export interface AuthDeps {
 export function createAuthService(deps: AuthDeps) {
 	function getOAuthProvider(name: string): IOAuthProvider {
 		const provider = deps.oauthProviders[name];
-		if (!provider) throw new Error(`Unknown OAuth provider: ${name}`);
+		if (!provider) throw new UnknownOAuthProviderError(name);
 		return provider;
 	}
 
@@ -39,7 +52,7 @@ export function createAuthService(deps: AuthDeps) {
 			redirectUri
 		);
 
-		if (!profile.emailVerified) throw new Error('OAuth email is not verified');
+		if (!profile.emailVerified) throw new OAuthEmailNotVerifiedError();
 
 		const existingIdentity = await deps.identityRepo.findByProviderSubject(
 			profile.provider,

@@ -1,3 +1,4 @@
+import { AppError } from '$lib/server/app/error';
 import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
 import type { IGroupRepository } from '$lib/server/app/interfaces/repositories/group';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
@@ -24,7 +25,7 @@ export interface GroupRepos {
 	groupMemberRepo: IGroupMemberRepository;
 }
 
-export class GroupHasOutstandingBalanceError extends Error {
+export class GroupHasOutstandingBalanceError extends AppError {
 	constructor(groupId: string) {
 		super(`Group ${groupId} has an outstanding balance and cannot be deleted`);
 	}

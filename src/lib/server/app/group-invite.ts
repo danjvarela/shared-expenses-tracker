@@ -1,4 +1,5 @@
 import * as z from 'zod';
+import { AppError } from '$lib/server/app/error';
 import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
 import type { IUserRepository } from '$lib/server/app/interfaces/repositories/user';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
@@ -11,7 +12,7 @@ export interface InviteRepos {
 export type InviteResult =
 	{ status: 'invited'; userId: string } | { status: 'already_member'; userId: string };
 
-export class InvalidInviteEmailError extends Error {
+export class InvalidInviteEmailError extends AppError {
 	constructor(email: string) {
 		super(`Invalid email address: ${email}`);
 	}
