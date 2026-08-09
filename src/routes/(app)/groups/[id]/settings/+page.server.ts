@@ -1,7 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { groupService, groupMemberService, groupInviteService } from '$lib/server/container';
-import { GroupHasOutstandingBalanceError } from '$lib/server/app/group';
-import { InvalidInviteEmailError } from '$lib/server/app/group-invite';
+import { toActionResult } from '$lib/server/presentation/error-handling';
 import { CURRENCIES } from '$lib/currency';
 import type { PageServerLoad, Actions } from './$types';
 
@@ -61,13 +60,13 @@ export const actions: Actions = {
 				(entry) => entry.defaultSplitPercent !== null && Number.isNaN(entry.defaultSplitPercent)
 			)
 		) {
-			return fail(400, { error: 'Percentages must be numbers' });
+			return fail(400, { message: 'Percentages must be numbers' });
 		}
 
 		try {
 			await groupMemberService.updateDefaultSplitPercents(params.id, entries);
 		} catch (err) {
-			return fail(400, { error: err instanceof Error ? err.message : 'Could not save' });
+			return toActionResult(err);
 		}
 
 		return { success: true };
@@ -78,17 +77,14 @@ export const actions: Actions = {
 		const email = formData.get('email');
 
 		if (typeof email !== 'string' || email.trim() === '') {
-			return fail(400, { inviteError: 'Enter an email address' });
+			return fail(400, { message: 'Enter an email address' });
 		}
 
 		let result;
 		try {
 			result = await groupInviteService.inviteByEmail(params.id, email.trim());
 		} catch (err) {
-			if (err instanceof InvalidInviteEmailError) {
-				return fail(400, { inviteError: 'Enter a valid email address' });
-			}
-			throw err;
+			return toActionResult(err);
 		}
 
 		return { invite: { status: result.status, email: email.trim() } };
@@ -98,10 +94,7 @@ export const actions: Actions = {
 		try {
 			await groupService.deleteGroup(params.id);
 		} catch (err) {
-			if (err instanceof GroupHasOutstandingBalanceError) {
-				return fail(400, { error: 'This group still has an outstanding balance to settle' });
-			}
-			throw err;
+			return toActionResult(err);
 		}
 
 		redirect(303, '/');

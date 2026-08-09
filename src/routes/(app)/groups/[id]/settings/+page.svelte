@@ -16,7 +16,7 @@
 
 	type InviteForm = {
 		invite?: { status: string; email: string };
-		inviteError?: string;
+		message?: string;
 	};
 	const inviteForm = $derived(form as InviteForm | null);
 
@@ -118,8 +118,8 @@
 					<Input id="email" name="email" type="email" required placeholder="friend@example.com" />
 				</Field.Field>
 
-				{#if inviteForm?.inviteError}
-					<Field.FieldError>{inviteForm.inviteError}</Field.FieldError>
+				{#if inviteForm?.message}
+					<Field.FieldError>{inviteForm.message}</Field.FieldError>
 				{/if}
 
 				{#if inviteForm?.invite?.status === 'invited'}
@@ -177,8 +177,8 @@
 					</Field.Field>
 				{/each}
 
-				{#if form?.error}
-					<Field.FieldError>{form.error}</Field.FieldError>
+				{#if form?.message}
+					<Field.FieldError>{form.message}</Field.FieldError>
 				{/if}
 
 				{#if percentsSaved}
@@ -207,9 +207,9 @@
 			</Card.Description>
 		</Card.Header>
 		<Card.Content>
-			{#if form?.error}
+			{#if form?.message}
 				<Alert.Root variant="destructive" class="mb-4">
-					<Alert.Title>{form.error}</Alert.Title>
+					<Alert.Title>{form.message}</Alert.Title>
 				</Alert.Root>
 			{/if}
 
