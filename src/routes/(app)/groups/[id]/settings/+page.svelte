@@ -6,6 +6,7 @@
 	import * as Field from '$lib/components/ui/field/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
+	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import IconPicker from '$lib/components/icon-picker.svelte';
 	import { ArrowLeft, CircleCheck } from '@lucide/svelte';
 	import { CURRENCIES } from '$lib/currency';
@@ -29,6 +30,13 @@
 	function currencyLabel() {
 		const currency = CURRENCIES.find((c) => c.code === currencyCode);
 		return currency ? `${currency.code} — ${currency.name}` : currencyCode;
+	}
+
+	function initials(name: string): string {
+		const parts = name.trim().split(/\s+/).filter(Boolean);
+		if (parts.length === 0) return '?';
+		if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+		return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 	}
 </script>
 
@@ -138,6 +146,60 @@
 		</Card.Content>
 	</Card.Root>
 
+	<Card.Root class="mt-4">
+		<Card.Header>
+			<Card.Title>Members</Card.Title>
+			<Card.Description>
+				Remove a member who has settled all balances in this group. Their past expenses and splits
+				stay visible.
+			</Card.Description>
+		</Card.Header>
+		<Card.Content>
+			{#if form?.source === 'remove' && form.message}
+				<Alert.Root variant="destructive" class="mb-4">
+					<Alert.Title>{form.message}</Alert.Title>
+				</Alert.Root>
+			{/if}
+			<ul class="flex flex-col gap-2">
+				{#each data.members as member (member.userId)}
+					<li class="flex items-center justify-between gap-3">
+						<div class="flex min-w-0 items-center gap-3">
+							<Avatar.Root>
+								<Avatar.Fallback>{initials(member.displayName)}</Avatar.Fallback>
+							</Avatar.Root>
+							<span class="truncate font-medium">{member.displayName}</span>
+						</div>
+						{#if member.userId !== data.user.id}
+							<AlertDialog.Root>
+								<AlertDialog.Trigger>
+									{#snippet child({ props })}
+										<Button {...props} variant="destructive" size="sm">Remove</Button>
+									{/snippet}
+								</AlertDialog.Trigger>
+								<AlertDialog.Content>
+									<AlertDialog.Header>
+										<AlertDialog.Title>Remove {member.displayName}?</AlertDialog.Title>
+										<AlertDialog.Description>
+											They will lose access to this group. Their past expenses and splits stay visible.
+											This can't be undone.
+										</AlertDialog.Description>
+									</AlertDialog.Header>
+									<AlertDialog.Footer>
+										<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+										<form method="POST" action="?/remove" use:enhance>
+											<input type="hidden" name="userId" value={member.userId} />
+											<AlertDialog.Action type="submit">Remove</AlertDialog.Action>
+										</form>
+									</AlertDialog.Footer>
+								</AlertDialog.Content>
+							</AlertDialog.Root>
+						{/if}
+					</li>
+				{/each}
+			</ul>
+		</Card.Content>
+	</Card.Root>
+
 	<Card.Root>
 		<Card.Header>
 			<Card.Title>Default split percentages</Card.Title>
@@ -207,7 +269,7 @@
 			</Card.Description>
 		</Card.Header>
 		<Card.Content>
-			{#if form?.message}
+			{#if form?.message && form?.source !== 'remove'}
 				<Alert.Root variant="destructive" class="mb-4">
 					<Alert.Title>{form.message}</Alert.Title>
 				</Alert.Root>

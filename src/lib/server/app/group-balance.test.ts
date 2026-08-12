@@ -70,6 +70,9 @@ function fakePairBalanceRepo(
 		async getNetForUserInGroups() {
 			return new Map();
 		},
+		async hasBalanceForUserInGroup() {
+			return false;
+		},
 		async getDebtsForUser() {
 			return [];
 		},

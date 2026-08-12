@@ -137,6 +137,23 @@ const replaceAllForGroup =
 		}
 	};
 
+const hasBalanceForUserInGroup =
+	(db: Database): IPairBalanceRepository['hasBalanceForUserInGroup'] =>
+	async (userId, groupId) => {
+		const rows = await db
+			.select({ userId: pairBalance.fromUserId })
+			.from(pairBalance)
+			.where(
+				and(
+					eq(pairBalance.groupId, groupId),
+					or(eq(pairBalance.fromUserId, userId), eq(pairBalance.toUserId, userId))
+				)
+			)
+			.limit(1);
+
+		return rows.length > 0;
+	};
+
 export function createPairBalanceRepository(db: Database): IPairBalanceRepository {
 	return {
 		getForPair: getForPair(db),
@@ -145,6 +162,7 @@ export function createPairBalanceRepository(db: Database): IPairBalanceRepositor
 		getNetForUserInGroups: getNetForUserInGroups(db),
 		getDebtsForUser: getDebtsForUser(db),
 		getDebtsForUserInGroup: getDebtsForUserInGroup(db),
-		replaceAllForGroup: replaceAllForGroup(db)
+		replaceAllForGroup: replaceAllForGroup(db),
+		hasBalanceForUserInGroup: hasBalanceForUserInGroup(db)
 	};
 }

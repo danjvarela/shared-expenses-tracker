@@ -22,6 +22,7 @@ import { createGroupMemberService } from '$lib/server/app/group-member';
 import { createGroupInviteService, type InviteRepos } from '$lib/server/app/group-invite';
 import { createNotificationService } from '$lib/server/app/notification';
 import type { IOAuthProvider } from '$lib/server/app/interfaces/oauth-provider';
+import { createRemoveMemberService, type RemoveMemberRepos } from './app/remove-member';
 
 const userRepo = createUserRepository(db);
 const identityRepo = createIdentityRepository(db);
@@ -59,6 +60,11 @@ const inviteUnitOfWork = createUnitOfWork<InviteRepos>((tx) => ({
 	groupMemberRepo: createGroupMemberRepository(tx)
 }));
 
+const removeMemberUnitOfWork = createUnitOfWork<RemoveMemberRepos>((tx) => ({
+	groupMemberRepo: createGroupMemberRepository(tx),
+	pairBalanceRepo: createPairBalanceRepository(tx)
+}));
+
 export const authService = createAuthService({
 	userRepo,
 	identityRepo,
@@ -94,6 +100,8 @@ export const settlementService = createSettlementService({
 export const groupMemberService = createGroupMemberService({ groupMemberRepo });
 
 export const groupInviteService = createGroupInviteService({ uow: inviteUnitOfWork });
+
+export const removeMemberService = createRemoveMemberService({ uow: removeMemberUnitOfWork });
 
 export const groupService = createGroupService({
 	uow: groupUnitOfWork,

@@ -51,11 +51,20 @@ const isMember =
 		return row !== undefined;
 	};
 
+const remove =
+	(db: Database): IGroupMemberRepository['remove'] =>
+	async (groupId, userId) => {
+		await db
+			.delete(groupMember)
+			.where(and(eq(groupMember.groupId, groupId), eq(groupMember.userId, userId)));
+	};
+
 export function createGroupMemberRepository(db: Database): IGroupMemberRepository {
 	return {
 		getAllForGroupWithUser: getAllForGroupWithUser(db),
 		create: create(db),
 		updateDefaultSplitPercents: updateDefaultSplitPercents(db),
-		isMember: isMember(db)
+		isMember: isMember(db),
+		remove: remove(db)
 	};
 }

@@ -1,5 +1,10 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { groupService, groupMemberService, groupInviteService } from '$lib/server/container';
+import {
+	groupService,
+	groupMemberService,
+	groupInviteService,
+	removeMemberService
+} from '$lib/server/container';
 import { toActionResult } from '$lib/server/presentation/error-handling';
 import { CURRENCIES } from '$lib/currency';
 import type { PageServerLoad, Actions } from './$types';
@@ -98,5 +103,24 @@ export const actions: Actions = {
 		}
 
 		redirect(303, '/');
+	},
+
+	remove: async ({ request, params, locals }) => {
+		const formData = await request.formData();
+		const userId = formData.get('userId');
+
+		if (typeof userId !== 'string' || userId.trim() === '') {
+			return fail(400, { source: 'remove', message: 'Invalid user' });
+		}
+
+		const removerId = locals.user!.id;
+
+		try {
+			await removeMemberService.kickUser(params.id, userId, removerId);
+			return { success: true };
+		} catch (err) {
+			const result = toActionResult(err);
+			return fail(result.status, { source: 'remove', ...result.data });
+		}
 	}
 };

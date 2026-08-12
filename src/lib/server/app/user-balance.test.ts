@@ -40,6 +40,9 @@ function fakePairBalanceRepo(debts: Array<UserDebt>): IPairBalanceRepository {
 		async getNetForUserInGroups() {
 			return new Map();
 		},
+		async hasBalanceForUserInGroup() {
+			return false;
+		},
 		async getDebtsForUser() {
 			return debts;
 		},

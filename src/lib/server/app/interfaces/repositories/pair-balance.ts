@@ -28,6 +28,8 @@ export interface IPairBalanceRepository {
 
 	getNetForUserInGroups(userId: string, groupIds: Array<string>): Promise<Map<string, number>>;
 
+	hasBalanceForUserInGroup(userId: string, groupId: string): Promise<boolean>;
+
 	getDebtsForUser(userId: string): Promise<Array<UserDebt>>;
 
 	getDebtsForUserInGroup(userId: string, groupId: string): Promise<Array<UserDebt>>;
