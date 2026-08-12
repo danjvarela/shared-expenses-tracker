@@ -51,6 +51,12 @@ function fakeGroupMemberRepo(members: Set<string>): IGroupMemberRepository & {
 		async updateDefaultSplitPercents() {},
 		async isMember(_gid, userId) {
 			return members.has(userId);
+		},
+		async countByGroup() {
+			return members.size;
+		},
+		async remove(_gid, userId) {
+			members.delete(userId);
 		}
 	};
 }

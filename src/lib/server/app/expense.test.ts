@@ -54,7 +54,11 @@ function fakeGroupMemberRepo(members: Array<GroupMemberWithUser>): IGroupMemberR
 		async updateDefaultSplitPercents() {},
 		async isMember() {
 			return true;
-		}
+		},
+		async countByGroup() {
+			return 0;
+		},
+		async remove() {}
 	};
 }
 
@@ -321,7 +325,11 @@ describe('createExpenseService', () => {
 			async updateDefaultSplitPercents() {},
 			async isMember() {
 				return true;
-			}
+			},
+			async countByGroup() {
+				return 0;
+			},
+			async remove() {}
 		};
 		const service = createExpenseService({
 			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo: fakePairBalanceRepo() }),

@@ -15,6 +15,8 @@ export interface IGroupMemberRepository {
 	): Promise<void>;
 
 	isMember(groupId: string, userId: string): Promise<boolean>;
-  
-  remove(groupId: string, userId: string): Promise<void>;
+
+	countByGroup(groupId: string): Promise<number>;
+
+	remove(groupId: string, userId: string): Promise<void>;
 }

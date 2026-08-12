@@ -2,7 +2,7 @@ import type { IGroupMemberRepository } from '$lib/server/app/interfaces/reposito
 import type { Database } from '$lib/server/infra/db/types';
 import { groupMember } from '$lib/server/infra/db/schema/group-member';
 import { user } from '$lib/server/infra/db/schema/user';
-import { and, eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 
 const getAllForGroupWithUser =
 	(db: Database): IGroupMemberRepository['getAllForGroupWithUser'] =>
@@ -51,6 +51,17 @@ const isMember =
 		return row !== undefined;
 	};
 
+const countByGroup =
+	(db: Database): IGroupMemberRepository['countByGroup'] =>
+	async (groupId) => {
+		const [row] = await db
+			.select({ total: count() })
+			.from(groupMember)
+			.where(eq(groupMember.groupId, groupId));
+
+		return row?.total ?? 0;
+	};
+
 const remove =
 	(db: Database): IGroupMemberRepository['remove'] =>
 	async (groupId, userId) => {
@@ -65,6 +76,7 @@ export function createGroupMemberRepository(db: Database): IGroupMemberRepositor
 		create: create(db),
 		updateDefaultSplitPercents: updateDefaultSplitPercents(db),
 		isMember: isMember(db),
+		countByGroup: countByGroup(db),
 		remove: remove(db)
 	};
 }

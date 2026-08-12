@@ -7,6 +7,7 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
+	import { Badge } from '$lib/components/ui/badge/index.js';
 	import IconPicker from '$lib/components/icon-picker.svelte';
 	import { ArrowLeft, CircleCheck } from '@lucide/svelte';
 	import { CURRENCIES } from '$lib/currency';
@@ -26,6 +27,8 @@
 
 	let detailsSaved = $state(false);
 	let percentsSaved = $state(false);
+
+	const isSolo = $derived(data.members.length === 1);
 
 	function currencyLabel() {
 		const currency = CURRENCIES.find((c) => c.code === currencyCode);
@@ -155,7 +158,7 @@
 			</Card.Description>
 		</Card.Header>
 		<Card.Content>
-			{#if form?.source === 'remove' && form.message}
+			{#if (form?.source === 'remove' || form?.source === 'leave') && form.message}
 				<Alert.Root variant="destructive" class="mb-4">
 					<Alert.Title>{form.message}</Alert.Title>
 				</Alert.Root>
@@ -168,8 +171,44 @@
 								<Avatar.Fallback>{initials(member.displayName)}</Avatar.Fallback>
 							</Avatar.Root>
 							<span class="truncate font-medium">{member.displayName}</span>
+							{#if member.userId === data.user.id}
+								<Badge variant="secondary">You</Badge>
+							{/if}
 						</div>
-						{#if member.userId !== data.user.id}
+						{#if member.userId === data.user.id}
+							<AlertDialog.Root>
+								<AlertDialog.Trigger>
+									{#snippet child({ props })}
+										<Button {...props} variant="destructive" size="sm">Leave</Button>
+									{/snippet}
+								</AlertDialog.Trigger>
+								<AlertDialog.Content>
+									<AlertDialog.Header>
+										{#if isSolo}
+											<AlertDialog.Title>Delete "{data.group.name}"?</AlertDialog.Title>
+											<AlertDialog.Description>
+												You are the last member. Leaving will permanently delete this group, along
+												with all its expenses, settlements, and balances. This action cannot be
+												undone.
+											</AlertDialog.Description>
+										{:else}
+											<AlertDialog.Title>Leave "{data.group.name}"?</AlertDialog.Title>
+											<AlertDialog.Description>
+												You will lose access to this group. This can't be undone.
+											</AlertDialog.Description>
+										{/if}
+									</AlertDialog.Header>
+									<AlertDialog.Footer>
+										<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+										<form method="POST" action={isSolo ? '?/delete' : '?/leave'} use:enhance>
+											<AlertDialog.Action type="submit">
+												{isSolo ? 'Delete group' : 'Leave group'}
+											</AlertDialog.Action>
+										</form>
+									</AlertDialog.Footer>
+								</AlertDialog.Content>
+							</AlertDialog.Root>
+						{:else}
 							<AlertDialog.Root>
 								<AlertDialog.Trigger>
 									{#snippet child({ props })}
@@ -180,8 +219,8 @@
 									<AlertDialog.Header>
 										<AlertDialog.Title>Remove {member.displayName}?</AlertDialog.Title>
 										<AlertDialog.Description>
-											They will lose access to this group. Their past expenses and splits stay visible.
-											This can't be undone.
+											They will lose access to this group. Their past expenses and splits stay
+											visible. This can't be undone.
 										</AlertDialog.Description>
 									</AlertDialog.Header>
 									<AlertDialog.Footer>
@@ -255,50 +294,52 @@
 		</Card.Content>
 	</Card.Root>
 
-	<Card.Root class="mt-4 border-destructive/50">
-		<Card.Header>
-			<Card.Title>Danger zone</Card.Title>
-			<Card.Description>
-				{#if data.hasOutstandingBalance}
-					This group can't be deleted yet. You or other members still have an outstanding balance to
-					settle.
-				{:else}
-					Deleting this group permanently removes it, along with all its expenses, settlements, and
-					balances. This action cannot be undone.
+	{#if !isSolo}
+		<Card.Root class="mt-4 border-destructive/50">
+			<Card.Header>
+				<Card.Title>Danger zone</Card.Title>
+				<Card.Description>
+					{#if data.hasOutstandingBalance}
+						This group can't be deleted yet. You or other members still have an outstanding balance
+						to settle.
+					{:else}
+						Deleting this group permanently removes it, along with all its expenses, settlements,
+						and balances. This action cannot be undone.
+					{/if}
+				</Card.Description>
+			</Card.Header>
+			<Card.Content>
+				{#if form?.message && form?.source !== 'remove' && form?.source !== 'leave'}
+					<Alert.Root variant="destructive" class="mb-4">
+						<Alert.Title>{form.message}</Alert.Title>
+					</Alert.Root>
 				{/if}
-			</Card.Description>
-		</Card.Header>
-		<Card.Content>
-			{#if form?.message && form?.source !== 'remove'}
-				<Alert.Root variant="destructive" class="mb-4">
-					<Alert.Title>{form.message}</Alert.Title>
-				</Alert.Root>
-			{/if}
 
-			<AlertDialog.Root>
-				<AlertDialog.Trigger>
-					{#snippet child({ props })}
-						<Button {...props} variant="destructive" disabled={data.hasOutstandingBalance}>
-							Delete group
-						</Button>
-					{/snippet}
-				</AlertDialog.Trigger>
-				<AlertDialog.Content>
-					<AlertDialog.Header>
-						<AlertDialog.Title>Delete "{data.group.name}"?</AlertDialog.Title>
-						<AlertDialog.Description>
-							This will permanently delete this group, along with all its expenses, settlements, and
-							balances. This action cannot be undone.
-						</AlertDialog.Description>
-					</AlertDialog.Header>
-					<AlertDialog.Footer>
-						<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-						<form method="POST" action="?/delete" use:enhance>
-							<AlertDialog.Action type="submit">Delete group</AlertDialog.Action>
-						</form>
-					</AlertDialog.Footer>
-				</AlertDialog.Content>
-			</AlertDialog.Root>
-		</Card.Content>
-	</Card.Root>
+				<AlertDialog.Root>
+					<AlertDialog.Trigger>
+						{#snippet child({ props })}
+							<Button {...props} variant="destructive" disabled={data.hasOutstandingBalance}>
+								Delete group
+							</Button>
+						{/snippet}
+					</AlertDialog.Trigger>
+					<AlertDialog.Content>
+						<AlertDialog.Header>
+							<AlertDialog.Title>Delete "{data.group.name}"?</AlertDialog.Title>
+							<AlertDialog.Description>
+								This will permanently delete this group, along with all its expenses, settlements,
+								and balances. This action cannot be undone.
+							</AlertDialog.Description>
+						</AlertDialog.Header>
+						<AlertDialog.Footer>
+							<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+							<form method="POST" action="?/delete" use:enhance>
+								<AlertDialog.Action type="submit">Delete group</AlertDialog.Action>
+							</form>
+						</AlertDialog.Footer>
+					</AlertDialog.Content>
+				</AlertDialog.Root>
+			</Card.Content>
+		</Card.Root>
+	{/if}
 </div>

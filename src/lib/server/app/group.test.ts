@@ -79,7 +79,11 @@ function fakeGroupMemberRepo(): IGroupMemberRepository & { created: Array<unknow
 		async updateDefaultSplitPercents() {},
 		async isMember() {
 			return true;
-		}
+		},
+		async countByGroup() {
+			return 0;
+		},
+		async remove() {}
 	};
 }
 

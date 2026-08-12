@@ -122,5 +122,18 @@ export const actions: Actions = {
 			const result = toActionResult(err);
 			return fail(result.status, { source: 'remove', ...result.data });
 		}
+	},
+
+	leave: async ({ params, locals }) => {
+		const userId = locals.user!.id;
+
+		try {
+			await removeMemberService.kickUser(params.id, userId, userId);
+		} catch (err) {
+			const result = toActionResult(err);
+			return fail(result.status, { source: 'leave', ...result.data });
+		}
+
+		redirect(303, '/');
 	}
 };

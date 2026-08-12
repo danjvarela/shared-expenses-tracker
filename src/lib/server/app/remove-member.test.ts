@@ -1,15 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
 import type { IPairBalanceRepository } from '$lib/server/app/interfaces/repositories/pair-balance';
+import type { IGroupRepository } from '$lib/server/app/interfaces/repositories/group';
 import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
 import {
 	createRemoveMemberService,
 	HasOutstandingBalanceError,
 	RemoverNotMemberOfGroupError,
-	UserCannotRemoveItselfError,
 	UserToRemoveNotMemberOfGroupError,
 	type RemoveMemberRepos
 } from './remove-member';
+import { GroupHasOutstandingBalanceError } from './group';
 
 const groupId = 'group-1';
 const alice = 'alice';
@@ -29,6 +30,9 @@ function fakeGroupMemberRepo(members: Set<string>): IGroupMemberRepository & {
 		async isMember(_gid, userId) {
 			return members.has(userId);
 		},
+		async countByGroup() {
+			return members.size;
+		},
 		async remove(gid, userId) {
 			members.delete(userId);
 			removed.push({ groupId: gid, userId });
@@ -36,7 +40,10 @@ function fakeGroupMemberRepo(members: Set<string>): IGroupMemberRepository & {
 	};
 }
 
-function fakePairBalanceRepo(hasBalance: boolean): IPairBalanceRepository & {
+function fakePairBalanceRepo(
+	hasBalance: boolean,
+	groupBalances: Array<{ fromUserId: string; toUserId: string; amountCents: number }> = []
+): IPairBalanceRepository & {
 	queried: Array<{ userId: string; groupId: string }>;
 } {
 	const queried: Array<{ userId: string; groupId: string }> = [];
@@ -47,7 +54,7 @@ function fakePairBalanceRepo(hasBalance: boolean): IPairBalanceRepository & {
 		},
 		async replaceForPair() {},
 		async getAllForGroup() {
-			return [];
+			return groupBalances as Array<never>;
 		},
 		async getNetForUserInGroups() {
 			return new Map();
@@ -66,6 +73,30 @@ function fakePairBalanceRepo(hasBalance: boolean): IPairBalanceRepository & {
 	};
 }
 
+function fakeGroupRepo(): IGroupRepository & {
+	deleted: Array<string>;
+} {
+	const deleted: Array<string> = [];
+	return {
+		deleted,
+		async getAll() {
+			return [];
+		},
+		async getById() {
+			return null;
+		},
+		async create() {
+			throw new Error('not used');
+		},
+		async update() {
+			throw new Error('not used');
+		},
+		async delete(id) {
+			deleted.push(id);
+		}
+	};
+}
+
 function fakeUow(repos: RemoveMemberRepos): IUnitOfWork<RemoveMemberRepos> {
 	return {
 		async run(fn) {
@@ -79,23 +110,27 @@ describe('createRemoveMemberService', () => {
 		const members = new Set([alice, bob]);
 		const groupMemberRepo = fakeGroupMemberRepo(members);
 		const pairBalanceRepo = fakePairBalanceRepo(false);
+		const groupRepo = fakeGroupRepo();
 		const service = createRemoveMemberService({
-			uow: fakeUow({ pairBalanceRepo, groupMemberRepo })
+			uow: fakeUow({ pairBalanceRepo, groupMemberRepo, groupRepo })
 		});
 
-		await service.kickUser(groupId, bob, alice);
+		const result = await service.kickUser(groupId, bob, alice);
 
+		expect(result).toBe('removed');
 		expect(groupMemberRepo.removed).toEqual([{ groupId, userId: bob }]);
 		expect(members.has(bob)).toBe(false);
 		expect(pairBalanceRepo.queried).toEqual([{ userId: bob, groupId }]);
+		expect(groupRepo.deleted).toEqual([]);
 	});
 
 	it('throws UserToRemoveNotMemberOfGroupError when the target is not a member', async () => {
 		const members = new Set([alice]);
 		const groupMemberRepo = fakeGroupMemberRepo(members);
 		const pairBalanceRepo = fakePairBalanceRepo(false);
+		const groupRepo = fakeGroupRepo();
 		const service = createRemoveMemberService({
-			uow: fakeUow({ pairBalanceRepo, groupMemberRepo })
+			uow: fakeUow({ pairBalanceRepo, groupMemberRepo, groupRepo })
 		});
 
 		await expect(service.kickUser(groupId, bob, alice)).rejects.toBeInstanceOf(
@@ -103,14 +138,16 @@ describe('createRemoveMemberService', () => {
 		);
 		expect(groupMemberRepo.removed).toEqual([]);
 		expect(pairBalanceRepo.queried).toEqual([]);
+		expect(groupRepo.deleted).toEqual([]);
 	});
 
 	it('throws RemoverNotMemberOfGroupError when the remover is not a member', async () => {
 		const members = new Set([bob]);
 		const groupMemberRepo = fakeGroupMemberRepo(members);
 		const pairBalanceRepo = fakePairBalanceRepo(false);
+		const groupRepo = fakeGroupRepo();
 		const service = createRemoveMemberService({
-			uow: fakeUow({ pairBalanceRepo, groupMemberRepo })
+			uow: fakeUow({ pairBalanceRepo, groupMemberRepo, groupRepo })
 		});
 
 		await expect(service.kickUser(groupId, bob, alice)).rejects.toBeInstanceOf(
@@ -118,14 +155,16 @@ describe('createRemoveMemberService', () => {
 		);
 		expect(groupMemberRepo.removed).toEqual([]);
 		expect(pairBalanceRepo.queried).toEqual([]);
+		expect(groupRepo.deleted).toEqual([]);
 	});
 
 	it('rejects removal when the target has an outstanding balance', async () => {
 		const members = new Set([alice, bob]);
 		const groupMemberRepo = fakeGroupMemberRepo(members);
 		const pairBalanceRepo = fakePairBalanceRepo(true);
+		const groupRepo = fakeGroupRepo();
 		const service = createRemoveMemberService({
-			uow: fakeUow({ pairBalanceRepo, groupMemberRepo })
+			uow: fakeUow({ pairBalanceRepo, groupMemberRepo, groupRepo })
 		});
 
 		await expect(service.kickUser(groupId, bob, alice)).rejects.toBeInstanceOf(
@@ -133,36 +172,74 @@ describe('createRemoveMemberService', () => {
 		);
 		expect(groupMemberRepo.removed).toEqual([]);
 		expect(members.has(bob)).toBe(true);
+		expect(groupRepo.deleted).toEqual([]);
 	});
 
-	it('rejects self-removal', async () => {
-		const members = new Set([alice, bob]);
-		const groupMemberRepo = fakeGroupMemberRepo(members);
-		const pairBalanceRepo = fakePairBalanceRepo(false);
-		const service = createRemoveMemberService({
-			uow: fakeUow({ pairBalanceRepo, groupMemberRepo })
-		});
-
-		await expect(service.kickUser(groupId, alice, alice)).rejects.toBeInstanceOf(
-			UserCannotRemoveItselfError
-		);
-		expect(groupMemberRepo.removed).toEqual([]);
-		expect(members.has(alice)).toBe(true);
-	});
-
-	it('rejects self-removal even when the user has an outstanding balance', async () => {
+	it('lets a member leave a multi-member group without a balance check', async () => {
 		const members = new Set([alice, bob]);
 		const groupMemberRepo = fakeGroupMemberRepo(members);
 		const pairBalanceRepo = fakePairBalanceRepo(true);
+		const groupRepo = fakeGroupRepo();
 		const service = createRemoveMemberService({
-			uow: fakeUow({ pairBalanceRepo, groupMemberRepo })
+			uow: fakeUow({ pairBalanceRepo, groupMemberRepo, groupRepo })
+		});
+
+		const result = await service.kickUser(groupId, alice, alice);
+
+		expect(result).toBe('removed');
+		expect(groupMemberRepo.removed).toEqual([{ groupId, userId: alice }]);
+		expect(members.has(alice)).toBe(false);
+		expect(pairBalanceRepo.queried).toEqual([]);
+		expect(groupRepo.deleted).toEqual([]);
+	});
+
+	it('deletes the group when the sole member leaves', async () => {
+		const members = new Set([alice]);
+		const groupMemberRepo = fakeGroupMemberRepo(members);
+		const pairBalanceRepo = fakePairBalanceRepo(false);
+		const groupRepo = fakeGroupRepo();
+		const service = createRemoveMemberService({
+			uow: fakeUow({ pairBalanceRepo, groupMemberRepo, groupRepo })
+		});
+
+		const result = await service.kickUser(groupId, alice, alice);
+
+		expect(result).toBe('group-deleted');
+		expect(groupRepo.deleted).toEqual([groupId]);
+		expect(groupMemberRepo.removed).toEqual([]);
+	});
+
+	it('throws RemoverNotMemberOfGroupError when a non-member tries to leave', async () => {
+		const members = new Set([bob]);
+		const groupMemberRepo = fakeGroupMemberRepo(members);
+		const pairBalanceRepo = fakePairBalanceRepo(false);
+		const groupRepo = fakeGroupRepo();
+		const service = createRemoveMemberService({
+			uow: fakeUow({ pairBalanceRepo, groupMemberRepo, groupRepo })
 		});
 
 		await expect(service.kickUser(groupId, alice, alice)).rejects.toBeInstanceOf(
-			UserCannotRemoveItselfError
+			RemoverNotMemberOfGroupError
 		);
+		expect(groupRepo.deleted).toEqual([]);
 		expect(groupMemberRepo.removed).toEqual([]);
-		expect(members.has(alice)).toBe(true);
-		expect(pairBalanceRepo.queried).toEqual([]);
+	});
+
+	it('refuses to delete the group on leave if an outstanding balance somehow remains', async () => {
+		const members = new Set([alice]);
+		const groupMemberRepo = fakeGroupMemberRepo(members);
+		const pairBalanceRepo = fakePairBalanceRepo(false, [
+			{ fromUserId: alice, toUserId: 'ghost', amountCents: 100 }
+		]);
+		const groupRepo = fakeGroupRepo();
+		const service = createRemoveMemberService({
+			uow: fakeUow({ pairBalanceRepo, groupMemberRepo, groupRepo })
+		});
+
+		await expect(service.kickUser(groupId, alice, alice)).rejects.toBeInstanceOf(
+			GroupHasOutstandingBalanceError
+		);
+		expect(groupRepo.deleted).toEqual([]);
+		expect(groupMemberRepo.removed).toEqual([]);
 	});
 });

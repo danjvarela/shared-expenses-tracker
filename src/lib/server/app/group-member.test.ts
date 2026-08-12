@@ -27,6 +27,12 @@ function fakeGroupMemberRepo(
 		},
 		async isMember(_groupId, userId) {
 			return rows.has(userId);
+		},
+		async countByGroup() {
+			return rows.size;
+		},
+		async remove(_groupId, userId) {
+			rows.delete(userId);
 		}
 	};
 }

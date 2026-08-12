@@ -62,7 +62,8 @@ const inviteUnitOfWork = createUnitOfWork<InviteRepos>((tx) => ({
 
 const removeMemberUnitOfWork = createUnitOfWork<RemoveMemberRepos>((tx) => ({
 	groupMemberRepo: createGroupMemberRepository(tx),
-	pairBalanceRepo: createPairBalanceRepository(tx)
+	pairBalanceRepo: createPairBalanceRepository(tx),
+	groupRepo: createGroupRepository(tx)
 }));
 
 export const authService = createAuthService({
