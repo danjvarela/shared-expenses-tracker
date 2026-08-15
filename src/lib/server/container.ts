@@ -98,7 +98,11 @@ export const settlementService = createSettlementService({
 	notificationRepo
 });
 
-export const groupMemberService = createGroupMemberService({ groupMemberRepo });
+export const groupMemberService = createGroupMemberService({
+	groupMemberRepo,
+	identityRepo,
+	pairBalanceRepo
+});
 
 export const groupInviteService = createGroupInviteService({ uow: inviteUnitOfWork });
 

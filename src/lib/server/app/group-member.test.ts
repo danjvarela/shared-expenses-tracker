@@ -1,10 +1,51 @@
 import { describe, it, expect } from 'vitest';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
+import type { IIdentityRepository } from '$lib/server/app/interfaces/repositories/identity';
+import type { IPairBalanceRepository } from '$lib/server/app/interfaces/repositories/pair-balance';
 import { createGroupMemberService } from './group-member';
 
 const groupId = 'group-1';
 const alice = 'alice';
 const bob = 'bob';
+
+function fakeIdentityRepo(identities: Set<string>): IIdentityRepository {
+	return {
+		async findByProviderSubject() {
+			return null;
+		},
+		async create() {
+			return {} as never;
+		},
+		async hasIdentityForUser(userId) {
+			return identities.has(userId);
+		}
+	};
+}
+
+function fakePairBalanceRepo(usersWithBalance: Set<string>): IPairBalanceRepository {
+	return {
+		async getForPair() {
+			return null;
+		},
+		async replaceForPair() {},
+		async getAllForGroup() {
+			return [];
+		},
+		async getNetForUserInGroups() {
+			return new Map();
+		},
+		async hasBalanceForUserInGroup(userId) {
+			return usersWithBalance.has(userId);
+		},
+		async getDebtsForUser() {
+			return [];
+		},
+		async getDebtsForUserInGroup() {
+			return [];
+		},
+		async replaceAllForGroup() {}
+	};
+}
 
 function fakeGroupMemberRepo(
 	seed: Array<{ userId: string; displayName: string; defaultSplitPercent: number | null }>
@@ -43,7 +84,11 @@ describe('createGroupMemberService', () => {
 			{ userId: alice, displayName: 'Alice', defaultSplitPercent: 60 },
 			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
 		]);
-		const service = createGroupMemberService({ groupMemberRepo });
+		const service = createGroupMemberService({
+			groupMemberRepo,
+			identityRepo: fakeIdentityRepo(new Set()),
+			pairBalanceRepo: fakePairBalanceRepo(new Set())
+		});
 
 		expect(await service.getGroupMembers(groupId)).toEqual([
 			{ userId: alice, displayName: 'Alice', defaultSplitPercent: 60 },
@@ -56,7 +101,11 @@ describe('createGroupMemberService', () => {
 			{ userId: alice, displayName: 'Alice', defaultSplitPercent: null },
 			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
 		]);
-		const service = createGroupMemberService({ groupMemberRepo });
+		const service = createGroupMemberService({
+			groupMemberRepo,
+			identityRepo: fakeIdentityRepo(new Set()),
+			pairBalanceRepo: fakePairBalanceRepo(new Set())
+		});
 
 		await service.updateDefaultSplitPercents(groupId, [
 			{ userId: alice, defaultSplitPercent: 60 },
@@ -79,7 +128,11 @@ describe('createGroupMemberService', () => {
 			{ userId: alice, displayName: 'Alice', defaultSplitPercent: 60 },
 			{ userId: bob, displayName: 'Bob', defaultSplitPercent: 40 }
 		]);
-		const service = createGroupMemberService({ groupMemberRepo });
+		const service = createGroupMemberService({
+			groupMemberRepo,
+			identityRepo: fakeIdentityRepo(new Set()),
+			pairBalanceRepo: fakePairBalanceRepo(new Set())
+		});
 
 		await service.updateDefaultSplitPercents(groupId, [
 			{ userId: alice, defaultSplitPercent: null },
@@ -94,7 +147,11 @@ describe('createGroupMemberService', () => {
 			{ userId: alice, displayName: 'Alice', defaultSplitPercent: null },
 			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
 		]);
-		const service = createGroupMemberService({ groupMemberRepo });
+		const service = createGroupMemberService({
+			groupMemberRepo,
+			identityRepo: fakeIdentityRepo(new Set()),
+			pairBalanceRepo: fakePairBalanceRepo(new Set())
+		});
 
 		await expect(
 			service.updateDefaultSplitPercents(groupId, [
@@ -111,7 +168,11 @@ describe('createGroupMemberService', () => {
 			{ userId: alice, displayName: 'Alice', defaultSplitPercent: null },
 			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
 		]);
-		const service = createGroupMemberService({ groupMemberRepo });
+		const service = createGroupMemberService({
+			groupMemberRepo,
+			identityRepo: fakeIdentityRepo(new Set()),
+			pairBalanceRepo: fakePairBalanceRepo(new Set())
+		});
 
 		await service.updateDefaultSplitPercents(groupId, [
 			{ userId: alice, defaultSplitPercent: 100 },
@@ -125,6 +186,45 @@ describe('createGroupMemberService', () => {
 					{ userId: alice, defaultSplitPercent: 100 },
 					{ userId: bob, defaultSplitPercent: null }
 				]
+			}
+		]);
+	});
+
+	it('exposes per-member invited-pending and outstanding-balance flags', async () => {
+		const groupMemberRepo = fakeGroupMemberRepo([
+			{ userId: alice, displayName: 'Alice', defaultSplitPercent: 60 },
+			{ userId: bob, displayName: 'bob@example.com', defaultSplitPercent: 40 },
+			{ userId: 'cara', displayName: 'cara@example.com', defaultSplitPercent: null }
+		]);
+		const identities = new Set<string>([alice]);
+		const usersWithBalance = new Set<string>(['cara']);
+		const service = createGroupMemberService({
+			groupMemberRepo,
+			identityRepo: fakeIdentityRepo(identities),
+			pairBalanceRepo: fakePairBalanceRepo(usersWithBalance)
+		});
+
+		expect(await service.getGroupMembersWithStatus(groupId)).toEqual([
+			{
+				userId: alice,
+				displayName: 'Alice',
+				defaultSplitPercent: 60,
+				invitedPending: false,
+				hasOutstandingBalance: false
+			},
+			{
+				userId: bob,
+				displayName: 'bob@example.com',
+				defaultSplitPercent: 40,
+				invitedPending: true,
+				hasOutstandingBalance: false
+			},
+			{
+				userId: 'cara',
+				displayName: 'cara@example.com',
+				defaultSplitPercent: null,
+				invitedPending: true,
+				hasOutstandingBalance: true
 			}
 		]);
 	});

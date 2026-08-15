@@ -52,6 +52,9 @@ function fakeIdentityRepo(): IIdentityRepository {
 			const row = { id: `identity-${rows.length}`, ...input };
 			rows.push(row);
 			return { ...row, createdAt: new Date() };
+		},
+		async hasIdentityForUser(userId) {
+			return rows.some((row) => row.userId === userId);
 		}
 	};
 }

@@ -178,82 +178,105 @@
 							{#if member.userId === data.user.id}
 								<Badge variant="secondary">You</Badge>
 							{/if}
+							{#if member.invitedPending}
+								<Badge variant="outline">Invited</Badge>
+							{/if}
 						</div>
 						{#if member.userId === data.user.id}
-							<AlertDialog.Root bind:open={leaveDialogOpen}>
-								<AlertDialog.Trigger>
-									{#snippet child({ props })}
-										<Button {...props} variant="destructive" size="sm">Leave</Button>
-									{/snippet}
-								</AlertDialog.Trigger>
-								<AlertDialog.Content>
-									<AlertDialog.Header>
-										{#if isSolo}
-											<AlertDialog.Title>Delete "{data.group.name}"?</AlertDialog.Title>
-											<AlertDialog.Description>
-												You are the last member. Leaving will permanently delete this group, along
-												with all its expenses, settlements, and balances. This action cannot be
-												undone.
-											</AlertDialog.Description>
-										{:else}
-											<AlertDialog.Title>Leave "{data.group.name}"?</AlertDialog.Title>
-											<AlertDialog.Description>
-												You will lose access to this group. This can't be undone.
-											</AlertDialog.Description>
-										{/if}
-									</AlertDialog.Header>
-									<AlertDialog.Footer>
-										<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-										<form
-											method="POST"
-											action={isSolo ? '?/delete' : '?/leave'}
-											use:enhance={() => {
-												return async ({ update }) => {
-													leaveDialogOpen = false;
-													await update({ reset: false });
-												};
-											}}
-										>
-											<AlertDialog.Action type="submit">
-												{isSolo ? 'Delete group' : 'Leave group'}
-											</AlertDialog.Action>
-										</form>
-									</AlertDialog.Footer>
-								</AlertDialog.Content>
-							</AlertDialog.Root>
+							<div class="flex items-center gap-2">
+								{#if member.hasOutstandingBalance}
+									<span class="text-xs text-muted-foreground">Settle balances first</span>
+								{/if}
+								<AlertDialog.Root bind:open={leaveDialogOpen}>
+									<AlertDialog.Trigger>
+										{#snippet child({ props })}
+											<Button
+												{...props}
+												variant="destructive"
+												size="sm"
+												disabled={member.hasOutstandingBalance}>Leave</Button
+											>
+										{/snippet}
+									</AlertDialog.Trigger>
+									<AlertDialog.Content>
+										<AlertDialog.Header>
+											{#if isSolo}
+												<AlertDialog.Title>Delete "{data.group.name}"?</AlertDialog.Title>
+												<AlertDialog.Description>
+													You are the last member. Leaving will permanently delete this group, along
+													with all its expenses, settlements, and balances. This action cannot be
+													undone.
+												</AlertDialog.Description>
+											{:else}
+												<AlertDialog.Title>Leave "{data.group.name}"?</AlertDialog.Title>
+												<AlertDialog.Description>
+													You will lose access to this group. This can't be undone.
+												</AlertDialog.Description>
+											{/if}
+										</AlertDialog.Header>
+										<AlertDialog.Footer>
+											<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+											<form
+												method="POST"
+												action={isSolo ? '?/delete' : '?/leave'}
+												use:enhance={() => {
+													return async ({ update }) => {
+														leaveDialogOpen = false;
+														await update({ reset: false });
+													};
+												}}
+											>
+												<AlertDialog.Action type="submit">
+													{isSolo ? 'Delete group' : 'Leave group'}
+												</AlertDialog.Action>
+											</form>
+										</AlertDialog.Footer>
+									</AlertDialog.Content>
+								</AlertDialog.Root>
+							</div>
 						{:else}
-							<AlertDialog.Root bind:open={removeDialogOpen}>
-								<AlertDialog.Trigger>
-									{#snippet child({ props })}
-										<Button {...props} variant="destructive" size="sm">Remove</Button>
-									{/snippet}
-								</AlertDialog.Trigger>
-								<AlertDialog.Content>
-									<AlertDialog.Header>
-										<AlertDialog.Title>Remove {member.displayName}?</AlertDialog.Title>
-										<AlertDialog.Description>
-											They will lose access to this group. Their past expenses and splits stay
-											visible. This can't be undone.
-										</AlertDialog.Description>
-									</AlertDialog.Header>
-									<AlertDialog.Footer>
-										<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-										<form
-											method="POST"
-											action="?/remove"
-											use:enhance={() => {
-												return async ({ update }) => {
-													removeDialogOpen = false;
-													await update({ reset: false });
-												};
-											}}
-										>
-											<input type="hidden" name="userId" value={member.userId} />
-											<AlertDialog.Action type="submit">Remove</AlertDialog.Action>
-										</form>
-									</AlertDialog.Footer>
-								</AlertDialog.Content>
-							</AlertDialog.Root>
+							<div class="flex items-center gap-2">
+								{#if member.hasOutstandingBalance}
+									<span class="text-xs text-muted-foreground">Settle balances first</span>
+								{/if}
+								<AlertDialog.Root bind:open={removeDialogOpen}>
+									<AlertDialog.Trigger>
+										{#snippet child({ props })}
+											<Button
+												{...props}
+												variant="destructive"
+												size="sm"
+												disabled={member.hasOutstandingBalance}>Remove</Button
+											>
+										{/snippet}
+									</AlertDialog.Trigger>
+									<AlertDialog.Content>
+										<AlertDialog.Header>
+											<AlertDialog.Title>Remove {member.displayName}?</AlertDialog.Title>
+											<AlertDialog.Description>
+												They will lose access to this group. Their past expenses and splits stay
+												visible. This can't be undone.
+											</AlertDialog.Description>
+										</AlertDialog.Header>
+										<AlertDialog.Footer>
+											<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+											<form
+												method="POST"
+												action="?/remove"
+												use:enhance={() => {
+													return async ({ update }) => {
+														removeDialogOpen = false;
+														await update({ reset: false });
+													};
+												}}
+											>
+												<input type="hidden" name="userId" value={member.userId} />
+												<AlertDialog.Action type="submit">Remove</AlertDialog.Action>
+											</form>
+										</AlertDialog.Footer>
+									</AlertDialog.Content>
+								</AlertDialog.Root>
+							</div>
 						{/if}
 					</li>
 				{/each}
@@ -356,15 +379,15 @@
 						<AlertDialog.Footer>
 							<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
 							<form
-									method="POST"
-									action="?/delete"
-									use:enhance={() => {
-										return async ({ update }) => {
-											deleteDialogOpen = false;
-											await update({ reset: false });
-										};
-									}}
-								>
+								method="POST"
+								action="?/delete"
+								use:enhance={() => {
+									return async ({ update }) => {
+										deleteDialogOpen = false;
+										await update({ reset: false });
+									};
+								}}
+							>
 								<AlertDialog.Action type="submit">Delete group</AlertDialog.Action>
 							</form>
 						</AlertDialog.Footer>

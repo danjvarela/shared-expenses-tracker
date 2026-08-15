@@ -16,7 +16,7 @@ function trimmedOrNull(value: FormDataEntryValue | null): string | null {
 export const load: PageServerLoad = async ({ params, parent }) => {
 	const { group } = await parent();
 
-	const members = await groupMemberService.getGroupMembers(params.id);
+	const members = await groupMemberService.getGroupMembersWithStatus(params.id);
 	const hasOutstandingBalance = await groupService.hasOutstandingBalance(params.id);
 
 	return { group, members, hasOutstandingBalance };

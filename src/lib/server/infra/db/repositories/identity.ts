@@ -20,9 +20,21 @@ const create =
 		return row;
 	};
 
+const hasIdentityForUser =
+	(db: Database): IIdentityRepository['hasIdentityForUser'] =>
+	async (userId) => {
+		const [row] = await db
+			.select({ id: identity.id })
+			.from(identity)
+			.where(eq(identity.userId, userId))
+			.limit(1);
+		return row !== undefined;
+	};
+
 export function createIdentityRepository(db: Database): IIdentityRepository {
 	return {
 		findByProviderSubject: findByProviderSubject(db),
-		create: create(db)
+		create: create(db),
+		hasIdentityForUser: hasIdentityForUser(db)
 	};
 }
