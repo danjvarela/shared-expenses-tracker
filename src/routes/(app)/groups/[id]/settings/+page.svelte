@@ -28,6 +28,10 @@
 	let detailsSaved = $state(false);
 	let percentsSaved = $state(false);
 
+	let removeDialogOpen = $state(false);
+	let leaveDialogOpen = $state(false);
+	let deleteDialogOpen = $state(false);
+
 	const isSolo = $derived(data.members.length === 1);
 
 	function currencyLabel() {
@@ -129,7 +133,7 @@
 					<Input id="email" name="email" type="email" required placeholder="friend@example.com" />
 				</Field.Field>
 
-				{#if inviteForm?.message}
+				{#if form?.source === 'invite' && inviteForm?.message}
 					<Field.FieldError>{inviteForm.message}</Field.FieldError>
 				{/if}
 
@@ -176,7 +180,7 @@
 							{/if}
 						</div>
 						{#if member.userId === data.user.id}
-							<AlertDialog.Root>
+							<AlertDialog.Root bind:open={leaveDialogOpen}>
 								<AlertDialog.Trigger>
 									{#snippet child({ props })}
 										<Button {...props} variant="destructive" size="sm">Leave</Button>
@@ -200,7 +204,16 @@
 									</AlertDialog.Header>
 									<AlertDialog.Footer>
 										<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-										<form method="POST" action={isSolo ? '?/delete' : '?/leave'} use:enhance>
+										<form
+											method="POST"
+											action={isSolo ? '?/delete' : '?/leave'}
+											use:enhance={() => {
+												return async ({ update }) => {
+													leaveDialogOpen = false;
+													await update({ reset: false });
+												};
+											}}
+										>
 											<AlertDialog.Action type="submit">
 												{isSolo ? 'Delete group' : 'Leave group'}
 											</AlertDialog.Action>
@@ -209,7 +222,7 @@
 								</AlertDialog.Content>
 							</AlertDialog.Root>
 						{:else}
-							<AlertDialog.Root>
+							<AlertDialog.Root bind:open={removeDialogOpen}>
 								<AlertDialog.Trigger>
 									{#snippet child({ props })}
 										<Button {...props} variant="destructive" size="sm">Remove</Button>
@@ -225,7 +238,16 @@
 									</AlertDialog.Header>
 									<AlertDialog.Footer>
 										<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-										<form method="POST" action="?/remove" use:enhance>
+										<form
+											method="POST"
+											action="?/remove"
+											use:enhance={() => {
+												return async ({ update }) => {
+													removeDialogOpen = false;
+													await update({ reset: false });
+												};
+											}}
+										>
 											<input type="hidden" name="userId" value={member.userId} />
 											<AlertDialog.Action type="submit">Remove</AlertDialog.Action>
 										</form>
@@ -278,7 +300,7 @@
 					</Field.Field>
 				{/each}
 
-				{#if form?.message}
+				{#if form?.source === 'percents' && form?.message}
 					<Field.FieldError>{form.message}</Field.FieldError>
 				{/if}
 
@@ -309,13 +331,13 @@
 				</Card.Description>
 			</Card.Header>
 			<Card.Content>
-				{#if form?.message && form?.source !== 'remove' && form?.source !== 'leave'}
+				{#if form?.source === 'delete' && form?.message}
 					<Alert.Root variant="destructive" class="mb-4">
 						<Alert.Title>{form.message}</Alert.Title>
 					</Alert.Root>
 				{/if}
 
-				<AlertDialog.Root>
+				<AlertDialog.Root bind:open={deleteDialogOpen}>
 					<AlertDialog.Trigger>
 						{#snippet child({ props })}
 							<Button {...props} variant="destructive" disabled={data.hasOutstandingBalance}>
@@ -333,7 +355,16 @@
 						</AlertDialog.Header>
 						<AlertDialog.Footer>
 							<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-							<form method="POST" action="?/delete" use:enhance>
+							<form
+									method="POST"
+									action="?/delete"
+									use:enhance={() => {
+										return async ({ update }) => {
+											deleteDialogOpen = false;
+											await update({ reset: false });
+										};
+									}}
+								>
 								<AlertDialog.Action type="submit">Delete group</AlertDialog.Action>
 							</form>
 						</AlertDialog.Footer>

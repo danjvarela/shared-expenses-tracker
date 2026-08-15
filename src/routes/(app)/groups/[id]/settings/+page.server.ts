@@ -65,13 +65,14 @@ export const actions: Actions = {
 				(entry) => entry.defaultSplitPercent !== null && Number.isNaN(entry.defaultSplitPercent)
 			)
 		) {
-			return fail(400, { message: 'Percentages must be numbers' });
+			return fail(400, { source: 'percents', message: 'Percentages must be numbers' });
 		}
 
 		try {
 			await groupMemberService.updateDefaultSplitPercents(params.id, entries);
 		} catch (err) {
-			return toActionResult(err);
+			const actionResult = toActionResult(err);
+			return fail(actionResult.status, { source: 'percents', ...actionResult.data });
 		}
 
 		return { success: true };
@@ -82,14 +83,15 @@ export const actions: Actions = {
 		const email = formData.get('email');
 
 		if (typeof email !== 'string' || email.trim() === '') {
-			return fail(400, { message: 'Enter an email address' });
+			return fail(400, { source: 'invite', message: 'Enter an email address' });
 		}
 
 		let result;
 		try {
 			result = await groupInviteService.inviteByEmail(params.id, email.trim());
 		} catch (err) {
-			return toActionResult(err);
+			const actionResult = toActionResult(err);
+			return fail(actionResult.status, { source: 'invite', ...actionResult.data });
 		}
 
 		return { invite: { status: result.status, email: email.trim() } };
@@ -99,7 +101,8 @@ export const actions: Actions = {
 		try {
 			await groupService.deleteGroup(params.id);
 		} catch (err) {
-			return toActionResult(err);
+			const actionResult = toActionResult(err);
+			return fail(actionResult.status, { source: 'delete', ...actionResult.data });
 		}
 
 		redirect(303, '/');
