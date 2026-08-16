@@ -111,4 +111,28 @@ describe('validateExpenseForm', () => {
 			}
 		});
 	});
+
+	it('accounts for a frozen former-member split when checking the sum', () => {
+		const form = baseForm({ splitMethod: 'exact', amount: '10.00' });
+		form.set(`exact-${alice}`, '4.00');
+		form.set(`exact-${bob}`, '3.00');
+		const result = validateExpenseForm(form, members, 300);
+		expect(result).toMatchObject({
+			data: {
+				amountCents: 1000,
+				splits: [
+					{ userId: alice, amountCents: 400 },
+					{ userId: bob, amountCents: 300 }
+				]
+			}
+		});
+	});
+
+	it('rejects current-member splits that do not cover the remaining total after a frozen split', () => {
+		const form = baseForm({ splitMethod: 'exact', amount: '10.00' });
+		form.set(`exact-${alice}`, '5.00');
+		form.set(`exact-${bob}`, '1.00');
+		const result = validateExpenseForm(form, members, 300);
+		expect(result).toEqual({ error: 'Split amounts do not add up to the total' });
+	});
 });

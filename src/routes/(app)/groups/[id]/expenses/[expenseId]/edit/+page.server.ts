@@ -6,6 +6,7 @@ import {
 	categoryRepo
 } from '$lib/server/container';
 import { validateExpenseForm } from '$lib/server/app/expense-form';
+import { AppError } from '$lib/server/app/error';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ params, parent }) => {
@@ -30,14 +31,26 @@ export const actions: Actions = {
 		}
 
 		const members = await groupMemberService.getGroupMembers(params.id);
+		const memberIds = new Set(members.map((member) => member.userId));
+		const frozenAmountCents = expense.splits
+			.filter((split) => !memberIds.has(split.userId))
+			.reduce((total, split) => total + split.amountCents, 0);
+
 		const formData = await request.formData();
 
-		const result = validateExpenseForm(formData, members);
+		const result = validateExpenseForm(formData, members, frozenAmountCents);
 		if ('error' in result) {
 			return fail(400, { error: result.error });
 		}
 
-		await expenseService.updateExpense(params.expenseId, result.data);
+		try {
+			await expenseService.updateExpense(params.expenseId, result.data);
+		} catch (err) {
+			if (err instanceof AppError) {
+				return fail(400, { error: err.message });
+			}
+			throw err;
+		}
 
 		redirect(303, `/groups/${params.id}`);
 	}

@@ -15,10 +15,17 @@ import type {
 	NotificationCreateInput
 } from '$lib/server/app/interfaces/repositories/notification';
 import type { Notification } from '$lib/server/domain/notification';
-import { createExpenseService, type ExpenseRepos } from './expense';
+import {
+	createExpenseService,
+	FormerMemberSplitNotEditableError,
+	ExpenseSplitsDoNotSumError,
+	PaidByCannotChangeWithFormerMemberError,
+	type ExpenseRepos
+} from './expense';
 
 const alice = 'alice';
 const bob = 'bob';
+const carol = 'carol';
 const groupId = 'group-1';
 
 function fakeGroupRepo(currencyCode = 'USD'): IGroupRepository {
@@ -385,6 +392,173 @@ describe('createExpenseService', () => {
 				splits: []
 			})
 		).rejects.toThrow('Expense not found');
+	});
+
+	describe('updateExpense with a former-member split', () => {
+		const currentMembers: Array<GroupMemberWithUser> = [
+			{ userId: alice, displayName: 'Alice', defaultSplitPercent: null },
+			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
+		];
+
+		function seedWithFormerMember(): ExpenseWithSplits {
+			return {
+				id: 'expense-0',
+				groupId,
+				paidByUserId: alice,
+				categoryId: null,
+				description: 'Dinner',
+				amountCents: 1000,
+				date: new Date(),
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				splits: [
+					{
+						id: 'split-a',
+						expenseId: 'expense-0',
+						userId: alice,
+						amountCents: 400,
+						createdAt: new Date()
+					},
+					{
+						id: 'split-b',
+						expenseId: 'expense-0',
+						userId: bob,
+						amountCents: 300,
+						createdAt: new Date()
+					},
+					{
+						id: 'split-c',
+						expenseId: 'expense-0',
+						userId: carol,
+						amountCents: 300,
+						createdAt: new Date()
+					}
+				]
+			};
+		}
+
+		function serviceWithFormerMember(
+			expenseRepo: IExpenseRepository,
+			pairBalanceRepo: ReturnType<typeof fakePairBalanceRepo>
+		) {
+			return createExpenseService({
+				uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo }),
+				expenseRepo,
+				groupRepo: fakeGroupRepo(),
+				groupMemberRepo: fakeGroupMemberRepo(currentMembers),
+				notificationRepo: fakeNotificationRepo()
+			});
+		}
+
+		it('carries the former-member split through unchanged and keeps current-member splits editable', async () => {
+			const expenseRepo = fakeExpenseRepo([seedWithFormerMember()]);
+			const service = serviceWithFormerMember(expenseRepo, fakePairBalanceRepo());
+
+			const updated = await service.updateExpense('expense-0', {
+				paidByUserId: alice,
+				categoryId: null,
+				description: 'Dinner edited',
+				amountCents: 1000,
+				date: new Date(),
+				splits: [
+					{ userId: alice, amountCents: 500 },
+					{ userId: bob, amountCents: 200 }
+				]
+			});
+
+			expect(updated.splits).toContainEqual(
+				expect.objectContaining({ userId: carol, amountCents: 300 })
+			);
+			expect(updated.splits).toContainEqual(
+				expect.objectContaining({ userId: alice, amountCents: 500 })
+			);
+			expect(updated.splits).toContainEqual(
+				expect.objectContaining({ userId: bob, amountCents: 200 })
+			);
+		});
+
+		it('rejects a save whose current-member splits plus the frozen split do not sum to amountCents', async () => {
+			const expenseRepo = fakeExpenseRepo([seedWithFormerMember()]);
+			const service = serviceWithFormerMember(expenseRepo, fakePairBalanceRepo());
+
+			await expect(
+				service.updateExpense('expense-0', {
+					paidByUserId: alice,
+					categoryId: null,
+					description: 'Dinner',
+					amountCents: 1000,
+					date: new Date(),
+					splits: [
+						{ userId: alice, amountCents: 500 },
+						{ userId: bob, amountCents: 100 }
+					]
+				})
+			).rejects.toBeInstanceOf(ExpenseSplitsDoNotSumError);
+		});
+
+		it('rejects an editable split that references a former member', async () => {
+			const expenseRepo = fakeExpenseRepo([seedWithFormerMember()]);
+			const service = serviceWithFormerMember(expenseRepo, fakePairBalanceRepo());
+
+			await expect(
+				service.updateExpense('expense-0', {
+					paidByUserId: alice,
+					categoryId: null,
+					description: 'Dinner',
+					amountCents: 1000,
+					date: new Date(),
+					splits: [
+						{ userId: alice, amountCents: 400 },
+						{ userId: bob, amountCents: 300 },
+						{ userId: carol, amountCents: 300 }
+					]
+				})
+			).rejects.toBeInstanceOf(FormerMemberSplitNotEditableError);
+		});
+
+		it('rejects changing who paid while a former-member split is frozen', async () => {
+			const expenseRepo = fakeExpenseRepo([seedWithFormerMember()]);
+			const service = serviceWithFormerMember(expenseRepo, fakePairBalanceRepo());
+
+			await expect(
+				service.updateExpense('expense-0', {
+					paidByUserId: bob,
+					categoryId: null,
+					description: 'Dinner',
+					amountCents: 1000,
+					date: new Date(),
+					splits: [
+						{ userId: alice, amountCents: 500 },
+						{ userId: bob, amountCents: 200 }
+					]
+				})
+			).rejects.toBeInstanceOf(PaidByCannotChangeWithFormerMemberError);
+		});
+
+		it('does not create a pair-balance row involving the former member on save', async () => {
+			const expenseRepo = fakeExpenseRepo([seedWithFormerMember()]);
+			const pairBalanceRepo = fakePairBalanceRepo();
+			const service = serviceWithFormerMember(expenseRepo, pairBalanceRepo);
+
+			await service.updateExpense('expense-0', {
+				paidByUserId: alice,
+				categoryId: null,
+				description: 'Dinner',
+				amountCents: 1000,
+				date: new Date(),
+				splits: [
+					{ userId: alice, amountCents: 500 },
+					{ userId: bob, amountCents: 200 }
+				]
+			});
+
+			expect(pairBalanceRepo.deltasApplied).not.toContainEqual(
+				expect.objectContaining({ fromUserId: carol })
+			);
+			expect(pairBalanceRepo.deltasApplied).not.toContainEqual(
+				expect.objectContaining({ toUserId: carol })
+			);
+		});
 	});
 
 	it('reverses old deltas and applies new ones on delete', async () => {

@@ -7,7 +7,7 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { ArrowLeft } from '@lucide/svelte';
+	import { ArrowLeft, Info, Lock } from '@lucide/svelte';
 	import { untrack } from 'svelte';
 
 	const { data, form } = $props();
@@ -50,6 +50,12 @@
 		if (categoryId === NO_CATEGORY) return 'None';
 		return data.categories.find((category) => category.id === categoryId)?.name ?? 'None';
 	}
+
+	const formerMemberSplits = $derived(
+		data.expense.splits.filter((split) => !isCurrentMember(split.userId))
+	);
+	const paidByIsFormerMember = $derived(!isCurrentMember(data.expense.paidByUserId));
+	const involvesFormerMember = $derived(formerMemberSplits.length > 0 || paidByIsFormerMember);
 </script>
 
 <div class="container mx-auto max-w-xl p-4">
@@ -95,8 +101,14 @@
 
 				<Field.Field>
 					<Field.FieldLabel for="paidByUserId">Paid by</Field.FieldLabel>
-					<Select.Root type="single" name="paidByUserId" bind:value={paidByUserId}>
-						<Select.Trigger id="paidByUserId">{paidByLabel()}</Select.Trigger>
+					<input type="hidden" name="paidByUserId" value={paidByUserId} />
+					<Select.Root type="single" bind:value={paidByUserId} disabled={involvesFormerMember}>
+						<Select.Trigger id="paidByUserId">
+							{paidByLabel()}
+							{#if involvesFormerMember}
+								<Lock class="ml-auto size-4 text-muted-foreground" />
+							{/if}
+						</Select.Trigger>
 						<Select.Content>
 							{#each data.members as member (member.userId)}
 								<Select.Item value={member.userId}>{member.displayName}</Select.Item>
@@ -120,6 +132,15 @@
 
 				<Field.FieldSet>
 					<Field.FieldLegend>Split between</Field.FieldLegend>
+					{#if involvesFormerMember}
+						<p class="flex items-start gap-2 rounded-md bg-muted p-3 text-sm text-muted-foreground">
+							<Info class="mt-0.5 size-4 shrink-0" />
+							<span>
+								This expense cannot be fully edited because it involves a former member of the
+								group. Their share is carried through unchanged.
+							</span>
+						</p>
+					{/if}
 					{#each data.members as member (member.userId)}
 						{@const existingSplit = splitFor(member.userId)}
 						<div class="flex items-center gap-3">

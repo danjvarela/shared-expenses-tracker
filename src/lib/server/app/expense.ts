@@ -33,6 +33,24 @@ export class ExpenseNotFoundError extends AppError {
 	}
 }
 
+export class FormerMemberSplitNotEditableError extends AppError {
+	constructor() {
+		super('Cannot edit a split for a former member of the group');
+	}
+}
+
+export class ExpenseSplitsDoNotSumError extends AppError {
+	constructor() {
+		super('Split amounts do not add up to the total');
+	}
+}
+
+export class PaidByCannotChangeWithFormerMemberError extends AppError {
+	constructor() {
+		super('Cannot change who paid while the expense involves a former member');
+	}
+}
+
 export function createExpenseService(deps: {
 	uow: IUnitOfWork<ExpenseRepos>;
 	expenseRepo: IExpenseRepository;
@@ -105,12 +123,35 @@ export function createExpenseService(deps: {
 			const existing = await expenseRepo.getWithSplits(id);
 			if (!existing) throw new ExpenseNotFoundError();
 
-			const updated = await expenseRepo.update(id, input);
+			const members = await deps.groupMemberRepo.getAllForGroupWithUser(existing.groupId);
+			const currentMemberIds = new Set(members.map((member) => member.userId));
+
+			for (const split of input.splits) {
+				if (!currentMemberIds.has(split.userId)) {
+					throw new FormerMemberSplitNotEditableError();
+				}
+			}
+
+			const frozenSplits = existing.splits
+				.filter((split) => !currentMemberIds.has(split.userId))
+				.map((split) => ({ userId: split.userId, amountCents: split.amountCents }));
+
+			if (frozenSplits.length > 0 && input.paidByUserId !== existing.paidByUserId) {
+				throw new PaidByCannotChangeWithFormerMemberError();
+			}
+
+			const finalSplits = [...input.splits, ...frozenSplits];
+			const sum = finalSplits.reduce((total, split) => total + split.amountCents, 0);
+			if (sum !== input.amountCents) {
+				throw new ExpenseSplitsDoNotSumError();
+			}
+
+			const updated = await expenseRepo.update(id, { ...input, splits: finalSplits });
 
 			const reversedOldDeltas = expenseDeltas(existing.paidByUserId, existing.splits).map(
 				(delta) => ({ ...delta, deltaAToB: -delta.deltaAToB })
 			);
-			const newDeltas = expenseDeltas(input.paidByUserId, input.splits);
+			const newDeltas = expenseDeltas(input.paidByUserId, finalSplits);
 
 			await applyPairBalanceDeltas(pairBalanceRepo, existing.groupId, [
 				...reversedOldDeltas,

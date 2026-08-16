@@ -18,7 +18,8 @@ export function parseAmountCents(raw: FormDataEntryValue | null): number | null 
 
 export function validateExpenseForm(
 	formData: FormData,
-	members: Array<{ userId: string }>
+	members: Array<{ userId: string }>,
+	frozenAmountCents = 0
 ): { error: string } | { data: ValidatedExpenseForm } {
 	const description = formData.get('description');
 	const amountCents = parseAmountCents(formData.get('amount'));
@@ -82,7 +83,7 @@ export function validateExpenseForm(
 	});
 
 	const sum = splits.reduce((total, split) => total + split.amountCents, 0);
-	if (sum !== amountCents) {
+	if (sum + frozenAmountCents !== amountCents) {
 		return { error: 'Split amounts do not add up to the total' };
 	}
 
