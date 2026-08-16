@@ -9,7 +9,7 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 - [x] Done — Delete group (blocked while any nonzero `PairBalance` exists in the group; hard delete, cascades Expenses/Settlements/PairBalances once clear via DB-level `ON DELETE CASCADE`). Danger-zone card on group settings page, any member may delete.
 - [x] Done — Invite user to group by email (any member may invite; pre-login User seeded with `displayName = email`, replaced with Google name on first login — see ADR-0009)
 - [x] Done — Set default split percentages per member (`GroupMember.defaultSplitPercent`, prefill-only, unenforced sum — see ADR-0005). Schema, service, whole-group settings UI, and prefill into the expense-add split UI all done.
-- [ ] Not started — Kick user from group (blocked while that member has any nonzero `PairBalance` in the group)
+- [x] Not started — Kick user from group (blocked while that member has any nonzero `PairBalance` in the group)
 - [x] Done — View a group's members/expenses/balances (read-only)
 
 ## Expenses
