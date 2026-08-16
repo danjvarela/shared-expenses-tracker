@@ -12,7 +12,7 @@ export const notification = sqliteTable('notification', {
 	groupId: text()
 		.notNull()
 		.references(() => group.id, { onDelete: 'cascade' }),
-	type: text({ enum: ['expense_created', 'settlement_created'] }).notNull(),
+	type: text({ enum: ['expense_created', 'settlement_created', 'member_removed'] }).notNull(),
 	expenseId: text().references(() => expense.id, { onDelete: 'cascade' }),
 	settlementId: text().references(() => settlement.id, { onDelete: 'cascade' }),
 	message: text().notNull(),

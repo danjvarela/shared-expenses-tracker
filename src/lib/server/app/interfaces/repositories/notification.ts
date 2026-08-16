@@ -3,7 +3,7 @@ import type { Notification } from '$lib/server/domain/notification';
 export interface NotificationCreateInput {
 	userId: string;
 	groupId: string;
-	type: 'expense_created' | 'settlement_created';
+	type: 'expense_created' | 'settlement_created' | 'member_removed';
 	expenseId: string | null;
 	settlementId: string | null;
 	message: string;

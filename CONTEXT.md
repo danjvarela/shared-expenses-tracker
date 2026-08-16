@@ -35,7 +35,7 @@ The cached, directed net debt between two Users within a Group (`fromUserId` owe
 _Avoid_: Balance (ambiguous between net-per-user and pairwise — this context only has the pairwise shape), debt
 
 **Notification**:
-A record telling one User (`userId`, the recipient) that something happened in a Group — an Expense or Settlement was created. Carries a `type` (`expense_created`, `settlement_created`), a pre-rendered `message`, an optional `expenseId`/`settlementId` link (whichever the type implies), and a nullable `readAt`. Created as a side effect of the Expense/Settlement write, never as part of its transaction — see ADR-0008.
+A record telling one User (`userId`, the recipient) that something happened in a Group — an Expense or Settlement was created, or a member was removed. Carries a `type` (`expense_created`, `settlement_created`, `member_removed`), a pre-rendered `message`, an optional `expenseId`/`settlementId` link (whichever the type implies), and a nullable `readAt`. Created as a side effect of the triggering write, never as part of its transaction — see ADR-0008.
 _Avoid_: Alert, activity (too broad — this is specifically per-recipient and per-User-scoped)
 
 **Split type**:

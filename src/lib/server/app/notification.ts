@@ -24,6 +24,8 @@ export function createNotificationService(deps: { notificationRepo: INotificatio
 				return `/groups/${notification.groupId}/expenses/${notification.expenseId}`;
 			case 'settlement_created':
 				return `/groups/${notification.groupId}/settlements/${notification.settlementId}`;
+			case 'member_removed':
+				return `/groups/${notification.groupId}/settings`;
 		}
 	}
 

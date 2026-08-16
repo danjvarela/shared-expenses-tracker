@@ -106,7 +106,10 @@ export const groupMemberService = createGroupMemberService({
 
 export const groupInviteService = createGroupInviteService({ uow: inviteUnitOfWork });
 
-export const removeMemberService = createRemoveMemberService({ uow: removeMemberUnitOfWork });
+export const removeMemberService = createRemoveMemberService({
+	uow: removeMemberUnitOfWork,
+	notificationRepo
+});
 
 export const groupService = createGroupService({
 	uow: groupUnitOfWork,
