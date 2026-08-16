@@ -77,15 +77,30 @@
 
 				<Field.Field>
 					<Field.FieldLabel for="amount">Amount ({data.group.currencyCode})</Field.FieldLabel>
-					<Input
-						id="amount"
-						name="amount"
-						type="number"
-						step="0.01"
-						min="0.01"
-						value={centsToAmountString(data.expense.amountCents)}
-						required
-					/>
+					{#if paidByIsFormerMember}
+						<input
+							type="hidden"
+							name="amount"
+							value={centsToAmountString(data.expense.amountCents)}
+						/>
+						<Input
+							id="amount"
+							type="number"
+							step="0.01"
+							value={centsToAmountString(data.expense.amountCents)}
+							disabled
+						/>
+					{:else}
+						<Input
+							id="amount"
+							name="amount"
+							type="number"
+							step="0.01"
+							min="0.01"
+							value={centsToAmountString(data.expense.amountCents)}
+							required
+						/>
+					{/if}
 				</Field.Field>
 
 				<Field.Field>
@@ -148,6 +163,7 @@
 								id={`included-${member.userId}`}
 								name={`included-${member.userId}`}
 								bind:checked={included[member.userId]}
+								disabled={paidByIsFormerMember}
 							/>
 							<Label for={`included-${member.userId}`} class="w-32 shrink-0">
 								{member.displayName}
@@ -158,7 +174,7 @@
 								step="0.01"
 								min="0"
 								placeholder={data.group.currencyCode}
-								disabled={!included[member.userId]}
+								disabled={paidByIsFormerMember || !included[member.userId]}
 								value={existingSplit ? centsToAmountString(existingSplit.amountCents) : ''}
 							/>
 						</div>

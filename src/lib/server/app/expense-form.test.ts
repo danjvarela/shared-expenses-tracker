@@ -135,4 +135,22 @@ describe('validateExpenseForm', () => {
 		const result = validateExpenseForm(form, members, 300);
 		expect(result).toEqual({ error: 'Split amounts do not add up to the total' });
 	});
+
+	it('accepts a locked former-member payer with no editable splits and the full amount frozen', () => {
+		const form = baseForm({ splitMethod: 'exact', amount: '10.00', paidByUserId: 'carol' });
+		form.set(`included-${alice}`, '');
+		form.set(`included-${bob}`, '');
+		const result = validateExpenseForm(form, members, 1000, 'carol');
+		expect(result).toMatchObject({
+			data: { amountCents: 1000, paidByUserId: 'carol', splits: [] }
+		});
+	});
+
+	it('rejects an amount change when the former member was the payer and the full amount is frozen', () => {
+		const form = baseForm({ splitMethod: 'exact', amount: '20.00', paidByUserId: 'carol' });
+		form.set(`included-${alice}`, '');
+		form.set(`included-${bob}`, '');
+		const result = validateExpenseForm(form, members, 1000, 'carol');
+		expect(result).toEqual({ error: 'Split amounts do not add up to the total' });
+	});
 });

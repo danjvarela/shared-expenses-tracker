@@ -559,6 +559,114 @@ describe('createExpenseService', () => {
 				expect.objectContaining({ toUserId: carol })
 			);
 		});
+
+		describe('when the former member was the payer', () => {
+			function seedWithFormerMemberPayer(): ExpenseWithSplits {
+				return {
+					id: 'expense-0',
+					groupId,
+					paidByUserId: carol,
+					categoryId: null,
+					description: 'Dinner',
+					amountCents: 1000,
+					date: new Date(),
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					splits: [
+						{
+							id: 'split-a',
+							expenseId: 'expense-0',
+							userId: alice,
+							amountCents: 400,
+							createdAt: new Date()
+						},
+						{
+							id: 'split-b',
+							expenseId: 'expense-0',
+							userId: bob,
+							amountCents: 600,
+							createdAt: new Date()
+						}
+					]
+				};
+			}
+
+			it('carries every split through unchanged on a metadata-only edit and creates no former-member balance row', async () => {
+				const expenseRepo = fakeExpenseRepo([seedWithFormerMemberPayer()]);
+				const pairBalanceRepo = fakePairBalanceRepo();
+				const service = serviceWithFormerMember(expenseRepo, pairBalanceRepo);
+
+				const updated = await service.updateExpense('expense-0', {
+					paidByUserId: carol,
+					categoryId: null,
+					description: 'Dinner edited',
+					amountCents: 1000,
+					date: new Date(),
+					splits: []
+				});
+
+				expect(updated.splits).toContainEqual(
+					expect.objectContaining({ userId: alice, amountCents: 400 })
+				);
+				expect(updated.splits).toContainEqual(
+					expect.objectContaining({ userId: bob, amountCents: 600 })
+				);
+				expect(pairBalanceRepo.deltasApplied).not.toContainEqual(
+					expect.objectContaining({ fromUserId: carol })
+				);
+				expect(pairBalanceRepo.deltasApplied).not.toContainEqual(
+					expect.objectContaining({ toUserId: carol })
+				);
+			});
+
+			it('rejects a submitted editable split when the former member was the payer', async () => {
+				const expenseRepo = fakeExpenseRepo([seedWithFormerMemberPayer()]);
+				const service = serviceWithFormerMember(expenseRepo, fakePairBalanceRepo());
+
+				await expect(
+					service.updateExpense('expense-0', {
+						paidByUserId: carol,
+						categoryId: null,
+						description: 'Dinner',
+						amountCents: 1000,
+						date: new Date(),
+						splits: [{ userId: alice, amountCents: 400 }]
+					})
+				).rejects.toBeInstanceOf(FormerMemberSplitNotEditableError);
+			});
+
+			it('rejects an amount change when the former member was the payer', async () => {
+				const expenseRepo = fakeExpenseRepo([seedWithFormerMemberPayer()]);
+				const service = serviceWithFormerMember(expenseRepo, fakePairBalanceRepo());
+
+				await expect(
+					service.updateExpense('expense-0', {
+						paidByUserId: carol,
+						categoryId: null,
+						description: 'Dinner',
+						amountCents: 2000,
+						date: new Date(),
+						splits: []
+					})
+				).rejects.toBeInstanceOf(ExpenseSplitsDoNotSumError);
+			});
+
+			it('rejects reassigning the payer away from the former member', async () => {
+				const expenseRepo = fakeExpenseRepo([seedWithFormerMemberPayer()]);
+				const service = serviceWithFormerMember(expenseRepo, fakePairBalanceRepo());
+
+				await expect(
+					service.updateExpense('expense-0', {
+						paidByUserId: alice,
+						categoryId: null,
+						description: 'Dinner',
+						amountCents: 1000,
+						date: new Date(),
+						splits: []
+					})
+				).rejects.toBeInstanceOf(PaidByCannotChangeWithFormerMemberError);
+			});
+		});
 	});
 
 	it('reverses old deltas and applies new ones on delete', async () => {

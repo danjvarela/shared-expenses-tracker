@@ -32,13 +32,17 @@ export const actions: Actions = {
 
 		const members = await groupMemberService.getGroupMembers(params.id);
 		const memberIds = new Set(members.map((member) => member.userId));
-		const frozenAmountCents = expense.splits
-			.filter((split) => !memberIds.has(split.userId))
-			.reduce((total, split) => total + split.amountCents, 0);
+		const paidByIsFormerMember = !memberIds.has(expense.paidByUserId);
+		const frozenAmountCents = paidByIsFormerMember
+			? expense.amountCents
+			: expense.splits
+					.filter((split) => !memberIds.has(split.userId))
+					.reduce((total, split) => total + split.amountCents, 0);
+		const lockedPaidByUserId = paidByIsFormerMember ? expense.paidByUserId : undefined;
 
 		const formData = await request.formData();
 
-		const result = validateExpenseForm(formData, members, frozenAmountCents);
+		const result = validateExpenseForm(formData, members, frozenAmountCents, lockedPaidByUserId);
 		if ('error' in result) {
 			return fail(400, { error: result.error });
 		}

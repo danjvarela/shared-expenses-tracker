@@ -19,7 +19,8 @@ export function parseAmountCents(raw: FormDataEntryValue | null): number | null 
 export function validateExpenseForm(
 	formData: FormData,
 	members: Array<{ userId: string }>,
-	frozenAmountCents = 0
+	frozenAmountCents = 0,
+	lockedPaidByUserId?: string
 ): { error: string } | { data: ValidatedExpenseForm } {
 	const description = formData.get('description');
 	const amountCents = parseAmountCents(formData.get('amount'));
@@ -43,7 +44,8 @@ export function validateExpenseForm(
 	}
 	if (
 		typeof paidByUserId !== 'string' ||
-		!members.some((member) => member.userId === paidByUserId)
+		(!members.some((member) => member.userId === paidByUserId) &&
+			!(lockedPaidByUserId !== undefined && paidByUserId === lockedPaidByUserId))
 	) {
 		return { error: 'Select who paid' };
 	}
@@ -71,7 +73,7 @@ export function validateExpenseForm(
 		};
 	});
 
-	if (!splitMembers.some((member) => member.included)) {
+	if (!lockedPaidByUserId && !splitMembers.some((member) => member.included)) {
 		return { error: 'At least one member must be included in the split' };
 	}
 

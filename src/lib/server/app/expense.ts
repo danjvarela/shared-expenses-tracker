@@ -125,22 +125,37 @@ export function createExpenseService(deps: {
 
 			const members = await deps.groupMemberRepo.getAllForGroupWithUser(existing.groupId);
 			const currentMemberIds = new Set(members.map((member) => member.userId));
+			const paidByIsFormerMember = !currentMemberIds.has(existing.paidByUserId);
 
-			for (const split of input.splits) {
-				if (!currentMemberIds.has(split.userId)) {
+			let editableSplits: Array<{ userId: string; amountCents: number }>;
+			let frozenSplits: Array<{ userId: string; amountCents: number }>;
+
+			if (paidByIsFormerMember) {
+				if (input.splits.length > 0) {
 					throw new FormerMemberSplitNotEditableError();
 				}
+				editableSplits = [];
+				frozenSplits = existing.splits.map((split) => ({
+					userId: split.userId,
+					amountCents: split.amountCents
+				}));
+			} else {
+				for (const split of input.splits) {
+					if (!currentMemberIds.has(split.userId)) {
+						throw new FormerMemberSplitNotEditableError();
+					}
+				}
+				editableSplits = input.splits;
+				frozenSplits = existing.splits
+					.filter((split) => !currentMemberIds.has(split.userId))
+					.map((split) => ({ userId: split.userId, amountCents: split.amountCents }));
 			}
-
-			const frozenSplits = existing.splits
-				.filter((split) => !currentMemberIds.has(split.userId))
-				.map((split) => ({ userId: split.userId, amountCents: split.amountCents }));
 
 			if (frozenSplits.length > 0 && input.paidByUserId !== existing.paidByUserId) {
 				throw new PaidByCannotChangeWithFormerMemberError();
 			}
 
-			const finalSplits = [...input.splits, ...frozenSplits];
+			const finalSplits = [...editableSplits, ...frozenSplits];
 			const sum = finalSplits.reduce((total, split) => total + split.amountCents, 0);
 			if (sum !== input.amountCents) {
 				throw new ExpenseSplitsDoNotSumError();
