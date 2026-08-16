@@ -32,11 +32,41 @@ const create =
 const getWithSplits =
 	(db: Database): IExpenseRepository['getWithSplits'] =>
 	async (id) => {
-		const [expenseRow] = await db.select().from(expense).where(eq(expense.id, id));
+		const [expenseRow] = await db
+			.select({
+				id: expense.id,
+				groupId: expense.groupId,
+				paidByUserId: expense.paidByUserId,
+				categoryId: expense.categoryId,
+				description: expense.description,
+				amountCents: expense.amountCents,
+				date: expense.date,
+				createdAt: expense.createdAt,
+				updatedAt: expense.updatedAt,
+				paidByName: user.displayName
+			})
+			.from(expense)
+			.innerJoin(user, eq(user.id, expense.paidByUserId))
+			.where(eq(expense.id, id));
 		if (!expenseRow) return null;
 
-		const splits = await db.select().from(expenseSplit).where(eq(expenseSplit.expenseId, id));
-		return { ...expenseRow, splits };
+		const splits = await db
+			.select({
+				id: expenseSplit.id,
+				expenseId: expenseSplit.expenseId,
+				userId: expenseSplit.userId,
+				amountCents: expenseSplit.amountCents,
+				createdAt: expenseSplit.createdAt,
+				displayName: user.displayName
+			})
+			.from(expenseSplit)
+			.innerJoin(user, eq(user.id, expenseSplit.userId))
+			.where(eq(expenseSplit.expenseId, id));
+		return {
+			...expenseRow,
+			paidByName: expenseRow.paidByName ?? 'Unknown',
+			splits: splits.map((split) => ({ ...split, displayName: split.displayName ?? 'Unknown' }))
+		};
 	};
 
 const update =

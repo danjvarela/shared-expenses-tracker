@@ -27,16 +27,23 @@
 
 	let included = $state(
 		untrack(() =>
-			Object.fromEntries(data.members.map((member) => [member.userId, Boolean(splitFor(member.userId))]))
+			Object.fromEntries(
+				data.members.map((member) => [member.userId, Boolean(splitFor(member.userId))])
+			)
 		)
 	);
 
 	function memberName(userId: string) {
-		return data.members.find((member) => member.userId === userId)?.displayName ?? userId;
+		return data.members.find((member) => member.userId === userId)?.displayName;
 	}
 
 	function paidByLabel() {
-		return paidByUserId ? memberName(paidByUserId) : 'Select payer';
+		if (!paidByUserId) return 'Select payer';
+		return memberName(paidByUserId) ?? data.expense.paidByName;
+	}
+
+	function isCurrentMember(userId: string) {
+		return data.members.some((member) => member.userId === userId);
 	}
 
 	function categoryLabel() {
@@ -134,6 +141,20 @@
 								value={existingSplit ? centsToAmountString(existingSplit.amountCents) : ''}
 							/>
 						</div>
+					{/each}
+					{#each data.expense.splits as split (split.userId)}
+						{#if !isCurrentMember(split.userId)}
+							<div class="flex items-center gap-3">
+								<div class="size-4 shrink-0"></div>
+								<Label class="w-32 shrink-0 text-muted-foreground">{split.displayName}</Label>
+								<Input
+									type="number"
+									step="0.01"
+									disabled
+									value={centsToAmountString(split.amountCents)}
+								/>
+							</div>
+						{/if}
 					{/each}
 				</Field.FieldSet>
 

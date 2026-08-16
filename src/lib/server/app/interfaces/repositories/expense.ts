@@ -1,8 +1,17 @@
 import type { Expense } from '$lib/server/domain/expense';
 import type { ExpenseSplit } from '$lib/server/domain/expense-split';
 
+export interface ExpenseSplitWithName extends ExpenseSplit {
+	displayName: string;
+}
+
 export interface ExpenseWithSplits extends Expense {
 	splits: Array<ExpenseSplit>;
+}
+
+export interface ExpenseWithSplitsAndNames extends Expense {
+	splits: Array<ExpenseSplitWithName>;
+	paidByName: string;
 }
 
 export interface ExpenseWithDetails extends ExpenseWithSplits {
@@ -22,7 +31,7 @@ export interface IExpenseRepository {
 		splits: Array<{ userId: string; amountCents: number }>;
 	}): Promise<ExpenseWithSplits>;
 
-	getWithSplits(id: string): Promise<ExpenseWithSplits | null>;
+	getWithSplits(id: string): Promise<ExpenseWithSplitsAndNames | null>;
 
 	update(
 		id: string,

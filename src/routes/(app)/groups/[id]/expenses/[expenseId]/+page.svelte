@@ -21,10 +21,6 @@
 		});
 	}
 
-	function memberName(userId: string) {
-		return data.members.find((member) => member.userId === userId)?.displayName ?? userId;
-	}
-
 	function categoryLabel() {
 		if (!data.expense.categoryId) return null;
 		const category = data.categories.find((category) => category.id === data.expense.categoryId);
@@ -86,7 +82,7 @@
 			</div>
 			<div class="flex items-center justify-between">
 				<span class="text-sm text-muted-foreground">Paid by</span>
-				<span>{memberName(data.expense.paidByUserId)}</span>
+				<span>{data.expense.paidByName}</span>
 			</div>
 			{#if categoryLabel()}
 				<div class="flex items-center justify-between">
@@ -102,7 +98,7 @@
 		<Card.Content class="flex flex-col gap-3">
 			{#each data.expense.splits as split (split.userId)}
 				<div class="flex items-center justify-between">
-					<span>{memberName(split.userId)}</span>
+					<span>{split.displayName}</span>
 					<span>{formatAmount(split.amountCents)}</span>
 				</div>
 			{/each}

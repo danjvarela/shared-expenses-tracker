@@ -1,5 +1,10 @@
 import type { Settlement } from '$lib/server/domain/settlement';
 
+export interface SettlementWithNames extends Settlement {
+	fromUserName: string;
+	toUserName: string;
+}
+
 export interface ISettlementRepository {
 	create(input: {
 		groupId: string;
@@ -10,5 +15,5 @@ export interface ISettlementRepository {
 
 	getAllForGroup(groupId: string): Promise<Array<Settlement>>;
 
-	getById(id: string): Promise<Settlement | undefined>;
+	getById(id: string): Promise<SettlementWithNames | undefined>;
 }

@@ -17,10 +17,6 @@
 			year: 'numeric'
 		});
 	}
-
-	function memberName(userId: string) {
-		return data.members.find((member) => member.userId === userId)?.displayName ?? userId;
-	}
 </script>
 
 <div class="container mx-auto max-w-xl p-4">
@@ -39,11 +35,11 @@
 			</div>
 			<div class="flex items-center justify-between">
 				<span class="text-sm text-muted-foreground">From</span>
-				<span>{memberName(data.settlement.fromUserId)}</span>
+				<span>{data.settlement.fromUserName}</span>
 			</div>
 			<div class="flex items-center justify-between">
 				<span class="text-sm text-muted-foreground">To</span>
-				<span>{memberName(data.settlement.toUserId)}</span>
+				<span>{data.settlement.toUserName}</span>
 			</div>
 			<div class="flex items-center justify-between">
 				<span class="text-sm text-muted-foreground">Group</span>

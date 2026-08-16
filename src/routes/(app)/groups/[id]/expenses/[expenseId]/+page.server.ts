@@ -1,5 +1,5 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { expenseService, expenseRepo, groupMemberService, categoryRepo } from '$lib/server/container';
+import { expenseService, expenseRepo, categoryRepo } from '$lib/server/container';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ params, parent }) => {
@@ -10,10 +10,9 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		error(404, 'Expense not found');
 	}
 
-	const members = await groupMemberService.getGroupMembers(params.id);
 	const categories = await categoryRepo.getAll();
 
-	return { group, members, categories, expense };
+	return { group, categories, expense };
 };
 
 export const actions: Actions = {

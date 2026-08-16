@@ -43,7 +43,9 @@ function fakeSettlementRepo(): ISettlementRepository {
 			return rows.filter((row) => row.groupId === groupId);
 		},
 		async getById(id) {
-			return rows.find((row) => row.id === id);
+			const row = rows.find((r) => r.id === id);
+			if (!row) return undefined;
+			return { ...row, fromUserName: row.fromUserId, toUserName: row.toUserId };
 		}
 	};
 }
@@ -135,13 +137,20 @@ function fakeGroupMemberRepo(): IGroupMemberRepository {
 	};
 }
 
-function fakeNotificationRepo(): INotificationRepository & { created: Array<NotificationCreateInput> } {
+function fakeNotificationRepo(): INotificationRepository & {
+	created: Array<NotificationCreateInput>;
+} {
 	const created: Array<NotificationCreateInput> = [];
 	return {
 		created,
 		async create(input) {
 			created.push(input);
-			return { id: `notification-${created.length}`, readAt: null, createdAt: new Date(), ...input } as Notification;
+			return {
+				id: `notification-${created.length}`,
+				readAt: null,
+				createdAt: new Date(),
+				...input
+			} as Notification;
 		},
 		async listForUser() {
 			return [];

@@ -129,7 +129,13 @@ function fakeExpenseRepo(seed: Array<ExpenseWithSplits> = []): IExpenseRepositor
 			return row;
 		},
 		async getWithSplits(id) {
-			return rows.get(id) ?? null;
+			const row = rows.get(id);
+			if (!row) return null;
+			return {
+				...row,
+				paidByName: row.paidByUserId,
+				splits: row.splits.map((split) => ({ ...split, displayName: split.userId }))
+			};
 		},
 		async update(id, input) {
 			const existing = rows.get(id);

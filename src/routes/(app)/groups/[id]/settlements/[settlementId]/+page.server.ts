@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { settlementRepo, groupMemberService } from '$lib/server/container';
+import { settlementRepo } from '$lib/server/container';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, parent }) => {
@@ -10,7 +10,5 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 		error(404, 'Settlement not found');
 	}
 
-	const members = await groupMemberService.getGroupMembers(params.id);
-
-	return { group, members, settlement };
+	return { group, settlement };
 };
