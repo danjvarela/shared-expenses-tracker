@@ -25,11 +25,12 @@ async function main() {
 	await db.delete(schema.group);
 	await db.delete(schema.user);
 
-	const [alice, bob] = await db
+	const [alice, bob, carol] = await db
 		.insert(schema.user)
 		.values([
 			{ displayName: 'Dan', email: 'vareladanmarj@gmail.com' },
-			{ displayName: 'Nelie', email: 'neliejoycabanillas26@gmail.com' }
+			{ displayName: 'Nelie', email: 'neliejoycabanillas26@gmail.com' },
+			{ displayName: 'Carol', email: 'carol@example.com' }
 		])
 		.returning();
 
@@ -44,16 +45,19 @@ async function main() {
 		])
 		.returning();
 
-	const [apartment, tripToOsaka] = await db
+	const [apartment, tripToOsaka, condo] = await db
 		.insert(schema.group)
-		.values([{ name: 'Apartment 4B' }, { name: 'Trip to Osaka' }])
+		.values([{ name: 'Apartment 4B' }, { name: 'Trip to Osaka' }, { name: 'Condo 12' }])
 		.returning();
 
 	await db.insert(schema.groupMember).values([
 		{ groupId: apartment.id, userId: alice.id },
 		{ groupId: apartment.id, userId: bob.id },
 		{ groupId: tripToOsaka.id, userId: alice.id },
-		{ groupId: tripToOsaka.id, userId: bob.id }
+		{ groupId: tripToOsaka.id, userId: bob.id },
+		{ groupId: condo.id, userId: alice.id },
+		{ groupId: condo.id, userId: bob.id },
+		{ groupId: condo.id, userId: carol.id }
 	]);
 
 	const apartmentExpenses = await db
@@ -169,6 +173,14 @@ async function main() {
 			expenseId: null,
 			settlementId: settlement.id,
 			message: 'Nelie settled up ₱50.00'
+		},
+		{
+			userId: alice.id,
+			groupId: condo.id,
+			type: 'member_removed',
+			expenseId: null,
+			settlementId: null,
+			message: 'Nelie removed Carol from Condo 12'
 		}
 	]);
 
