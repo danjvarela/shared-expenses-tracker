@@ -35,8 +35,10 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 
 ## Receipts
 
-- [ ] Flagged — Receipt image storage: pluggable backend selected via config/env (e.g. Cloudflare R2 for a published deployment, Google Drive for personal use). Needs a storage adapter interface before backend choice is locked in.
-- [ ] Not started — Display receipts on the expense detail page (`/groups/[id]/expenses/[expenseId]`), once storage backend above is chosen.
+- [x] Done — Receipt image storage: pluggable backend selected via env `RECEIPT_STORAGE_BACKEND` (default `fs`; unknown fails at boot). `IReceiptStorageBackend` adapter interface ships with a local-filesystem impl; R2 (published deployment) and Google Drive (personal use) deferred behind the same interface — see ADR-0012.
+- [x] Done — Upload + display an image receipt on the expense detail page (`/groups/[id]/expenses/[expenseId]`), end-to-end (fs adapter, `expense_receipt` table, membership-guarded endpoints).
+- [x] Done — Delete a receipt (row-first DB delete, best-effort `adapter.delete`; idempotent; trash button + confirm Dialog on detail page).
+- [x] Done — PDF receipts (`application/pdf` in upload allowlist; detail page renders `<object type="application/pdf">` with new-tab fallback).
 - [ ] Not started — Receipt orphan gc (reconcile backend keys vs expense_receipt.storageKey; needs additive listKeys() on the storage adapter interface)
 
 ## Additional suggested features
@@ -50,4 +52,4 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 
 ## Open questions
 
-- **Receipt image storage backend**: which backends to actually support (R2, Google Drive, others), and the shape of the adapter interface selecting between them via env/flag.
+- **Receipt storage backend rollout**: `fs` ships now behind `IReceiptStorageBackend`. R2 (published deployment) and Google Drive (personal use) still deferred behind the same interface — Drive in particular has open account/scope/sharing decisions warranting their own ADR/epic.
