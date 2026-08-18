@@ -284,7 +284,7 @@
 		</Card.Content>
 	</Card.Root>
 
-	<Card.Root>
+	<Card.Root class="mt-4">
 		<Card.Header>
 			<Card.Title>Default split percentages</Card.Title>
 			<Card.Description>
