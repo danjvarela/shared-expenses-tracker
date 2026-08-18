@@ -1,8 +1,8 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { expenseService, expenseRepo, categoryRepo } from '$lib/server/container';
+import { expenseService, expenseRepo, categoryRepo, receiptService } from '$lib/server/container';
 import type { PageServerLoad, Actions } from './$types';
 
-export const load: PageServerLoad = async ({ params, parent }) => {
+export const load: PageServerLoad = async ({ params, parent, locals }) => {
 	const { group } = await parent();
 
 	const expense = await expenseRepo.getWithSplits(params.expenseId);
@@ -11,8 +11,9 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 	}
 
 	const categories = await categoryRepo.getAll();
+	const receipts = await receiptService.getReceiptsForExpense(locals.user!.id, params.expenseId);
 
-	return { group, categories, expense };
+	return { group, categories, expense, receipts };
 };
 
 export const actions: Actions = {

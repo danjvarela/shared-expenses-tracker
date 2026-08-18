@@ -10,7 +10,9 @@ import { createPairBalanceRepository } from '$lib/server/infra/db/repositories/p
 import { createGroupMemberRepository } from '$lib/server/infra/db/repositories/group-member';
 import { createCategoryRepository } from '$lib/server/infra/db/repositories/category';
 import { createNotificationRepository } from '$lib/server/infra/db/repositories/notification';
+import { createExpenseReceiptRepository } from '$lib/server/infra/db/repositories/expense-receipt';
 import { createGoogleOAuthProvider } from '$lib/server/infra/oauth/google';
+import { createReceiptStorageBackend } from '$lib/server/infra/receipt-storage';
 
 import { createAuthService } from '$lib/server/app/auth';
 import { createGroupBalanceService } from '$lib/server/app/group-balance';
@@ -21,6 +23,7 @@ import { createSettlementService, type SettlementRepos } from '$lib/server/app/s
 import { createGroupMemberService } from '$lib/server/app/group-member';
 import { createGroupInviteService, type InviteRepos } from '$lib/server/app/group-invite';
 import { createNotificationService } from '$lib/server/app/notification';
+import { createReceiptService } from '$lib/server/app/receipt';
 import type { IOAuthProvider } from '$lib/server/app/interfaces/oauth-provider';
 import { createRemoveMemberService, type RemoveMemberRepos } from './app/remove-member';
 
@@ -34,6 +37,8 @@ const pairBalanceRepo = createPairBalanceRepository(db);
 const groupMemberRepo = createGroupMemberRepository(db);
 const categoryRepo = createCategoryRepository(db);
 const notificationRepo = createNotificationRepository(db);
+const receiptRepo = createExpenseReceiptRepository(db);
+const receiptStorageBackend = createReceiptStorageBackend();
 
 const googleOAuthProvider = createGoogleOAuthProvider();
 const oauthProviders: Record<string, IOAuthProvider> = {
@@ -119,4 +124,19 @@ export const groupService = createGroupService({
 
 export const notificationService = createNotificationService({ notificationRepo });
 
-export { groupRepo, groupMemberRepo, categoryRepo, expenseRepo, pairBalanceRepo, notificationRepo };
+export const receiptService = createReceiptService({
+	receiptRepo,
+	storageBackend: receiptStorageBackend,
+	expenseRepo,
+	groupMemberRepo
+});
+
+export {
+	groupRepo,
+	groupMemberRepo,
+	categoryRepo,
+	expenseRepo,
+	pairBalanceRepo,
+	notificationRepo,
+	receiptRepo
+};

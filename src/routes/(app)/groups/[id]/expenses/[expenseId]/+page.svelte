@@ -6,6 +6,7 @@
 	import { ArrowLeft } from '@lucide/svelte';
 	import { formatAmountCents } from '$lib/currency';
 	import { enhance } from '$app/forms';
+	import Receipts from '$lib/components/receipts/Receipts.svelte';
 
 	const { data, form } = $props();
 
@@ -104,4 +105,6 @@
 			{/each}
 		</Card.Content>
 	</Card.Root>
+
+	<Receipts groupId={data.group.id} expenseId={data.expense.id} receipts={data.receipts} />
 </div>

@@ -6,6 +6,7 @@ export * from './group';
 export * from './group-member';
 export * from './expense';
 export * from './expense-split';
+export * from './expense-receipt';
 export * from './settlement';
 export * from './pair-balance';
 export * from './notification';
