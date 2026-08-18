@@ -14,7 +14,8 @@ export const ALLOWED_RECEIPT_MIMES = new Set<string>([
 	'image/png',
 	'image/webp',
 	'image/heic',
-	'image/avif'
+	'image/avif',
+	'application/pdf'
 ]);
 
 export interface ReceiptCreateInput {

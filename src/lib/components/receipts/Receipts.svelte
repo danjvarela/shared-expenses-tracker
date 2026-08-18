@@ -2,7 +2,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
-	import { Plus, Trash2 } from '@lucide/svelte';
+	import { Plus, Trash2, FileText, ExternalLink } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import type { ExpenseReceipt } from '$lib/server/domain/expense-receipt';
 
@@ -20,6 +20,10 @@
 
 	function readUrl(receiptId: string) {
 		return `/groups/${groupId}/expenses/${expenseId}/receipts/${receiptId}`;
+	}
+
+	function isPdf(receipt: ExpenseReceipt) {
+		return receipt.mime === 'application/pdf';
 	}
 
 	async function onFileChosen() {
@@ -74,7 +78,7 @@
 		<input
 			bind:this={fileInput}
 			type="file"
-			accept="image/*"
+			accept="image/*,application/pdf"
 			class="hidden"
 			onchange={onFileChosen}
 		/>
@@ -87,12 +91,21 @@
 			{#each localReceipts as receipt (receipt.id)}
 				<div class="group relative aspect-square overflow-hidden rounded">
 					<Button variant="ghost" class="h-full w-full p-0" onclick={() => (selected = receipt)}>
-						<img
-							src={readUrl(receipt.id)}
-							alt={receipt.originalFilename ?? 'Receipt'}
-							loading="lazy"
-							class="h-full w-full object-cover"
-						/>
+						{#if isPdf(receipt)}
+							<div
+								class="flex h-full w-full flex-col items-center justify-center gap-1 bg-muted text-muted-foreground"
+							>
+								<FileText class="size-8" />
+								<span class="max-w-full truncate px-2 text-xs">PDF</span>
+							</div>
+						{:else}
+							<img
+								src={readUrl(receipt.id)}
+								alt={receipt.originalFilename ?? 'Receipt'}
+								loading="lazy"
+								class="h-full w-full object-cover"
+							/>
+						{/if}
 					</Button>
 					<Button
 						variant="destructive"
@@ -115,7 +128,29 @@
 			<Dialog.Title>{selected?.originalFilename ?? 'Receipt'}</Dialog.Title>
 		</Dialog.Header>
 		{#if selected}
-			<img src={readUrl(selected.id)} alt={selected.originalFilename ?? 'Receipt'} class="w-full" />
+			{#if isPdf(selected)}
+				<object
+					data={readUrl(selected.id)}
+					type="application/pdf"
+					class="h-[80vh] w-full"
+					aria-label={selected.originalFilename ?? 'Receipt'}
+				>
+					<div class="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+						<p class="text-sm">This PDF can't be shown inline.</p>
+						<Button
+							href={readUrl(selected.id)}
+							target="_blank"
+							rel="noopener noreferrer"
+							variant="outline"
+						>
+							<ExternalLink class="size-4" />
+							Open in new tab
+						</Button>
+					</div>
+				</object>
+			{:else}
+				<img src={readUrl(selected.id)} alt={selected.originalFilename ?? 'Receipt'} class="w-full" />
+			{/if}
 		{/if}
 	</Dialog.Content>
 </Dialog.Root>

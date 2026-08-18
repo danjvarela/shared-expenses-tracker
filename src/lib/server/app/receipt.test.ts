@@ -260,8 +260,8 @@ describe('createReceiptService.createReceipt', () => {
 			svc.createReceipt(alice, {
 				expenseId,
 				stream: makeStream(),
-				mime: 'application/pdf',
-				filename: 'r.pdf',
+				mime: 'text/plain',
+				filename: 'r.txt',
 				sizeBytes: 3
 			})
 		).rejects.toBeInstanceOf(ReceiptMimeNotAllowedError);
@@ -336,8 +336,39 @@ describe('createReceiptService.createReceipt', () => {
 		expect(receipt.created[0].originalFilename).toBeNull();
 	});
 
-	it('accepts every mime in the image allowlist', async () => {
+	it('accepts every mime in the allowlist', async () => {
 		for (const mime of ALLOWED_RECEIPT_MIMES) {
+			const { svc, receipt } = service({});
+			await svc.createReceipt(alice, {
+				expenseId,
+				stream: makeStream(),
+				mime,
+				filename: 'r',
+				sizeBytes: 3
+			});
+			expect(receipt.created).toHaveLength(1);
+		}
+	});
+
+	it('accepts a pdf receipt', async () => {
+		const { svc, receipt } = service({});
+
+		const created = await svc.createReceipt(alice, {
+			expenseId,
+			stream: makeStream(),
+			mime: 'application/pdf',
+			filename: 'receipt.pdf',
+			sizeBytes: 3
+		});
+
+		expect(created.mime).toBe('application/pdf');
+		expect(created.originalFilename).toBe('receipt.pdf');
+		expect(receipt.created).toHaveLength(1);
+	});
+
+	it('still accepts every image mime alongside pdf', async () => {
+		const imageMimes = [...ALLOWED_RECEIPT_MIMES].filter((m) => m !== 'application/pdf');
+		for (const mime of imageMimes) {
 			const { svc, receipt } = service({});
 			await svc.createReceipt(alice, {
 				expenseId,
