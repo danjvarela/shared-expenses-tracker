@@ -30,6 +30,10 @@ _Avoid_: Purchase, transaction, bill
 One User's exact share (`amountCents`) of an Expense. Stored as its own row per (Expense, User) pair, not embedded in Expense, so balances can be computed with a cross-expense sum. The sum of an Expense's splits is expected to equal the Expense's `amountCents`, but this invariant is not enforced at the schema level — see ADR-0001.
 _Avoid_: Share, portion
 
+**ExpenseReceipt**:
+An image or PDF attached to one Expense, stored via the pluggable storage backend and referenced by an opaque `storageKey`. Immutable — replacing a receipt means deleting and re-adding, so it carries no `updatedAt`. 1:N from Expense, cascade-deleted with the Expense. See ADR-0012.
+_Avoid_: Receipt (collides with the future scan-receipt-to-ExpenseGroup concept), Attachment, Image
+
 **PairBalance**:
 The cached, directed net debt between two Users within a Group (`fromUserId` owes `toUserId` `amountCents`), incrementally maintained on every Expense/Settlement write rather than summed from ExpenseSplit/Settlement at read time. At most one nonzero row exists per unordered User pair per Group — see ADR-0004.
 _Avoid_: Balance (ambiguous between net-per-user and pairwise — this context only has the pairwise shape), debt
