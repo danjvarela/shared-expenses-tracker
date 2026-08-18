@@ -132,7 +132,19 @@ export function createReceiptService(deps: ReceiptServiceDeps) {
 		return { mime: receipt.mime, storageKey: receipt.storageKey, stream };
 	}
 
-	return { createReceipt, getReceiptsForExpense, getReadAccess };
+	async function deleteReceipt(actorUserId: string, receiptId: string): Promise<void> {
+		const receipt = await deps.receiptRepo.getById(receiptId);
+		if (!receipt) return;
+
+		await assertMemberForExpense(actorUserId, receipt.expenseId);
+
+		await deps.receiptRepo.delete(receiptId);
+		await deps.storageBackend.delete(receipt.storageKey).catch((err) => {
+			console.error('Failed to delete receipt bytes after row delete', err);
+		});
+	}
+
+	return { createReceipt, getReceiptsForExpense, getReadAccess, deleteReceipt };
 }
 
 export type ReceiptService = ReturnType<typeof createReceiptService>;

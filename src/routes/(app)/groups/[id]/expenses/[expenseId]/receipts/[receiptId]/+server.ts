@@ -19,3 +19,12 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		toHttpError(err);
 	}
 };
+
+export const DELETE: RequestHandler = async ({ params, locals }) => {
+	try {
+		await receiptService.deleteReceipt(locals.user!.id, params.receiptId);
+		return new Response(null, { status: 204 });
+	} catch (err) {
+		toHttpError(err);
+	}
+};

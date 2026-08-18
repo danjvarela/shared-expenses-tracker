@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
-	import { Plus } from '@lucide/svelte';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
+	import { Plus, Trash2 } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import type { ExpenseReceipt } from '$lib/server/domain/expense-receipt';
 
@@ -15,6 +16,7 @@
 	let localReceipts = $state(receipts);
 	let fileInput: HTMLInputElement | undefined = $state();
 	let selected = $state<ExpenseReceipt | null>(null);
+	let pendingDelete = $state<ExpenseReceipt | null>(null);
 
 	function readUrl(receiptId: string) {
 		return `/groups/${groupId}/expenses/${expenseId}/receipts/${receiptId}`;
@@ -43,6 +45,23 @@
 
 		if (fileInput) fileInput.value = '';
 	}
+
+	async function confirmDelete() {
+		if (!pendingDelete) return;
+		const target = pendingDelete;
+		pendingDelete = null;
+
+		const response = await fetch(readUrl(target.id), { method: 'DELETE' });
+
+		if (response.ok) {
+			localReceipts = localReceipts.filter((r) => r.id !== target.id);
+			if (selected?.id === target.id) selected = null;
+			toast.success('Receipt deleted');
+		} else {
+			const message = await response.text();
+			toast.error(message || 'Could not delete the receipt');
+		}
+	}
 </script>
 
 <section class="mt-6">
@@ -66,18 +85,25 @@
 	{:else}
 		<div class="grid grid-cols-3 gap-2 sm:grid-cols-4">
 			{#each localReceipts as receipt (receipt.id)}
-				<Button
-					variant="ghost"
-					class="h-auto w-full overflow-hidden rounded p-0"
-					onclick={() => (selected = receipt)}
-				>
-					<img
-						src={readUrl(receipt.id)}
-						alt={receipt.originalFilename ?? 'Receipt'}
-						loading="lazy"
-						class="aspect-square w-full object-cover"
-					/>
-				</Button>
+				<div class="group relative aspect-square overflow-hidden rounded">
+					<Button variant="ghost" class="h-full w-full p-0" onclick={() => (selected = receipt)}>
+						<img
+							src={readUrl(receipt.id)}
+							alt={receipt.originalFilename ?? 'Receipt'}
+							loading="lazy"
+							class="h-full w-full object-cover"
+						/>
+					</Button>
+					<Button
+						variant="destructive"
+						size="icon"
+						class="absolute top-1 right-1 size-7 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+						aria-label="Delete receipt"
+						onclick={() => (pendingDelete = receipt)}
+					>
+						<Trash2 class="size-4" />
+					</Button>
+				</div>
 			{/each}
 		</div>
 	{/if}
@@ -93,3 +119,23 @@
 		{/if}
 	</Dialog.Content>
 </Dialog.Root>
+
+<AlertDialog.Root
+	bind:open={
+		() => pendingDelete !== null, (value) => (pendingDelete = value ? pendingDelete : null)
+	}
+>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>Delete this receipt?</AlertDialog.Title>
+			<AlertDialog.Description>
+				This will permanently delete "{pendingDelete?.originalFilename ?? 'this receipt'}" and
+				cannot be undone.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+			<AlertDialog.Action onclick={confirmDelete}>Delete</AlertDialog.Action>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>

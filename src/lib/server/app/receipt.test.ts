@@ -444,3 +444,92 @@ describe('createReceiptService.getReadAccess', () => {
 		);
 	});
 });
+
+describe('createReceiptService.deleteReceipt', () => {
+	async function makeReceipt(opts: { storage?: ReturnType<typeof fakeStorageBackend> } = {}) {
+		const receipt = fakeReceiptRepo();
+		const created = await service({ receipt, storage: opts.storage }).svc.createReceipt(alice, {
+			expenseId,
+			stream: makeStream(),
+			mime: 'image/png',
+			filename: 'r.png',
+			sizeBytes: 3
+		});
+		return { receipt, created };
+	}
+
+	it('deletes the row first then the bytes', async () => {
+		const { receipt, created } = await makeReceipt();
+		const storage = fakeStorageBackend();
+		const { svc } = service({ receipt, storage });
+
+		await svc.deleteReceipt(alice, created.id);
+
+		expect(receipt.deleted).toEqual([created.id]);
+		expect(storage.deletedKeys).toEqual([created.storageKey]);
+	});
+
+	it('never touches the bytes if the row delete fails (row-first)', async () => {
+		const storage = fakeStorageBackend();
+		storage.delete = vi.fn(async () => {});
+		const { receipt, created } = await makeReceipt({ storage });
+		receipt.delete = vi.fn(async () => {
+			throw new Error('repo delete failed');
+		});
+		const { svc } = service({ receipt, storage });
+
+		await expect(svc.deleteReceipt(alice, created.id)).rejects.toThrow('repo delete failed');
+
+		expect(receipt.delete).toHaveBeenCalledWith(created.id);
+		expect(storage.delete).not.toHaveBeenCalled();
+	});
+
+	it('is idempotent: a missing row is a success, not a 404', async () => {
+		const { svc, receipt, storage } = service({});
+
+		await expect(svc.deleteReceipt(alice, 'does-not-exist')).resolves.toBeUndefined();
+
+		expect(receipt.deleted).toHaveLength(0);
+		expect(storage.deletedKeys).toHaveLength(0);
+	});
+
+	it('orphans the bytes when the adapter delete fails (logs, does not throw)', async () => {
+		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const storage = fakeStorageBackend();
+		storage.delete = vi.fn(async () => {
+			throw new Error('adapter delete failed');
+		});
+		const { receipt, created } = await makeReceipt({ storage });
+		const { svc } = service({ receipt, storage });
+
+		await expect(svc.deleteReceipt(alice, created.id)).resolves.toBeUndefined();
+
+		expect(receipt.deleted).toEqual([created.id]);
+		expect(storage.delete).toHaveBeenCalledWith(created.storageKey);
+		consoleSpy.mockRestore();
+	});
+
+	it('rejects a non-member and deletes nothing', async () => {
+		const { receipt, created } = await makeReceipt();
+		const storage = fakeStorageBackend();
+		const { svc } = service({ receipt, storage, member: false });
+
+		await expect(svc.deleteReceipt(alice, created.id)).rejects.toBeInstanceOf(
+			ReceiptNotAuthorizedError
+		);
+
+		expect(receipt.deleted).toHaveLength(0);
+		expect(storage.deletedKeys).toHaveLength(0);
+	});
+
+	it('deletes nothing when the expense no longer exists', async () => {
+		const { receipt, created } = await makeReceipt();
+		const storage = fakeStorageBackend();
+		const { svc } = service({ receipt, storage, expense: false });
+
+		await expect(svc.deleteReceipt(alice, created.id)).rejects.toThrow('Expense not found');
+
+		expect(receipt.deleted).toHaveLength(0);
+		expect(storage.deletedKeys).toHaveLength(0);
+	});
+});
