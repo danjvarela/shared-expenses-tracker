@@ -17,12 +17,13 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 - [x] Done — View a group's expenses (read-only list)
 - [x] Done — Add expense manually (form)
 - [ ] Not started — Add expense via free-text input (AI-generated fields)
-- [ ] Not started — Scan receipt to add multiple expenses (OCR/AI)
-- [ ] Not started — `ExpenseGroup` entity — new domain concept, needs a `CONTEXT.md` entry + ADR before/while building:
-  - Every `Expense.expenseGroupId` is non-null (manual single-add creates a group of one too — no nullable special case)
-  - `ExpenseGroup` supplies _defaults only_ (payer, split arrangement), copied down into each child `Expense`/`ExpenseSplit` at creation time
+- [ ] Not started — Scan receipt to add multiple expenses — pluggable scanner backend behind `IReceiptScanner`, selected via env `RECEIPT_SCANNER_BACKEND` (unset = scan UI not rendered; unknown = boot fail). Dumb scanner: bytes in, `ScanResult` (line items only, no currency/category) out; app maps to a draft ExpenseGroup the user edits then confirms. Ollama vision-model backend ships first (`OLLAMA_BASE_URL`, `OLLAMA_VISION_MODEL`); blocking request for now, background-job deferred. See ADR-0013.
+- [ ] Not started — `ExpenseGroup` entity — modeled in `CONTEXT.md` + ADR-0013:
+  - Every `Expense.expenseGroupId` is non-null (manual single-add is wrapped in its own one-child `ExpenseGroup` — no batchless Expense, no nullable special case)
+  - `ExpenseGroup` is `{ id, groupId, createdAt }` only — carries no defaults; scanned-line payer defaults to the scanning user, splits come from `GroupMember.defaultSplitPercent`, both applied at draft time
   - Each child is a plain, full `Expense` — own category, own payer, own splits, independently editable after creation (no live inheritance)
-  - UI collapses an `ExpenseGroup`'s children into one row so a 30-item receipt doesn't flood the expense list
+  - `ExpenseReceipt` attaches to the `ExpenseGroup`, not the `Expense` (one source photo shared by a scanned batch's children); existing `expense_receipt` + every `Expense` backfilled in a single migration
+  - UI collapses a multi-child `ExpenseGroup` into one expandable row; a one-child `ExpenseGroup` renders as a normal expense row and is never shown as a "group"
 - [x] Done — Update expense
 - [x] Done — Delete expense
 - [x] Done — Settlement recording UI (`/settle` page: per-counterparty-per-group debt cards, partial settlement dialog, homepage "pending balances" banner)

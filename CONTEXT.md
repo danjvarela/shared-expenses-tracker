@@ -22,8 +22,12 @@ _Avoid_: Trip, household (too narrow — a Group is generic)
 A User's membership in a Group. Carries no role or permission (no admin/member distinction exists yet). Optionally carries `defaultSplitPercent` — a nullable, per-Group default share used only to prefill new Expense split UIs; not enforced to sum to 100 across a Group's members at the schema level (app layer enforces on save), and independent of any per-`ExpenseGroup` split arrangement default — see ADR-0005.
 _Avoid_: Membership, participant
 
+**ExpenseGroup**:
+A bundle of one or more Expenses that were created together, scoped to a Group. Every Expense belongs to exactly one ExpenseGroup — there is no batchless Expense (a manually-added single expense is wrapped in its own one-child ExpenseGroup). Carries no defaults of its own; the payer for scanned lines defaults to the scanning user and the split arrangement comes from `GroupMember.defaultSplitPercent`, both applied at draft time. A one-child ExpenseGroup is the normal state of every manual expense and is never labeled or shown as a "group" to the user — see ADR-0013.
+_Avoid_: Batch, bundle, receipt group (the origin is not always a receipt), ExpenseGrouping
+
 **Expense**:
-A single purchase paid by one User (`paidByUserId`) on behalf of a Group, for a total of `amountCents`, that happened on `date`. Optionally tagged with a Category. The only entity that tracks `updatedAt`, since it's expected to be edited after creation. `date` (the purchase date, user-editable) is distinct from `createdAt`/`updatedAt` (audit timestamps) — see ADR-0006.
+A single purchase paid by one User (`paidByUserId`) on behalf of a Group, for a total of `amountCents`, that happened on `date`. Optionally tagged with a Category. Belongs to exactly one ExpenseGroup (`expenseGroupId`, non-null). The only entity that tracks `updatedAt`, since it's expected to be edited after creation. `date` (the purchase date, user-editable) is distinct from `createdAt`/`updatedAt` (audit timestamps) — see ADR-0006.
 _Avoid_: Purchase, transaction, bill
 
 **ExpenseSplit**:
@@ -31,8 +35,20 @@ One User's exact share (`amountCents`) of an Expense. Stored as its own row per 
 _Avoid_: Share, portion
 
 **ExpenseReceipt**:
-An image or PDF attached to one Expense, stored via the pluggable storage backend and referenced by an opaque `storageKey`. Immutable — replacing a receipt means deleting and re-adding, so it carries no `updatedAt`. 1:N from Expense, cascade-deleted with the Expense. See ADR-0012.
-_Avoid_: Receipt (collides with the future scan-receipt-to-ExpenseGroup concept), Attachment, Image
+An image or PDF attached to one ExpenseGroup, stored via the pluggable storage backend and referenced by an opaque `storageKey`. The source photo for a scanned batch sits on the batch and is shared by all its child Expenses; a manual single expense's receipt sits on that expense's own one-child ExpenseGroup. Immutable — replacing a receipt means deleting and re-adding, so it carries no `updatedAt`. 1:N from ExpenseGroup, cascade-deleted with the ExpenseGroup. See ADR-0012, ADR-0013.
+_Avoid_: Receipt (collides with the scan-receipt-to-ExpenseGroup concept), Attachment, Image
+
+**Receipt scan**:
+The act of turning receipt bytes into a draft ExpenseGroup: the scanner returns raw line items, the app maps them into child Expenses (payer defaults to the scanning user, splits from `GroupMember.defaultSplitPercent`), the user edits the draft, then confirms to persist. Receipts are assumed to be in the Group's selected currency — foreign-currency receipts are out of scope. The scan UI is not rendered when no scanner backend is configured. See ADR-0013.
+_Avoid_: OCR, extraction (implementation detail of a backend, not the domain act)
+
+**Scanner**:
+A pluggable backend that turns receipt bytes into a `ScanResult`. Dumb by design: it receives only bytes and mime, knows nothing about the Group, its members, splits, or categories. Selected at boot via env `RECEIPT_SCANNER_BACKEND` (unset = feature off; unknown = boot fail). Today only an Ollama vision-model backend ships. See ADR-0013.
+_Avoid_: OCR engine, recognizer
+
+**ScanResult**:
+The structured output of a Scanner: optional `merchant`, `date`, `totalDecimal` (the receipt grand total, raw decimal — validation display only, never an Expense), and a list of `lineItems` each with a `description` and `amountDecimal` (raw decimal as printed; the app normalizes to `amountCents`). No currency — see `Receipt scan`. See ADR-0013.
+_Avoid_: Parsed receipt, extraction result
 
 **PairBalance**:
 The cached, directed net debt between two Users within a Group (`fromUserId` owes `toUserId` `amountCents`), incrementally maintained on every Expense/Settlement write rather than summed from ExpenseSplit/Settlement at read time. At most one nonzero row exists per unordered User pair per Group — see ADR-0004.
