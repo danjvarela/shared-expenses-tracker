@@ -4,6 +4,7 @@ import type {
 	IExpenseRepository,
 	ExpenseWithSplitsAndNames
 } from '$lib/server/app/interfaces/repositories/expense';
+import type { IExpenseGroupRepository } from '$lib/server/app/interfaces/repositories/expense-group';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
 import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
 import type { ExpenseReceipt } from '$lib/server/domain/expense-receipt';
@@ -16,10 +17,12 @@ import {
 	MAX_RECEIPT_BYTES,
 	ALLOWED_RECEIPT_MIMES
 } from './receipt';
+import { ExpenseGroupNotFoundError } from './expense';
 
 const alice = 'alice';
 const groupId = 'group-1';
 const expenseId = 'expense-1';
+const expenseGroupId = 'expense-group-1';
 
 function fakeExpenseRepo(seed: Array<ExpenseWithSplitsAndNames> = []): IExpenseRepository {
 	const rows = new Map(seed.map((row) => [row.id, row]));
@@ -34,6 +37,9 @@ function fakeExpenseRepo(seed: Array<ExpenseWithSplitsAndNames> = []): IExpenseR
 			throw new Error('not implemented');
 		},
 		async delete() {},
+		async countByExpenseGroup() {
+			return 0;
+		},
 		async getAllForGroupWithSplits() {
 			return [];
 		},
@@ -43,10 +49,24 @@ function fakeExpenseRepo(seed: Array<ExpenseWithSplitsAndNames> = []): IExpenseR
 	};
 }
 
+function fakeExpenseGroupRepo(missing = false): IExpenseGroupRepository {
+	return {
+		async create() {
+			throw new Error('not implemented');
+		},
+		async getById(id) {
+			if (missing) return null;
+			return { id, groupId, createdAt: new Date() };
+		},
+		async delete() {}
+	};
+}
+
 function expenseRow(): ExpenseWithSplitsAndNames {
 	return {
 		id: expenseId,
 		groupId,
+		expenseGroupId,
 		paidByUserId: alice,
 		categoryId: null,
 		description: 'Dinner',
@@ -95,7 +115,7 @@ function fakeReceiptRepo(): IExpenseReceiptRepository & {
 			if (this.shouldThrowOnCreate) throw new Error('repo create failed');
 			const row: ExpenseReceipt = {
 				id: `receipt-${nextId++}`,
-				expenseId: input.expenseId,
+				expenseGroupId: input.expenseGroupId,
 				storageKey: input.storageKey,
 				mime: input.mime,
 				sizeBytes: input.sizeBytes,
@@ -110,7 +130,7 @@ function fakeReceiptRepo(): IExpenseReceiptRepository & {
 		async getById(id) {
 			return rows.get(id) ?? null;
 		},
-		async getAllForExpense() {
+		async getAllForExpenseGroup() {
 			return Array.from(rows.values());
 		},
 		async delete(id) {
@@ -167,6 +187,7 @@ function makeStream(): ReadableStream<Uint8Array> {
 function service(opts: {
 	member?: boolean;
 	expense?: boolean;
+	expenseGroup?: boolean;
 	storage?: ReturnType<typeof fakeStorageBackend>;
 	receipt?: ReturnType<typeof fakeReceiptRepo>;
 	shouldThrowOnCreate?: boolean;
@@ -179,6 +200,7 @@ function service(opts: {
 		receiptRepo: receipt,
 		storageBackend: storage,
 		expenseRepo: fakeExpenseRepo(opts.expense === false ? [] : [expenseRow()]),
+		expenseGroupRepo: fakeExpenseGroupRepo(opts.expenseGroup === false),
 		groupMemberRepo: fakeGroupMemberRepo(opts.member ?? true)
 	});
 	return { svc, storage, receipt };
@@ -553,12 +575,14 @@ describe('createReceiptService.deleteReceipt', () => {
 		expect(storage.deletedKeys).toHaveLength(0);
 	});
 
-	it('deletes nothing when the expense no longer exists', async () => {
+	it('deletes nothing when the expense group no longer exists', async () => {
 		const { receipt, created } = await makeReceipt();
 		const storage = fakeStorageBackend();
-		const { svc } = service({ receipt, storage, expense: false });
+		const { svc } = service({ receipt, storage, expenseGroup: false });
 
-		await expect(svc.deleteReceipt(alice, created.id)).rejects.toThrow('Expense not found');
+		await expect(svc.deleteReceipt(alice, created.id)).rejects.toBeInstanceOf(
+			ExpenseGroupNotFoundError
+		);
 
 		expect(receipt.deleted).toHaveLength(0);
 		expect(storage.deletedKeys).toHaveLength(0);

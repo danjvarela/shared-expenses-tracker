@@ -2,6 +2,7 @@ import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 import { group } from './group';
 import { user } from './user';
 import { category } from './category';
+import { expenseGroup } from './expense-group';
 
 export const expense = sqliteTable('expense', {
 	id: text()
@@ -10,6 +11,9 @@ export const expense = sqliteTable('expense', {
 	groupId: text()
 		.notNull()
 		.references(() => group.id, { onDelete: 'cascade' }),
+	expenseGroupId: text()
+		.notNull()
+		.references(() => expenseGroup.id, { onDelete: 'cascade' }),
 	paidByUserId: text()
 		.notNull()
 		.references(() => user.id, { onDelete: 'restrict' }),

@@ -29,6 +29,9 @@ function fakeExpenseRepo(expenses: Array<ExpenseWithSplits>): IExpenseRepository
 		async delete() {
 			throw new Error('not implemented');
 		},
+		async countByExpenseGroup() {
+			throw new Error('not implemented');
+		},
 		async getAllForGroupWithDetails() {
 			throw new Error('not implemented');
 		},
@@ -97,6 +100,7 @@ describe('createGroupBalanceService', () => {
 		const expense: ExpenseWithSplits = {
 			id: 'expense-1',
 			groupId,
+			expenseGroupId: 'expense-group-1',
 			paidByUserId: alice,
 			categoryId: null,
 			description: 'Dinner',

@@ -11,6 +11,11 @@ import type {
 } from '$lib/server/app/interfaces/repositories/group-member';
 import type { IGroupRepository } from '$lib/server/app/interfaces/repositories/group';
 import type {
+	IExpenseGroupRepository,
+	ExpenseGroupCreateInput
+} from '$lib/server/app/interfaces/repositories/expense-group';
+import type { ExpenseGroup } from '$lib/server/domain/expense-group';
+import type {
 	INotificationRepository,
 	NotificationCreateInput
 } from '$lib/server/app/interfaces/repositories/notification';
@@ -123,6 +128,7 @@ function fakeExpenseRepo(seed: Array<ExpenseWithSplits> = []): IExpenseRepositor
 			const row: ExpenseWithSplits = {
 				id,
 				groupId: input.groupId,
+				expenseGroupId: input.expenseGroupId,
 				paidByUserId: input.paidByUserId,
 				categoryId: input.categoryId,
 				description: input.description,
@@ -158,6 +164,10 @@ function fakeExpenseRepo(seed: Array<ExpenseWithSplits> = []): IExpenseRepositor
 		async delete(id) {
 			rows.delete(id);
 		},
+		async countByExpenseGroup(expenseGroupId) {
+			return Array.from(rows.values()).filter((row) => row.expenseGroupId === expenseGroupId)
+				.length;
+		},
 		async getAllForGroupWithSplits(groupId) {
 			return Array.from(rows.values()).filter((row) => row.groupId === groupId);
 		},
@@ -170,6 +180,34 @@ function fakeExpenseRepo(seed: Array<ExpenseWithSplits> = []): IExpenseRepositor
 					categoryName: null,
 					categoryIcon: null
 				}));
+		}
+	};
+}
+
+function fakeExpenseGroupRepo(): IExpenseGroupRepository & {
+	created: Array<ExpenseGroup>;
+	deleted: Array<string>;
+} {
+	const created: Array<ExpenseGroup> = [];
+	const deleted: Array<string> = [];
+	let nextId = 0;
+	return {
+		created,
+		deleted,
+		async create(input: ExpenseGroupCreateInput) {
+			const group: ExpenseGroup = {
+				id: `expense-group-${nextId++}`,
+				groupId: input.groupId,
+				createdAt: new Date()
+			};
+			created.push(group);
+			return group;
+		},
+		async getById(id) {
+			return created.find((group) => group.id === id) ?? null;
+		},
+		async delete(id) {
+			deleted.push(id);
 		}
 	};
 }
@@ -228,6 +266,7 @@ describe('createExpenseService', () => {
 		const seed: ExpenseWithSplits = {
 			id: 'expense-0',
 			groupId,
+			expenseGroupId: 'expense-group-0',
 			paidByUserId: alice,
 			categoryId: null,
 			description: 'Dinner',
@@ -239,7 +278,11 @@ describe('createExpenseService', () => {
 		};
 		const expenseRepo = fakeExpenseRepo([seed]);
 		const service = createExpenseService({
-			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo: fakePairBalanceRepo() }),
+			uow: fakeUnitOfWork({
+				expenseRepo,
+				pairBalanceRepo: fakePairBalanceRepo(),
+				expenseGroupRepo: fakeExpenseGroupRepo()
+			}),
 			expenseRepo,
 			groupRepo: fakeGroupRepo(),
 			groupMemberRepo: fakeGroupMemberRepo([]),
@@ -255,8 +298,9 @@ describe('createExpenseService', () => {
 	it('creates an expense and applies pair balance deltas within the unit of work', async () => {
 		const expenseRepo = fakeExpenseRepo();
 		const pairBalanceRepo = fakePairBalanceRepo();
+		const expenseGroupRepo = fakeExpenseGroupRepo();
 		const service = createExpenseService({
-			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo }),
+			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo, expenseGroupRepo }),
 			expenseRepo,
 			groupRepo: fakeGroupRepo(),
 			groupMemberRepo: fakeGroupMemberRepo([]),
@@ -280,6 +324,9 @@ describe('createExpenseService', () => {
 		);
 
 		expect(created.id).toBeDefined();
+		expect(expenseGroupRepo.created).toHaveLength(1);
+		expect(expenseGroupRepo.created[0].groupId).toBe(groupId);
+		expect(created.expenseGroupId).toBe(expenseGroupRepo.created[0].id);
 		expect(pairBalanceRepo.deltasApplied).toEqual([
 			{ groupId, fromUserId: bob, toUserId: alice, amountCents: 500 }
 		]);
@@ -289,7 +336,11 @@ describe('createExpenseService', () => {
 		const expenseRepo = fakeExpenseRepo();
 		const notificationRepo = fakeNotificationRepo();
 		const service = createExpenseService({
-			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo: fakePairBalanceRepo() }),
+			uow: fakeUnitOfWork({
+				expenseRepo,
+				pairBalanceRepo: fakePairBalanceRepo(),
+				expenseGroupRepo: fakeExpenseGroupRepo()
+			}),
 			expenseRepo,
 			groupRepo: fakeGroupRepo('USD'),
 			groupMemberRepo: fakeGroupMemberRepo([
@@ -345,7 +396,11 @@ describe('createExpenseService', () => {
 			async remove() {}
 		};
 		const service = createExpenseService({
-			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo: fakePairBalanceRepo() }),
+			uow: fakeUnitOfWork({
+				expenseRepo,
+				pairBalanceRepo: fakePairBalanceRepo(),
+				expenseGroupRepo: fakeExpenseGroupRepo()
+			}),
 			expenseRepo,
 			groupRepo: fakeGroupRepo(),
 			groupMemberRepo,
@@ -374,7 +429,8 @@ describe('createExpenseService', () => {
 		const service = createExpenseService({
 			uow: fakeUnitOfWork({
 				expenseRepo,
-				pairBalanceRepo: fakePairBalanceRepo()
+				pairBalanceRepo: fakePairBalanceRepo(),
+				expenseGroupRepo: fakeExpenseGroupRepo()
 			}),
 			expenseRepo,
 			groupRepo: fakeGroupRepo(),
@@ -404,6 +460,7 @@ describe('createExpenseService', () => {
 			return {
 				id: 'expense-0',
 				groupId,
+				expenseGroupId: 'expense-group-0',
 				paidByUserId: alice,
 				categoryId: null,
 				description: 'Dinner',
@@ -442,7 +499,11 @@ describe('createExpenseService', () => {
 			pairBalanceRepo: ReturnType<typeof fakePairBalanceRepo>
 		) {
 			return createExpenseService({
-				uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo }),
+				uow: fakeUnitOfWork({
+					expenseRepo,
+					pairBalanceRepo,
+					expenseGroupRepo: fakeExpenseGroupRepo()
+				}),
 				expenseRepo,
 				groupRepo: fakeGroupRepo(),
 				groupMemberRepo: fakeGroupMemberRepo(currentMembers),
@@ -565,6 +626,7 @@ describe('createExpenseService', () => {
 				return {
 					id: 'expense-0',
 					groupId,
+					expenseGroupId: 'expense-group-0',
 					paidByUserId: carol,
 					categoryId: null,
 					description: 'Dinner',
@@ -673,6 +735,7 @@ describe('createExpenseService', () => {
 		const seed: ExpenseWithSplits = {
 			id: 'expense-0',
 			groupId,
+			expenseGroupId: 'expense-group-0',
 			paidByUserId: alice,
 			categoryId: null,
 			description: 'Dinner',
@@ -699,8 +762,9 @@ describe('createExpenseService', () => {
 		};
 		const expenseRepo = fakeExpenseRepo([seed]);
 		const pairBalanceRepo = fakePairBalanceRepo();
+		const expenseGroupRepo = fakeExpenseGroupRepo();
 		const service = createExpenseService({
-			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo }),
+			uow: fakeUnitOfWork({ expenseRepo, pairBalanceRepo, expenseGroupRepo }),
 			expenseRepo,
 			groupRepo: fakeGroupRepo(),
 			groupMemberRepo: fakeGroupMemberRepo([]),
@@ -709,6 +773,7 @@ describe('createExpenseService', () => {
 
 		await service.deleteExpense('expense-0');
 
+		expect(expenseGroupRepo.deleted).toEqual(['expense-group-0']);
 		expect(pairBalanceRepo.deltasApplied).toEqual([
 			{ groupId, fromUserId: alice, toUserId: bob, amountCents: 500 }
 		]);

@@ -4,7 +4,7 @@ import { expense } from '$lib/server/infra/db/schema/expense';
 import { expenseSplit } from '$lib/server/infra/db/schema/expense-split';
 import { user } from '$lib/server/infra/db/schema/user';
 import { category } from '$lib/server/infra/db/schema/category';
-import { eq } from 'drizzle-orm';
+import { count, eq } from 'drizzle-orm';
 
 const create =
 	(db: Database): IExpenseRepository['create'] =>
@@ -13,6 +13,7 @@ const create =
 			.insert(expense)
 			.values({
 				groupId: input.groupId,
+				expenseGroupId: input.expenseGroupId,
 				paidByUserId: input.paidByUserId,
 				categoryId: input.categoryId,
 				description: input.description,
@@ -36,6 +37,7 @@ const getWithSplits =
 			.select({
 				id: expense.id,
 				groupId: expense.groupId,
+				expenseGroupId: expense.expenseGroupId,
 				paidByUserId: expense.paidByUserId,
 				categoryId: expense.categoryId,
 				description: expense.description,
@@ -101,6 +103,16 @@ const deleteExpense =
 		await db.delete(expense).where(eq(expense.id, id));
 	};
 
+const countByExpenseGroup =
+	(db: Database): IExpenseRepository['countByExpenseGroup'] =>
+	async (expenseGroupId) => {
+		const [row] = await db
+			.select({ total: count() })
+			.from(expense)
+			.where(eq(expense.expenseGroupId, expenseGroupId));
+		return row?.total ?? 0;
+	};
+
 const getAllForGroupWithSplits =
 	(db: Database): IExpenseRepository['getAllForGroupWithSplits'] =>
 	async (groupId) => {
@@ -124,6 +136,7 @@ const getAllForGroupWithDetails =
 			.select({
 				id: expense.id,
 				groupId: expense.groupId,
+				expenseGroupId: expense.expenseGroupId,
 				paidByUserId: expense.paidByUserId,
 				categoryId: expense.categoryId,
 				description: expense.description,
@@ -157,6 +170,7 @@ export function createExpenseRepository(db: Database): IExpenseRepository {
 		getWithSplits: getWithSplits(db),
 		update: update(db),
 		delete: deleteExpense(db),
+		countByExpenseGroup: countByExpenseGroup(db),
 		getAllForGroupWithSplits: getAllForGroupWithSplits(db),
 		getAllForGroupWithDetails: getAllForGroupWithDetails(db)
 	};

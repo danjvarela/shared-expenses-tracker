@@ -1,7 +1,7 @@
 import type { ExpenseReceipt } from '$lib/server/domain/expense-receipt';
 
 export interface ExpenseReceiptCreateInput {
-	expenseId: string;
+	expenseGroupId: string;
 	storageKey: string;
 	mime: string;
 	sizeBytes: number;
@@ -12,6 +12,6 @@ export interface ExpenseReceiptCreateInput {
 export interface IExpenseReceiptRepository {
 	create(input: ExpenseReceiptCreateInput): Promise<ExpenseReceipt>;
 	getById(id: string): Promise<ExpenseReceipt | null>;
-	getAllForExpense(expenseId: string): Promise<Array<ExpenseReceipt>>;
+	getAllForExpenseGroup(expenseGroupId: string): Promise<Array<ExpenseReceipt>>;
 	delete(id: string): Promise<void>;
 }

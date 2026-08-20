@@ -5,6 +5,7 @@ import type {
 	ExpenseWithSplits,
 	ExpenseWithDetails
 } from '$lib/server/app/interfaces/repositories/expense';
+import type { IExpenseGroupRepository } from '$lib/server/app/interfaces/repositories/expense-group';
 import type { IPairBalanceRepository } from '$lib/server/app/interfaces/repositories/pair-balance';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
 import type { IGroupRepository } from '$lib/server/app/interfaces/repositories/group';
@@ -25,11 +26,18 @@ export interface ExpenseInput {
 export interface ExpenseRepos {
 	expenseRepo: IExpenseRepository;
 	pairBalanceRepo: IPairBalanceRepository;
+	expenseGroupRepo: IExpenseGroupRepository;
 }
 
 export class ExpenseNotFoundError extends AppError {
 	constructor() {
 		super('Expense not found', 404);
+	}
+}
+
+export class ExpenseGroupNotFoundError extends AppError {
+	constructor() {
+		super('Expense group not found', 404);
 	}
 }
 
@@ -98,17 +106,20 @@ export function createExpenseService(deps: {
 		input: ExpenseInput,
 		actorUserId: string
 	): Promise<ExpenseWithSplits> {
-		const created = await deps.uow.run(async ({ expenseRepo, pairBalanceRepo }) => {
-			const created = await expenseRepo.create(input);
+		const created = await deps.uow.run(
+			async ({ expenseRepo, pairBalanceRepo, expenseGroupRepo }) => {
+				const expenseGroup = await expenseGroupRepo.create({ groupId: input.groupId });
+				const created = await expenseRepo.create({ ...input, expenseGroupId: expenseGroup.id });
 
-			await applyPairBalanceDeltas(
-				pairBalanceRepo,
-				input.groupId,
-				expenseDeltas(input.paidByUserId, input.splits)
-			);
+				await applyPairBalanceDeltas(
+					pairBalanceRepo,
+					input.groupId,
+					expenseDeltas(input.paidByUserId, input.splits)
+				);
 
-			return created;
-		});
+				return created;
+			}
+		);
 
 		await notifyExpenseCreated(actorUserId, created);
 
@@ -178,11 +189,16 @@ export function createExpenseService(deps: {
 	}
 
 	async function deleteExpense(id: string): Promise<void> {
-		return deps.uow.run(async ({ expenseRepo, pairBalanceRepo }) => {
+		return deps.uow.run(async ({ expenseRepo, pairBalanceRepo, expenseGroupRepo }) => {
 			const existing = await expenseRepo.getWithSplits(id);
 			if (!existing) throw new ExpenseNotFoundError();
 
 			await expenseRepo.delete(id);
+
+			const remaining = await expenseRepo.countByExpenseGroup(existing.expenseGroupId);
+			if (remaining === 0) {
+				await expenseGroupRepo.delete(existing.expenseGroupId);
+			}
 
 			const reversedDeltas = expenseDeltas(existing.paidByUserId, existing.splits).map((delta) => ({
 				...delta,

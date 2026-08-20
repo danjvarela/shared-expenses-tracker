@@ -9,7 +9,7 @@ const create =
 		const [row] = await db
 			.insert(expenseReceipt)
 			.values({
-				expenseId: input.expenseId,
+				expenseGroupId: input.expenseGroupId,
 				storageKey: input.storageKey,
 				mime: input.mime,
 				sizeBytes: input.sizeBytes,
@@ -27,13 +27,13 @@ const getById =
 		return row ?? null;
 	};
 
-const getAllForExpense =
-	(db: Database): IExpenseReceiptRepository['getAllForExpense'] =>
-	async (expenseId) => {
+const getAllForExpenseGroup =
+	(db: Database): IExpenseReceiptRepository['getAllForExpenseGroup'] =>
+	async (expenseGroupId) => {
 		return await db
 			.select()
 			.from(expenseReceipt)
-			.where(eq(expenseReceipt.expenseId, expenseId))
+			.where(eq(expenseReceipt.expenseGroupId, expenseGroupId))
 			.orderBy(asc(expenseReceipt.uploadedAt));
 	};
 
@@ -47,7 +47,7 @@ export function createExpenseReceiptRepository(db: Database): IExpenseReceiptRep
 	return {
 		create: create(db),
 		getById: getById(db),
-		getAllForExpense: getAllForExpense(db),
+		getAllForExpenseGroup: getAllForExpenseGroup(db),
 		delete: remove(db)
 	};
 }

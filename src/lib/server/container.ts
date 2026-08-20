@@ -5,6 +5,7 @@ import { createIdentityRepository } from '$lib/server/infra/db/repositories/iden
 import { createSessionRepository } from '$lib/server/infra/db/repositories/session';
 import { createGroupRepository } from '$lib/server/infra/db/repositories/group';
 import { createExpenseRepository } from '$lib/server/infra/db/repositories/expense';
+import { createExpenseGroupRepository } from '$lib/server/infra/db/repositories/expense-group';
 import { createSettlementRepository } from '$lib/server/infra/db/repositories/settlement';
 import { createPairBalanceRepository } from '$lib/server/infra/db/repositories/pair-balance';
 import { createGroupMemberRepository } from '$lib/server/infra/db/repositories/group-member';
@@ -32,6 +33,7 @@ const identityRepo = createIdentityRepository(db);
 const sessionRepo = createSessionRepository(db);
 const groupRepo = createGroupRepository(db);
 const expenseRepo = createExpenseRepository(db);
+const expenseGroupRepo = createExpenseGroupRepository(db);
 const settlementRepo = createSettlementRepository(db);
 const pairBalanceRepo = createPairBalanceRepository(db);
 const groupMemberRepo = createGroupMemberRepository(db);
@@ -47,7 +49,8 @@ const oauthProviders: Record<string, IOAuthProvider> = {
 
 const expenseUnitOfWork = createUnitOfWork<ExpenseRepos>((tx) => ({
 	expenseRepo: createExpenseRepository(tx),
-	pairBalanceRepo: createPairBalanceRepository(tx)
+	pairBalanceRepo: createPairBalanceRepository(tx),
+	expenseGroupRepo: createExpenseGroupRepository(tx)
 }));
 
 const settlementUnitOfWork = createUnitOfWork<SettlementRepos>((tx) => ({
@@ -128,6 +131,7 @@ export const receiptService = createReceiptService({
 	receiptRepo,
 	storageBackend: receiptStorageBackend,
 	expenseRepo,
+	expenseGroupRepo,
 	groupMemberRepo
 });
 

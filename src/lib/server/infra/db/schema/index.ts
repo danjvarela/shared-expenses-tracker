@@ -4,6 +4,7 @@ export * from './session';
 export * from './category';
 export * from './group';
 export * from './group-member';
+export * from './expense-group';
 export * from './expense';
 export * from './expense-split';
 export * from './expense-receipt';

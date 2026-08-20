@@ -1,8 +1,9 @@
 import { basename } from 'node:path';
 import { AppError } from '$lib/server/app/error';
-import { ExpenseNotFoundError } from '$lib/server/app/expense';
+import { ExpenseNotFoundError, ExpenseGroupNotFoundError } from '$lib/server/app/expense';
 import type { IExpenseReceiptRepository } from '$lib/server/app/interfaces/repositories/expense-receipt';
 import type { IExpenseRepository } from '$lib/server/app/interfaces/repositories/expense';
+import type { IExpenseGroupRepository } from '$lib/server/app/interfaces/repositories/expense-group';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
 import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
 import type { ExpenseReceipt } from '$lib/server/domain/expense-receipt';
@@ -58,6 +59,7 @@ export interface ReceiptServiceDeps {
 	receiptRepo: IExpenseReceiptRepository;
 	storageBackend: IReceiptStorageBackend;
 	expenseRepo: IExpenseRepository;
+	expenseGroupRepo: IExpenseGroupRepository;
 	groupMemberRepo: IGroupMemberRepository;
 }
 
@@ -79,11 +81,21 @@ export function createReceiptService(deps: ReceiptServiceDeps) {
 		return expense;
 	}
 
+	async function assertMemberForExpenseGroup(actorUserId: string, expenseGroupId: string) {
+		const expenseGroup = await deps.expenseGroupRepo.getById(expenseGroupId);
+		if (!expenseGroup) throw new ExpenseGroupNotFoundError();
+
+		const isMember = await deps.groupMemberRepo.isMember(expenseGroup.groupId, actorUserId);
+		if (!isMember) throw new ReceiptNotAuthorizedError();
+
+		return expenseGroup;
+	}
+
 	async function createReceipt(
 		actorUserId: string,
 		input: ReceiptCreateInput
 	): Promise<ExpenseReceipt> {
-		await assertMemberForExpense(actorUserId, input.expenseId);
+		const expense = await assertMemberForExpense(actorUserId, input.expenseId);
 
 		if (input.sizeBytes > MAX_RECEIPT_BYTES) throw new ReceiptTooLargeError();
 		if (!ALLOWED_RECEIPT_MIMES.has(input.mime)) throw new ReceiptMimeNotAllowedError();
@@ -97,7 +109,7 @@ export function createReceiptService(deps: ReceiptServiceDeps) {
 
 		try {
 			return await deps.receiptRepo.create({
-				expenseId: input.expenseId,
+				expenseGroupId: expense.expenseGroupId,
 				storageKey: key,
 				mime: input.mime,
 				sizeBytes: input.sizeBytes,
@@ -116,15 +128,15 @@ export function createReceiptService(deps: ReceiptServiceDeps) {
 		actorUserId: string,
 		expenseId: string
 	): Promise<Array<ExpenseReceipt>> {
-		await assertMemberForExpense(actorUserId, expenseId);
-		return deps.receiptRepo.getAllForExpense(expenseId);
+		const expense = await assertMemberForExpense(actorUserId, expenseId);
+		return deps.receiptRepo.getAllForExpenseGroup(expense.expenseGroupId);
 	}
 
 	async function getReadAccess(actorUserId: string, receiptId: string): Promise<ReceiptReadAccess> {
 		const receipt = await deps.receiptRepo.getById(receiptId);
 		if (!receipt) throw new ReceiptNotFoundError();
 
-		await assertMemberForExpense(actorUserId, receipt.expenseId);
+		await assertMemberForExpenseGroup(actorUserId, receipt.expenseGroupId);
 
 		const url = await deps.storageBackend.getReadUrl(receipt.storageKey);
 		if (url) return { mime: receipt.mime, storageKey: receipt.storageKey, url };
@@ -137,7 +149,7 @@ export function createReceiptService(deps: ReceiptServiceDeps) {
 		const receipt = await deps.receiptRepo.getById(receiptId);
 		if (!receipt) return;
 
-		await assertMemberForExpense(actorUserId, receipt.expenseId);
+		await assertMemberForExpenseGroup(actorUserId, receipt.expenseGroupId);
 
 		await deps.receiptRepo.delete(receiptId);
 		await deps.storageBackend.delete(receipt.storageKey).catch((err) => {

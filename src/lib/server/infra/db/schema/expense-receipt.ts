@@ -1,14 +1,14 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
-import { expense } from './expense';
+import { expenseGroup } from './expense-group';
 import { user } from './user';
 
 export const expenseReceipt = sqliteTable('expense_receipt', {
 	id: text()
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
-	expenseId: text()
+	expenseGroupId: text()
 		.notNull()
-		.references(() => expense.id, { onDelete: 'cascade' }),
+		.references(() => expenseGroup.id, { onDelete: 'cascade' }),
 	storageKey: text().notNull(),
 	mime: text().notNull(),
 	sizeBytes: integer().notNull(),

@@ -60,65 +60,78 @@ async function main() {
 		{ groupId: condo.id, userId: carol.id }
 	]);
 
-	const apartmentExpenses = await db
-		.insert(schema.expense)
-		.values([
-			{
-				groupId: apartment.id,
-				paidByUserId: alice.id,
-				categoryId: rent.id,
-				description: 'August rent',
-				amountCents: 180000,
-				date: new Date('2025-08-01')
-			},
-			{
-				groupId: apartment.id,
-				paidByUserId: bob.id,
-				categoryId: utilities.id,
-				description: 'Electric bill',
-				amountCents: 6400,
-				date: new Date('2025-08-05')
-			},
-			{
-				groupId: apartment.id,
-				paidByUserId: alice.id,
-				categoryId: food.id,
-				description: 'Costco run',
-				amountCents: 11250,
-				date: new Date('2025-08-10')
-			}
-		])
-		.returning();
+	async function insertExpense(input: {
+		groupId: string;
+		paidByUserId: string;
+		categoryId: string;
+		description: string;
+		amountCents: number;
+		date: Date;
+	}) {
+		const [group] = await db
+			.insert(schema.expenseGroup)
+			.values({ groupId: input.groupId })
+			.returning();
+		const [expense] = await db
+			.insert(schema.expense)
+			.values({ ...input, expenseGroupId: group.id })
+			.returning();
+		return expense;
+	}
 
-	const osakaExpenses = await db
-		.insert(schema.expense)
-		.values([
-			{
-				groupId: tripToOsaka.id,
-				paidByUserId: bob.id,
-				categoryId: transport.id,
-				description: 'Airport taxi',
-				amountCents: 4500,
-				date: new Date('2025-09-01')
-			},
-			{
-				groupId: tripToOsaka.id,
-				paidByUserId: bob.id,
-				categoryId: food.id,
-				description: 'Ramen night',
-				amountCents: 9000,
-				date: new Date('2025-09-02')
-			},
-			{
-				groupId: tripToOsaka.id,
-				paidByUserId: alice.id,
-				categoryId: fun.id,
-				description: 'Karaoke',
-				amountCents: 6000,
-				date: new Date('2025-09-02')
-			}
-		])
-		.returning();
+	const apartmentExpenses = await Promise.all([
+		insertExpense({
+			groupId: apartment.id,
+			paidByUserId: alice.id,
+			categoryId: rent.id,
+			description: 'August rent',
+			amountCents: 180000,
+			date: new Date('2025-08-01')
+		}),
+		insertExpense({
+			groupId: apartment.id,
+			paidByUserId: bob.id,
+			categoryId: utilities.id,
+			description: 'Electric bill',
+			amountCents: 6400,
+			date: new Date('2025-08-05')
+		}),
+		insertExpense({
+			groupId: apartment.id,
+			paidByUserId: alice.id,
+			categoryId: food.id,
+			description: 'Costco run',
+			amountCents: 11250,
+			date: new Date('2025-08-10')
+		})
+	]);
+
+	const osakaExpenses = await Promise.all([
+		insertExpense({
+			groupId: tripToOsaka.id,
+			paidByUserId: bob.id,
+			categoryId: transport.id,
+			description: 'Airport taxi',
+			amountCents: 4500,
+			date: new Date('2025-09-01')
+		}),
+		insertExpense({
+			groupId: tripToOsaka.id,
+			paidByUserId: bob.id,
+			categoryId: food.id,
+			description: 'Ramen night',
+			amountCents: 9000,
+			date: new Date('2025-09-02')
+		}),
+		insertExpense({
+			groupId: tripToOsaka.id,
+			paidByUserId: alice.id,
+			categoryId: fun.id,
+			description: 'Karaoke',
+			amountCents: 6000,
+			date: new Date('2025-09-02')
+		})
+	]);
 
 	const [rentExpense, electricExpense, costcoExpense] = apartmentExpenses;
 	const [taxiExpense, ramenExpense, karaokeExpense] = osakaExpenses;
