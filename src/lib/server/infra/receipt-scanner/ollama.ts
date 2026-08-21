@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import { Readable } from 'node:stream';
 import {
 	ReceiptScannerError,
@@ -42,19 +43,86 @@ const RESPONSE_FORMAT = {
 	required: ['lineItems']
 } as const;
 
+// Ollama Cloud rejects request bodies over ~20MB with HTTP 413, and a
+// poppler-rasterized PDF at 150 DPI PNG blows past that once base64-encoded.
+// Ollama also downsamples images internally per-model, so feeding a huge
+// image is pure waste. Resize/re-encode to JPEG before sending. num_ctx is
+// bumped so the vision tokens don't truncate the prompt into garbage output.
+// See docs/adr/0014-ollama-cloud-image-compression.md.
+const MAX_LONG_EDGE = 1568;
+const JPEG_QUALITY = 80;
+const NUM_CTX = 8192;
+const PREPARE_FAILED_MESSAGE = 'Scanner could not read this image';
+
 interface OllamaChatResponse {
 	message?: { content?: string };
 }
 
-async function streamToBase64(stream: ReadableStream<Uint8Array>): Promise<string> {
-	const nodeStream = Readable.fromWeb(
-		stream as unknown as Parameters<typeof Readable.fromWeb>[0]
-	);
+function formatBytes(bytes: number): string {
+	if (bytes < 1024) return `${bytes} B`;
+	const units = ['KB', 'MB', 'GB'];
+	let value = bytes / 1024;
+	let unit = 0;
+	while (value >= 1024 && unit < units.length - 1) {
+		value /= 1024;
+		unit++;
+	}
+	return `${value.toFixed(1)} ${units[unit]}`;
+}
+
+async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
+	const nodeStream = Readable.fromWeb(stream as unknown as Parameters<typeof Readable.fromWeb>[0]);
 	const chunks: Buffer[] = [];
 	for await (const chunk of nodeStream) {
 		chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
 	}
-	return Buffer.concat(chunks).toString('base64');
+	return Buffer.concat(chunks);
+}
+
+function prepareImage(input: Buffer, spawnFn: SpawnFn): Promise<Buffer> {
+	return new Promise((resolve, reject) => {
+		const proc = spawnFn(
+			'magick',
+			[
+				'-',
+				'-resize',
+				`${MAX_LONG_EDGE}x${MAX_LONG_EDGE}>`,
+				'-quality',
+				String(JPEG_QUALITY),
+				'jpg:-'
+			],
+			{ stdio: ['pipe', 'pipe', 'pipe'] }
+		);
+		const stdout: Buffer[] = [];
+		const stderr: Buffer[] = [];
+		proc.stdout.on('data', (chunk: Buffer) => stdout.push(chunk));
+		proc.stderr.on('data', (chunk: Buffer) => stderr.push(chunk));
+
+		function fail(reason: string): void {
+			console.error(
+				'Receipt image prepare failed',
+				reason,
+				Buffer.concat(stderr).toString().trim()
+			);
+			reject(new ReceiptScannerError(PREPARE_FAILED_MESSAGE));
+		}
+
+		proc.on('error', () => fail('magick spawn failed'));
+		proc.on('close', (code) => {
+			if (code !== 0) {
+				fail(`magick exited ${code}`);
+				return;
+			}
+			const image = Buffer.concat(stdout);
+			if (image.length === 0) {
+				fail('magick produced no output');
+				return;
+			}
+			resolve(image);
+		});
+
+		proc.stdin.end(input);
+	});
 }
 
 function extractJson(content: string): string {
@@ -92,18 +160,22 @@ function normalize(raw: unknown): ScanResult {
 	return result;
 }
 
+export type SpawnFn = typeof spawn;
+
 export interface CreateOllamaScannerOptions {
 	baseUrl: string;
 	model: string;
 	apiKey?: string;
 	fetch?: typeof fetch;
+	spawn?: SpawnFn;
 }
 
 export function createOllamaReceiptScanner({
 	baseUrl,
 	model,
 	apiKey,
-	fetch = globalThis.fetch
+	fetch = globalThis.fetch,
+	spawn: spawnFn = spawn
 }: CreateOllamaScannerOptions): IReceiptScanner {
 	const endpoint = `${baseUrl.replace(/\/$/, '')}/api/chat`;
 	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -112,46 +184,64 @@ export function createOllamaReceiptScanner({
 	}
 
 	return {
-		async scan(stream, _mime): Promise<ScanResult> {
-			const image = await streamToBase64(stream);
-
-			let response: Response;
+		async scan(stream): Promise<ScanResult> {
+			let outcome: { ok: true; compressedSize: string } | { ok: false; reason: string };
 			try {
-				response = await fetch(endpoint, {
-					method: 'POST',
-					headers,
-					body: JSON.stringify({
-						model,
-						stream: false,
-						format: RESPONSE_FORMAT,
-						messages: [{ role: 'user', content: PROMPT, images: [image] }]
-					})
-				});
+				const input = await streamToBuffer(stream);
+				console.log('scan request started', { originalSize: formatBytes(input.length) });
+
+				const image = await prepareImage(input, spawnFn);
+
+				let response: Response;
+				try {
+					response = await fetch(endpoint, {
+						method: 'POST',
+						headers,
+						body: JSON.stringify({
+							model,
+							stream: false,
+							format: RESPONSE_FORMAT,
+							options: { num_ctx: NUM_CTX },
+							messages: [{ role: 'user', content: PROMPT, images: [image.toString('base64')] }]
+						})
+					});
+				} catch (err) {
+					console.error('Ollama scan request failed', String(err));
+					throw new ReceiptScannerError(`Scanner request failed: ${String(err)}`);
+				}
+
+				if (!response.ok) {
+					console.error('Ollama scan request failed', response.status);
+					throw new ReceiptScannerError(`Scanner request failed: HTTP ${response.status}`);
+				}
+
+				const body = (await response.json()) as OllamaChatResponse;
+				const content = body?.message?.content;
+				if (typeof content !== 'string') {
+					throw new ReceiptScannerError('Scanner returned an unexpected response');
+				}
+
+				let parsed: unknown;
+				try {
+					parsed = JSON.parse(extractJson(content));
+				} catch {
+					console.error('Ollama scan returned non-JSON content', content.slice(0, 500));
+					throw new ReceiptScannerError('Scanner returned malformed JSON');
+				}
+
+				const result = normalize(parsed);
+				outcome = { ok: true, compressedSize: formatBytes(image.length) };
+				return result;
 			} catch (err) {
-				console.error('Ollama scan request failed', String(err));
-				throw new ReceiptScannerError(`Scanner request failed: ${String(err)}`);
+				outcome = { ok: false, reason: err instanceof Error ? err.message : String(err) };
+				throw err;
+			} finally {
+				if (outcome.ok) {
+					console.log('scan request finished', outcome);
+				} else {
+					console.error('scan request finished', outcome);
+				}
 			}
-
-			if (!response.ok) {
-				console.error('Ollama scan request failed', response.status);
-				throw new ReceiptScannerError(`Scanner request failed: HTTP ${response.status}`);
-			}
-
-			const body = (await response.json()) as OllamaChatResponse;
-			const content = body?.message?.content;
-			if (typeof content !== 'string') {
-				throw new ReceiptScannerError('Scanner returned an unexpected response');
-			}
-
-			let parsed: unknown;
-			try {
-				parsed = JSON.parse(extractJson(content));
-			} catch {
-				console.error('Ollama scan returned non-JSON content', content.slice(0, 500));
-				throw new ReceiptScannerError('Scanner returned malformed JSON');
-			}
-
-			return normalize(parsed);
 		}
 	};
 }

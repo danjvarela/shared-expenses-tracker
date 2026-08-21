@@ -9,6 +9,7 @@
 {
   packages = [
     pkgs.playwright-driver.browsers
+    pkgs.imagemagick 
     pkgs.poppler-utils
   ];
 

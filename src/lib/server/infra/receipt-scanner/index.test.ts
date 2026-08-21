@@ -1,10 +1,16 @@
 import { describe, it, expect, vi } from 'vitest';
+import { readFile } from 'node:fs/promises';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
 	resolveScannerConfig,
 	createReceiptScannerBackend,
 	ReceiptScannerConfigError
 } from './index';
 import type { IReceiptScanner, ScanResult } from '$lib/server/app/interfaces/receipt-scanner';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const FIXTURE_PATH = resolve(here, 'fixtures/receipt.png');
 
 describe('resolveScannerConfig', () => {
 	it('returns off when RECEIPT_SCANNER_BACKEND is unset', () => {
@@ -102,9 +108,10 @@ describe('createReceiptScannerBackend', () => {
 			OLLAMA_VISION_MODEL: 'llama3.2-vision'
 		}) as IReceiptScanner;
 
+		const bytes = await readFile(FIXTURE_PATH);
 		const stream = new ReadableStream<Uint8Array>({
 			start(controller) {
-				controller.enqueue(new Uint8Array([1]));
+				controller.enqueue(new Uint8Array(bytes));
 				controller.close();
 			}
 		});
@@ -118,14 +125,14 @@ describe('createReceiptScannerBackend', () => {
 	});
 
 	it('throws at boot when the model is missing', () => {
-		expect(() =>
-			createReceiptScannerBackend({ RECEIPT_SCANNER_BACKEND: 'ollama' })
-		).toThrow(ReceiptScannerConfigError);
+		expect(() => createReceiptScannerBackend({ RECEIPT_SCANNER_BACKEND: 'ollama' })).toThrow(
+			ReceiptScannerConfigError
+		);
 	});
 
 	it('throws at boot for an unknown backend', () => {
-		expect(() =>
-			createReceiptScannerBackend({ RECEIPT_SCANNER_BACKEND: 'azure-ocr' })
-		).toThrow(ReceiptScannerConfigError);
+		expect(() => createReceiptScannerBackend({ RECEIPT_SCANNER_BACKEND: 'azure-ocr' })).toThrow(
+			ReceiptScannerConfigError
+		);
 	});
 });
