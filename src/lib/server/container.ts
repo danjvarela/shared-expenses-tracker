@@ -15,6 +15,7 @@ import { createExpenseReceiptRepository } from '$lib/server/infra/db/repositorie
 import { createGoogleOAuthProvider } from '$lib/server/infra/oauth/google';
 import { createReceiptStorageBackend } from '$lib/server/infra/receipt-storage';
 import { createReceiptScannerBackend } from '$lib/server/infra/receipt-scanner';
+import { createPopplerPdfRasterizer } from '$lib/server/infra/pdf-rasterizer';
 
 import { createAuthService } from '$lib/server/app/auth';
 import { createGroupBalanceService } from '$lib/server/app/group-balance';
@@ -26,6 +27,7 @@ import { createGroupMemberService } from '$lib/server/app/group-member';
 import { createGroupInviteService, type InviteRepos } from '$lib/server/app/group-invite';
 import { createNotificationService } from '$lib/server/app/notification';
 import { createReceiptService } from '$lib/server/app/receipt';
+import { createScanService } from '$lib/server/app/scan';
 import type { IOAuthProvider } from '$lib/server/app/interfaces/oauth-provider';
 import { createRemoveMemberService, type RemoveMemberRepos } from './app/remove-member';
 
@@ -43,6 +45,7 @@ const notificationRepo = createNotificationRepository(db);
 const receiptRepo = createExpenseReceiptRepository(db);
 const receiptStorageBackend = createReceiptStorageBackend();
 const receiptScannerBackend = createReceiptScannerBackend();
+const pdfRasterizer = createPopplerPdfRasterizer();
 export const scannerEnabled = receiptScannerBackend !== null;
 
 const googleOAuthProvider = createGoogleOAuthProvider();
@@ -137,6 +140,16 @@ export const receiptService = createReceiptService({
 	expenseGroupRepo,
 	groupMemberRepo
 });
+
+export const scanService =
+	receiptScannerBackend !== null
+		? createScanService({
+				storageBackend: receiptStorageBackend,
+				scanner: receiptScannerBackend,
+				groupMemberRepo,
+				rasterizer: pdfRasterizer
+			})
+		: null;
 
 export {
 	groupRepo,

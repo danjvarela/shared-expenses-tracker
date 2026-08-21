@@ -7,7 +7,10 @@
 }:
 
 {
-  packages = [ pkgs.playwright-driver.browsers ];
+  packages = [
+    pkgs.playwright-driver.browsers
+    pkgs.poppler-utils
+  ];
 
   env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
   env.PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";

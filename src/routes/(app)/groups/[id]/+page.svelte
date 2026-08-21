@@ -31,6 +31,9 @@
 		<h1 class="text-2xl font-semibold">{data.group.name}</h1>
 		<div class="flex gap-2">
 			<Button variant="outline" href="{data.group.id}/settings">Settings</Button>
+			{#if data.scannerEnabled}
+				<Button variant="outline" href="{data.group.id}/scan">Scan receipt</Button>
+			{/if}
 			<Button href="{data.group.id}/expenses/new">Add expense</Button>
 		</div>
 	</div>
