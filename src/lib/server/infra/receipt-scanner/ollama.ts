@@ -185,11 +185,10 @@ export function createOllamaReceiptScanner({
 
 	return {
 		async scan(stream): Promise<ScanResult> {
-			let outcome: { ok: true; compressedSize: string } | { ok: false; reason: string };
-			try {
-				const input = await streamToBuffer(stream);
-				console.log('scan request started', { originalSize: formatBytes(input.length) });
+			const input = await streamToBuffer(stream);
+			console.log('scanning with ollama', { scanInputSize: formatBytes(input.length) });
 
+			try {
 				const image = await prepareImage(input, spawnFn);
 
 				let response: Response;
@@ -230,17 +229,13 @@ export function createOllamaReceiptScanner({
 				}
 
 				const result = normalize(parsed);
-				outcome = { ok: true, compressedSize: formatBytes(image.length) };
+				console.log('scan request finished', { compressedSize: formatBytes(image.length) });
 				return result;
 			} catch (err) {
-				outcome = { ok: false, reason: err instanceof Error ? err.message : String(err) };
+				console.error('scan request finished', {
+					reason: err instanceof Error ? err.message : String(err)
+				});
 				throw err;
-			} finally {
-				if (outcome.ok) {
-					console.log('scan request finished', outcome);
-				} else {
-					console.error('scan request finished', outcome);
-				}
 			}
 		}
 	};
