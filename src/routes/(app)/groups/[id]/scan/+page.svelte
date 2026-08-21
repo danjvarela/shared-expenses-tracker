@@ -213,7 +213,7 @@
 				{/if}
 
 				<p class="text-xs text-muted-foreground">
-					This draft isn't saved yet. Discarding it leaves the uploaded bytes behind.
+					This draft isn't saved yet. Discarding clears it — you'd need to upload the receipt again to bring it back.
 				</p>
 
 				<div class="flex gap-2">
