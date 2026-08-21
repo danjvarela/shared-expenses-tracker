@@ -14,6 +14,7 @@ import { createNotificationRepository } from '$lib/server/infra/db/repositories/
 import { createExpenseReceiptRepository } from '$lib/server/infra/db/repositories/expense-receipt';
 import { createGoogleOAuthProvider } from '$lib/server/infra/oauth/google';
 import { createReceiptStorageBackend } from '$lib/server/infra/receipt-storage';
+import { createReceiptScannerBackend } from '$lib/server/infra/receipt-scanner';
 
 import { createAuthService } from '$lib/server/app/auth';
 import { createGroupBalanceService } from '$lib/server/app/group-balance';
@@ -41,6 +42,8 @@ const categoryRepo = createCategoryRepository(db);
 const notificationRepo = createNotificationRepository(db);
 const receiptRepo = createExpenseReceiptRepository(db);
 const receiptStorageBackend = createReceiptStorageBackend();
+const receiptScannerBackend = createReceiptScannerBackend();
+export const scannerEnabled = receiptScannerBackend !== null;
 
 const googleOAuthProvider = createGoogleOAuthProvider();
 const oauthProviders: Record<string, IOAuthProvider> = {
@@ -142,5 +145,6 @@ export {
 	expenseRepo,
 	pairBalanceRepo,
 	notificationRepo,
-	receiptRepo
+	receiptRepo,
+	receiptScannerBackend
 };
