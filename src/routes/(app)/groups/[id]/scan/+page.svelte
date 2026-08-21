@@ -5,8 +5,9 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import * as Field from '$lib/components/ui/field/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
+	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { ArrowLeft, LoaderCircle, ScanLine } from '@lucide/svelte';
+	import { ArrowLeft, ChevronDown, LoaderCircle, ScanLine } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { untrack } from 'svelte';
 	import type { ScanResult } from '$lib/server/app/interfaces/receipt-scanner';
@@ -17,6 +18,7 @@
 		description: string;
 		amountDecimal: string;
 		percents: Record<string, string>;
+		customSplitOpen: boolean;
 	};
 
 	let fileInput = $state<HTMLInputElement>();
@@ -68,7 +70,8 @@
 			lines = scanned.lineItems.map((item) => ({
 				description: item.description,
 				amountDecimal: item.amountDecimal,
-				percents: emptyPercents()
+				percents: emptyPercents(),
+				customSplitOpen: false
 			}));
 			toast.success('Receipt scanned');
 		} catch {
@@ -180,25 +183,30 @@
 									aria-label="Line amount"
 								/>
 							</div>
-							<div class="mt-2 flex flex-col gap-1">
-								<span class="text-xs font-medium text-muted-foreground">Split (%)</span>
-								{#each data.members as member (member.userId)}
-									<div class="flex items-center gap-2">
-										<Label for={`percent-${i}-${member.userId}`} class="w-28 shrink-0 text-xs">
-											{member.displayName}
-										</Label>
-										<Input
-											id={`percent-${i}-${member.userId}`}
-											type="number"
-											step="0.01"
-											min="0"
-											max="100"
-											placeholder="%"
-											bind:value={line.percents[member.userId]}
-										/>
-									</div>
-								{/each}
-							</div>
+							<Collapsible.Root bind:open={line.customSplitOpen} class="mt-2">
+								<Collapsible.Trigger class="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+									<ChevronDown class="size-3.5 transition-transform {line.customSplitOpen ? 'rotate-180' : ''}" />
+									Custom split
+								</Collapsible.Trigger>
+								<Collapsible.Content class="flex flex-col gap-1 pt-2">
+									{#each data.members as member (member.userId)}
+										<div class="flex items-center gap-2">
+											<Label for={`percent-${i}-${member.userId}`} class="w-28 shrink-0 text-xs">
+												{member.displayName}
+											</Label>
+											<Input
+												id={`percent-${i}-${member.userId}`}
+												type="number"
+												step="0.01"
+												min="0"
+												max="100"
+												placeholder="%"
+												bind:value={line.percents[member.userId]}
+											/>
+										</div>
+									{/each}
+								</Collapsible.Content>
+							</Collapsible.Root>
 						</div>
 					{/each}
 				</div>
