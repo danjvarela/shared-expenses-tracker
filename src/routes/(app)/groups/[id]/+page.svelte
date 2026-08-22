@@ -113,10 +113,13 @@
 										<span class="flex flex-col">
 											<span class="font-medium">{child.description}</span>
 											<span class="text-muted-foreground">
-												Paid by {child.paidByName} · {formatDate(
-													child.createdAt
-												)}{#if child.categoryName}
-													· {child.categoryIcon} {child.categoryName}{/if}
+												{#if child.paidByName !== firstChild.paidByName ||
+													child.createdAt.valueOf() !== firstChild.createdAt.valueOf()}
+													Paid by {child.paidByName} · {formatDate(child.createdAt)}{#if child.categoryName}
+														· {child.categoryIcon} {child.categoryName}{/if}
+												{:else if child.categoryName}
+													{child.categoryIcon} {child.categoryName}
+												{/if}
 											</span>
 										</span>
 										<span class="font-semibold">
