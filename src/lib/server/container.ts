@@ -45,7 +45,7 @@ const notificationRepo = createNotificationRepository(db);
 const receiptRepo = createExpenseReceiptRepository(db);
 const receiptStorageBackend = createReceiptStorageBackend();
 const pdfProcessor = createPopplerPdfProcessor();
-const receiptScannerBackend = createReceiptScannerBackend(pdfProcessor);
+const receiptScannerBackend = createReceiptScannerBackend(undefined, { pdfProcessor });
 export const scannerEnabled = receiptScannerBackend !== null;
 
 const googleOAuthProvider = createGoogleOAuthProvider();

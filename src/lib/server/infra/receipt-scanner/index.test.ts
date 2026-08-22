@@ -41,6 +41,64 @@ describe('resolveScannerConfig', () => {
 		});
 	});
 
+	it('returns ocr config with the api key, base url, and text model', () => {
+		const config = resolveScannerConfig({
+			RECEIPT_SCANNER_BACKEND: 'ocr',
+			OCR_API_KEY: 'ocr-key',
+			OLLAMA_TEXT_MODEL: 'llama3.2'
+		});
+		expect(config).toEqual({
+			backend: 'ocr',
+			ocrApiKey: 'ocr-key',
+			ollamaBaseUrl: 'http://localhost:11434',
+			ollamaModel: 'llama3.2',
+			ollamaApiKey: undefined
+		});
+	});
+
+	it('ocr config reuses OLLAMA_BASE_URL and OLLAMA_API_KEY', () => {
+		const config = resolveScannerConfig({
+			RECEIPT_SCANNER_BACKEND: 'ocr',
+			OCR_API_KEY: 'ocr-key',
+			OLLAMA_TEXT_MODEL: 'llama3.2',
+			OLLAMA_BASE_URL: 'http://ollama-host:1234',
+			OLLAMA_API_KEY: 'ollama-secret'
+		});
+		expect(config).toEqual({
+			backend: 'ocr',
+			ocrApiKey: 'ocr-key',
+			ollamaBaseUrl: 'http://ollama-host:1234',
+			ollamaModel: 'llama3.2',
+			ollamaApiKey: 'ollama-secret'
+		});
+	});
+
+	it('throws ReceiptScannerConfigError when ocr backend has no OCR_API_KEY', () => {
+		expect(() =>
+			resolveScannerConfig({ RECEIPT_SCANNER_BACKEND: 'ocr', OLLAMA_TEXT_MODEL: 'llama3.2' })
+		).toThrow(ReceiptScannerConfigError);
+		expect(() =>
+			resolveScannerConfig({
+				RECEIPT_SCANNER_BACKEND: 'ocr',
+				OCR_API_KEY: '',
+				OLLAMA_TEXT_MODEL: 'llama3.2'
+			})
+		).toThrow(ReceiptScannerConfigError);
+	});
+
+	it('throws ReceiptScannerConfigError when ocr backend has no OLLAMA_TEXT_MODEL', () => {
+		expect(() =>
+			resolveScannerConfig({ RECEIPT_SCANNER_BACKEND: 'ocr', OCR_API_KEY: 'ocr-key' })
+		).toThrow(ReceiptScannerConfigError);
+		expect(() =>
+			resolveScannerConfig({
+				RECEIPT_SCANNER_BACKEND: 'ocr',
+				OCR_API_KEY: 'ocr-key',
+				OLLAMA_TEXT_MODEL: ''
+			})
+		).toThrow(ReceiptScannerConfigError);
+	});
+
 	it('uses OLLAMA_BASE_URL when provided', () => {
 		const config = resolveScannerConfig({
 			RECEIPT_SCANNER_BACKEND: 'ollama',
@@ -88,14 +146,17 @@ describe('resolveScannerConfig', () => {
 
 describe('createReceiptScannerBackend', () => {
 	it('returns null when the feature is off', () => {
-		expect(createReceiptScannerBackend(stubPdfProcessor, {})).toBeNull();
+		expect(createReceiptScannerBackend({}, { pdfProcessor: stubPdfProcessor })).toBeNull();
 	});
 
 	it('returns an IReceiptScanner when configured for ollama', () => {
-		const scanner = createReceiptScannerBackend(stubPdfProcessor, {
-			RECEIPT_SCANNER_BACKEND: 'ollama',
-			OLLAMA_VISION_MODEL: 'llama3.2-vision'
-		});
+		const scanner = createReceiptScannerBackend(
+			{
+				RECEIPT_SCANNER_BACKEND: 'ollama',
+				OLLAMA_VISION_MODEL: 'llama3.2-vision'
+			},
+			{ pdfProcessor: stubPdfProcessor }
+		);
 		expect(scanner).not.toBeNull();
 		expect(typeof scanner?.scan).toBe('function');
 	});
@@ -113,10 +174,13 @@ describe('createReceiptScannerBackend', () => {
 		);
 		vi.stubGlobal('fetch', fetchStub);
 
-		const scanner = createReceiptScannerBackend(stubPdfProcessor, {
-			RECEIPT_SCANNER_BACKEND: 'ollama',
-			OLLAMA_VISION_MODEL: 'llama3.2-vision'
-		}) as IReceiptScanner;
+		const scanner = createReceiptScannerBackend(
+			{
+				RECEIPT_SCANNER_BACKEND: 'ollama',
+				OLLAMA_VISION_MODEL: 'llama3.2-vision'
+			},
+			{ pdfProcessor: stubPdfProcessor }
+		) as IReceiptScanner;
 
 		const bytes = await readFile(FIXTURE_PATH);
 		const stream = new ReadableStream<Uint8Array>({
@@ -136,13 +200,60 @@ describe('createReceiptScannerBackend', () => {
 
 	it('throws at boot when the model is missing', () => {
 		expect(() =>
-			createReceiptScannerBackend(stubPdfProcessor, { RECEIPT_SCANNER_BACKEND: 'ollama' })
+			createReceiptScannerBackend(
+				{ RECEIPT_SCANNER_BACKEND: 'ollama' },
+				{ pdfProcessor: stubPdfProcessor }
+			)
 		).toThrow(ReceiptScannerConfigError);
 	});
 
 	it('throws at boot for an unknown backend', () => {
 		expect(() =>
-			createReceiptScannerBackend(stubPdfProcessor, { RECEIPT_SCANNER_BACKEND: 'azure-ocr' })
+			createReceiptScannerBackend(
+				{ RECEIPT_SCANNER_BACKEND: 'azure-ocr' },
+				{ pdfProcessor: stubPdfProcessor }
+			)
+		).toThrow(ReceiptScannerConfigError);
+	});
+
+	it('throws when a backend is active but no pdfProcessor is provided', () => {
+		expect(() =>
+			createReceiptScannerBackend({
+				RECEIPT_SCANNER_BACKEND: 'ollama',
+				OLLAMA_VISION_MODEL: 'llama3.2-vision'
+			})
+		).toThrow();
+	});
+
+	it('returns an IReceiptScanner when configured for ocr', () => {
+		const fetchStub = vi.fn();
+		const scanner = createReceiptScannerBackend(
+			{
+				RECEIPT_SCANNER_BACKEND: 'ocr',
+				OCR_API_KEY: 'ocr-key',
+				OLLAMA_TEXT_MODEL: 'llama3.2'
+			},
+			{ pdfProcessor: stubPdfProcessor, fetch: fetchStub as unknown as typeof fetch }
+		);
+		expect(scanner).not.toBeNull();
+		expect(typeof scanner?.scan).toBe('function');
+	});
+
+	it('throws at boot when ocr is missing OCR_API_KEY', () => {
+		expect(() =>
+			createReceiptScannerBackend(
+				{ RECEIPT_SCANNER_BACKEND: 'ocr', OLLAMA_TEXT_MODEL: 'llama3.2' },
+				{ pdfProcessor: stubPdfProcessor }
+			)
+		).toThrow(ReceiptScannerConfigError);
+	});
+
+	it('throws at boot when ocr is missing OLLAMA_TEXT_MODEL', () => {
+		expect(() =>
+			createReceiptScannerBackend(
+				{ RECEIPT_SCANNER_BACKEND: 'ocr', OCR_API_KEY: 'ocr-key' },
+				{ pdfProcessor: stubPdfProcessor }
+			)
 		).toThrow(ReceiptScannerConfigError);
 	});
 });

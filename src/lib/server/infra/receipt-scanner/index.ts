@@ -4,7 +4,9 @@ import {
 	type IReceiptScanner
 } from '$lib/server/app/interfaces/receipt-scanner';
 import type { IPdfProcessor } from '$lib/server/infra/pdf';
+import type { SpawnFn } from '$lib/server/infra/image-prep';
 import { createOllamaReceiptScanner } from './ollama';
+import { createOcrReceiptScanner } from './ocr';
 
 export type {
 	IReceiptScanner,
@@ -17,7 +19,21 @@ export {
 } from '$lib/server/app/interfaces/receipt-scanner';
 
 export type ScannerConfig =
-	{ backend: 'off' } | { backend: 'ollama'; baseUrl: string; model: string; apiKey?: string };
+	| { backend: 'off' }
+	| { backend: 'ollama'; baseUrl: string; model: string; apiKey?: string }
+	| {
+			backend: 'ocr';
+			ocrApiKey: string;
+			ollamaBaseUrl: string;
+			ollamaModel: string;
+			ollamaApiKey?: string;
+	  };
+
+export interface CreateScannerDeps {
+	pdfProcessor: IPdfProcessor;
+	fetch?: typeof fetch;
+	spawn?: SpawnFn;
+}
 
 const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
 
@@ -39,13 +55,29 @@ export function resolveScannerConfig(env: NodeJS.ProcessEnv): ScannerConfig {
 		return { backend: 'ollama', baseUrl, model, apiKey };
 	}
 
+	if (backend === 'ocr') {
+		const ocrApiKey = env.OCR_API_KEY;
+		if (!ocrApiKey) {
+			console.error('Receipt scanner config missing', 'OCR_API_KEY is not set');
+			throw new ReceiptScannerConfigError();
+		}
+		const ollamaModel = env.OLLAMA_TEXT_MODEL;
+		if (!ollamaModel) {
+			console.error('Receipt scanner config missing', 'OLLAMA_TEXT_MODEL is not set');
+			throw new ReceiptScannerConfigError();
+		}
+		const ollamaBaseUrl = env.OLLAMA_BASE_URL ?? DEFAULT_OLLAMA_BASE_URL;
+		const ollamaApiKey = env.OLLAMA_API_KEY || undefined;
+		return { backend: 'ocr', ocrApiKey, ollamaBaseUrl, ollamaModel, ollamaApiKey };
+	}
+
 	console.error('Unknown receipt scanner backend', backend);
 	throw new ReceiptScannerConfigError();
 }
 
 export function createReceiptScannerBackend(
-	pdfProcessor: IPdfProcessor,
-	envOverride?: NodeJS.ProcessEnv
+	envOverride?: NodeJS.ProcessEnv,
+	deps?: CreateScannerDeps
 ): IReceiptScanner | null {
 	const config = resolveScannerConfig(envOverride ?? env);
 
@@ -53,12 +85,30 @@ export function createReceiptScannerBackend(
 		return null;
 	}
 
+	if (!deps?.pdfProcessor) {
+		throw new Error(
+			'createReceiptScannerBackend: pdfProcessor is required when a backend is active'
+		);
+	}
+
 	if (config.backend === 'ollama') {
 		return createOllamaReceiptScanner({
 			baseUrl: config.baseUrl,
 			model: config.model,
 			apiKey: config.apiKey,
-			pdfProcessor
+			pdfProcessor: deps.pdfProcessor
+		});
+	}
+
+	if (config.backend === 'ocr') {
+		return createOcrReceiptScanner({
+			ocrApiKey: config.ocrApiKey,
+			ollamaBaseUrl: config.ollamaBaseUrl,
+			ollamaModel: config.ollamaModel,
+			ollamaApiKey: config.ollamaApiKey,
+			pdfProcessor: deps.pdfProcessor,
+			fetch: deps.fetch,
+			spawn: deps.spawn
 		});
 	}
 
