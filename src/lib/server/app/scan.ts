@@ -16,16 +16,13 @@ import type {
 } from '$lib/server/app/interfaces/repositories/expense-group';
 import type { IExpenseReceiptRepository } from '$lib/server/app/interfaces/repositories/expense-receipt';
 import type { IReceiptScanner, ScanResult } from '$lib/server/app/interfaces/receipt-scanner';
-import {
-	ReceiptRasterizeError,
-	type IPdfRasterizer
-} from '$lib/server/app/interfaces/pdf-rasterizer';
+import { ReceiptRasterizeError, type IPdfProcessor } from '$lib/server/infra/pdf';
 import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
 import { parseAmountCents } from '$lib/server/app/expense-form';
 import { resolveSplits } from '$lib/server/app/split-resolver';
 import { applyPairBalanceDeltas, expenseDeltas } from '$lib/server/app/pair-balance';
 
-export { ReceiptRasterizeError } from '$lib/server/app/interfaces/pdf-rasterizer';
+export { ReceiptRasterizeError } from '$lib/server/infra/pdf';
 
 export const PDF_MIME = 'application/pdf';
 export const PNG_MIME = 'image/png';
@@ -111,7 +108,7 @@ export interface ScanServiceDeps {
 	storageBackend: IReceiptStorageBackend;
 	scanner: IReceiptScanner;
 	groupMemberRepo: IGroupMemberRepository;
-	rasterizer: IPdfRasterizer;
+	rasterizer: IPdfProcessor;
 	uow: IUnitOfWork<ScanConfirmRepos>;
 }
 

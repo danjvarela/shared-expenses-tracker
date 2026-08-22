@@ -1,12 +1,13 @@
 import { AppError } from '$lib/server/app/error';
 
-export interface PdfRasterizeResult {
+export interface PdfFirstPage {
 	image: Buffer;
 	pageCount: number;
 }
 
-export interface IPdfRasterizer {
-	rasterizeFirstPage(stream: ReadableStream<Uint8Array>): Promise<PdfRasterizeResult>;
+export interface IPdfProcessor {
+	countPages(stream: ReadableStream<Uint8Array>): Promise<number>;
+	rasterizeFirstPage(stream: ReadableStream<Uint8Array>): Promise<PdfFirstPage>;
 }
 
 export class ReceiptRasterizeError extends AppError {
@@ -16,3 +17,5 @@ export class ReceiptRasterizeError extends AppError {
 		super(message, 422);
 	}
 }
+
+export { createPopplerPdfProcessor } from './poppler';

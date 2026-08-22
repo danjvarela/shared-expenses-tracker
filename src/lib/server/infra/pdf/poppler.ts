@@ -3,18 +3,14 @@ import { randomUUID } from 'node:crypto';
 import { readFile, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import {
-	ReceiptRasterizeError,
-	type IPdfRasterizer,
-	type PdfRasterizeResult
-} from '$lib/server/app/interfaces/pdf-rasterizer';
+import { ReceiptRasterizeError, type IPdfProcessor, type PdfFirstPage } from './index';
 
 const CORRUPT_MESSAGE =
 	"Couldn't read this PDF — it may be corrupt or password-protected. Try an image instead.";
 
 export type SpawnFn = typeof spawn;
 
-export interface CreatePopplerRasterizerOptions {
+export interface CreatePopplerProcessorOptions {
 	spawn?: SpawnFn;
 	dpi?: number;
 }
@@ -30,9 +26,7 @@ async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffe
 	return Buffer.concat(chunks);
 }
 
-export function createPopplerPdfRasterizer(
-	opts: CreatePopplerRasterizerOptions = {}
-): IPdfRasterizer {
+export function createPopplerPdfProcessor(opts: CreatePopplerProcessorOptions = {}): IPdfProcessor {
 	const spawnFn = opts.spawn ?? spawn;
 	const dpi = opts.dpi ?? 150;
 
@@ -93,14 +87,17 @@ export function createPopplerPdfRasterizer(
 		});
 	}
 
-	async function rasterizeFirstPage(
-		stream: ReadableStream<Uint8Array>
-	): Promise<PdfRasterizeResult> {
+	async function countPages(stream: ReadableStream<Uint8Array>): Promise<number> {
+		const bytes = await streamToBuffer(stream);
+		return runPdfInfo(bytes);
+	}
+
+	async function rasterizeFirstPage(stream: ReadableStream<Uint8Array>): Promise<PdfFirstPage> {
 		const bytes = await streamToBuffer(stream);
 		const pageCount = await runPdfInfo(bytes);
 		const image = await runPdftoppm(bytes);
 		return { image, pageCount };
 	}
 
-	return { rasterizeFirstPage };
+	return { countPages, rasterizeFirstPage };
 }

@@ -15,10 +15,7 @@ import {
 	type IReceiptScanner,
 	type ScanResult
 } from '$lib/server/app/interfaces/receipt-scanner';
-import {
-	ReceiptRasterizeError,
-	type IPdfRasterizer
-} from '$lib/server/app/interfaces/pdf-rasterizer';
+import { ReceiptRasterizeError, type IPdfProcessor } from '$lib/server/infra/pdf';
 import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
 import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
@@ -35,7 +32,7 @@ import type { IExpenseReceiptRepository } from '$lib/server/app/interfaces/repos
 import type { ExpenseGroup } from '$lib/server/domain/expense-group';
 import type { ExpenseReceipt } from '$lib/server/domain/expense-receipt';
 import type { ScanConfirmRepos } from './scan';
-import { createPopplerPdfRasterizer } from '$lib/server/infra/pdf-rasterizer';
+import { createPopplerPdfProcessor } from '$lib/server/infra/pdf';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PNG = resolve(here, '../infra/receipt-scanner/fixtures/receipt.png');
@@ -112,7 +109,7 @@ function fakeScanner(canned: ScanResult): IReceiptScanner & {
 function fakeRasterizer(
 	image: Buffer,
 	pageCount: number
-): IPdfRasterizer & {
+): IPdfProcessor & {
 	calls: Buffer[];
 	pageCountOverride: number;
 } {
@@ -120,6 +117,9 @@ function fakeRasterizer(
 	return {
 		calls,
 		pageCountOverride: pageCount,
+		async countPages() {
+			return this.pageCountOverride;
+		},
 		async rasterizeFirstPage(stream) {
 			calls.push(await streamToBuffer(stream));
 			return { image, pageCount: this.pageCountOverride };
@@ -777,7 +777,7 @@ describe.skipIf(!hasPoppler)('scanService end-to-end with real poppler', () => {
 		const pdf = buildPdf(1);
 		const canned: ScanResult = { lineItems: [{ description: 'Tea', amountDecimal: '1.10' }] };
 		const scanner = fakeScanner(canned);
-		const rasterizer = createPopplerPdfRasterizer();
+		const rasterizer = createPopplerPdfProcessor();
 		const svc = createScanService({
 			storageBackend: fakeStorageBackend(),
 			scanner,
@@ -808,7 +808,7 @@ describe.skipIf(!hasPoppler)('scanService end-to-end with real poppler', () => {
 	it('rejects a generated multi-page PDF with a ReceiptRasterizeError', async () => {
 		const pdf = buildPdf(2);
 		const scanner = fakeScanner({ lineItems: [] });
-		const rasterizer = createPopplerPdfRasterizer();
+		const rasterizer = createPopplerPdfProcessor();
 		const svc = createScanService({
 			storageBackend: fakeStorageBackend(),
 			scanner,

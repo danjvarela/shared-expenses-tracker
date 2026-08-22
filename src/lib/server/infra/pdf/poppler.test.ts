@@ -2,8 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 import { Writable } from 'node:stream';
 import { writeFile } from 'node:fs/promises';
-import { createPopplerPdfRasterizer } from './poppler';
-import { ReceiptRasterizeError } from '$lib/server/app/interfaces/pdf-rasterizer';
+import { createPopplerPdfProcessor } from './poppler';
+import { ReceiptRasterizeError } from './index';
 
 class FakePipe extends EventEmitter {
 	push(chunk: string | Buffer | null) {
@@ -46,7 +46,76 @@ async function writePngOutput(args: string[], bytes: Buffer) {
 	await writeFile(`${args[args.length - 1]}.png`, bytes);
 }
 
-describe('createPopplerPdfRasterizer', () => {
+describe('createPopplerPdfProcessor.countPages', () => {
+	it('returns the page count from pdfinfo', async () => {
+		const calls: Array<{ cmd: string; args: string[] }> = [];
+		const spawnFn = vi.fn((cmd: string, args: string[]) => {
+			const proc = makeProc();
+			calls.push({ cmd, args });
+			queueMicrotask(() => {
+				proc.stdout.push('Producer: poppler\nPages: 2\nPage size: 612 x 792\n');
+				proc.stdout.push(null);
+				proc.emit('close', 0);
+			});
+			return proc;
+		});
+
+		const processor = createPopplerPdfProcessor({ spawn: spawnFn as never });
+		const count = await processor.countPages(makeStream(Buffer.from('%PDF-1.4 body')));
+
+		expect(count).toBe(2);
+		expect(calls.map((c) => c.cmd)).toEqual(['pdfinfo']);
+	});
+
+	it('rejects with ReceiptRasterizeError when pdfinfo exits non-zero', async () => {
+		const spawnFn = vi.fn(() => {
+			const proc = makeProc();
+			queueMicrotask(() => {
+				proc.stderr.push('Syntax Error: corrupt\n');
+				proc.stderr.push(null);
+				proc.emit('close', 1);
+			});
+			return proc;
+		});
+
+		const processor = createPopplerPdfProcessor({ spawn: spawnFn as never });
+		await expect(processor.countPages(makeStream(Buffer.from('%PDF-1.4')))).rejects.toBeInstanceOf(
+			ReceiptRasterizeError
+		);
+	});
+
+	it('rejects when pdfinfo output has no Pages line', async () => {
+		const spawnFn = vi.fn(() => {
+			const proc = makeProc();
+			queueMicrotask(() => {
+				proc.stdout.push('Producer: poppler\n');
+				proc.stdout.push(null);
+				proc.emit('close', 0);
+			});
+			return proc;
+		});
+
+		const processor = createPopplerPdfProcessor({ spawn: spawnFn as never });
+		await expect(processor.countPages(makeStream(Buffer.from('%PDF-1.4')))).rejects.toBeInstanceOf(
+			ReceiptRasterizeError
+		);
+	});
+
+	it('rejects when the spawn itself fails (ENOENT)', async () => {
+		const spawnFn = vi.fn(() => {
+			const proc = makeProc();
+			queueMicrotask(() => proc.emit('error', new Error('spawn ENOENT')));
+			return proc;
+		});
+
+		const processor = createPopplerPdfProcessor({ spawn: spawnFn as never });
+		await expect(processor.countPages(makeStream(Buffer.from('%PDF-1.4')))).rejects.toBeInstanceOf(
+			ReceiptRasterizeError
+		);
+	});
+});
+
+describe('createPopplerPdfProcessor.rasterizeFirstPage', () => {
 	it('returns the page-1 image and page count for a single-page PDF', async () => {
 		const calls: Array<{ cmd: string; args: string[] }> = [];
 		const spawnFn = vi.fn((cmd: string, args: string[]) => {
@@ -65,8 +134,8 @@ describe('createPopplerPdfRasterizer', () => {
 			return proc;
 		});
 
-		const rasterizer = createPopplerPdfRasterizer({ spawn: spawnFn as never });
-		const result = await rasterizer.rasterizeFirstPage(makeStream(Buffer.from('%PDF-1.4 body')));
+		const processor = createPopplerPdfProcessor({ spawn: spawnFn as never });
+		const result = await processor.rasterizeFirstPage(makeStream(Buffer.from('%PDF-1.4 body')));
 
 		expect(result.pageCount).toBe(1);
 		expect(result.image.equals(PNG_BYTES)).toBe(true);
@@ -96,8 +165,8 @@ describe('createPopplerPdfRasterizer', () => {
 			return proc;
 		});
 
-		const rasterizer = createPopplerPdfRasterizer({ spawn: spawnFn as never });
-		const result = await rasterizer.rasterizeFirstPage(makeStream(Buffer.from('%PDF-1.4')));
+		const processor = createPopplerPdfProcessor({ spawn: spawnFn as never });
+		const result = await processor.rasterizeFirstPage(makeStream(Buffer.from('%PDF-1.4')));
 
 		expect(result.pageCount).toBe(3);
 	});
@@ -113,9 +182,9 @@ describe('createPopplerPdfRasterizer', () => {
 			return proc;
 		});
 
-		const rasterizer = createPopplerPdfRasterizer({ spawn: spawnFn as never });
+		const processor = createPopplerPdfProcessor({ spawn: spawnFn as never });
 		await expect(
-			rasterizer.rasterizeFirstPage(makeStream(Buffer.from('%PDF-1.4')))
+			processor.rasterizeFirstPage(makeStream(Buffer.from('%PDF-1.4')))
 		).rejects.toBeInstanceOf(ReceiptRasterizeError);
 	});
 
@@ -130,9 +199,9 @@ describe('createPopplerPdfRasterizer', () => {
 			return proc;
 		});
 
-		const rasterizer = createPopplerPdfRasterizer({ spawn: spawnFn as never });
+		const processor = createPopplerPdfProcessor({ spawn: spawnFn as never });
 		await expect(
-			rasterizer.rasterizeFirstPage(makeStream(Buffer.from('%PDF-1.4')))
+			processor.rasterizeFirstPage(makeStream(Buffer.from('%PDF-1.4')))
 		).rejects.toBeInstanceOf(ReceiptRasterizeError);
 	});
 
@@ -151,9 +220,9 @@ describe('createPopplerPdfRasterizer', () => {
 			return proc;
 		});
 
-		const rasterizer = createPopplerPdfRasterizer({ spawn: spawnFn as never });
+		const processor = createPopplerPdfProcessor({ spawn: spawnFn as never });
 		await expect(
-			rasterizer.rasterizeFirstPage(makeStream(Buffer.from('%PDF-1.4')))
+			processor.rasterizeFirstPage(makeStream(Buffer.from('%PDF-1.4')))
 		).rejects.toBeInstanceOf(ReceiptRasterizeError);
 	});
 
@@ -164,9 +233,9 @@ describe('createPopplerPdfRasterizer', () => {
 			return proc;
 		});
 
-		const rasterizer = createPopplerPdfRasterizer({ spawn: spawnFn as never });
+		const processor = createPopplerPdfProcessor({ spawn: spawnFn as never });
 		await expect(
-			rasterizer.rasterizeFirstPage(makeStream(Buffer.from('%PDF-1.4')))
+			processor.rasterizeFirstPage(makeStream(Buffer.from('%PDF-1.4')))
 		).rejects.toBeInstanceOf(ReceiptRasterizeError);
 	});
 
@@ -187,8 +256,8 @@ describe('createPopplerPdfRasterizer', () => {
 			return proc;
 		});
 
-		const rasterizer = createPopplerPdfRasterizer({ spawn: spawnFn as never, dpi: 300 });
-		await rasterizer.rasterizeFirstPage(makeStream(Buffer.from('%PDF-1.4')));
+		const processor = createPopplerPdfProcessor({ spawn: spawnFn as never, dpi: 300 });
+		await processor.rasterizeFirstPage(makeStream(Buffer.from('%PDF-1.4')));
 
 		expect(calls[1].args).toContain('300');
 	});

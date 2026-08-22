@@ -15,7 +15,7 @@ import { createExpenseReceiptRepository } from '$lib/server/infra/db/repositorie
 import { createGoogleOAuthProvider } from '$lib/server/infra/oauth/google';
 import { createReceiptStorageBackend } from '$lib/server/infra/receipt-storage';
 import { createReceiptScannerBackend } from '$lib/server/infra/receipt-scanner';
-import { createPopplerPdfRasterizer } from '$lib/server/infra/pdf-rasterizer';
+import { createPopplerPdfProcessor } from '$lib/server/infra/pdf';
 
 import { createAuthService } from '$lib/server/app/auth';
 import { createGroupBalanceService } from '$lib/server/app/group-balance';
@@ -45,7 +45,7 @@ const notificationRepo = createNotificationRepository(db);
 const receiptRepo = createExpenseReceiptRepository(db);
 const receiptStorageBackend = createReceiptStorageBackend();
 const receiptScannerBackend = createReceiptScannerBackend();
-const pdfRasterizer = createPopplerPdfRasterizer();
+const pdfProcessor = createPopplerPdfProcessor();
 export const scannerEnabled = receiptScannerBackend !== null;
 
 const googleOAuthProvider = createGoogleOAuthProvider();
@@ -154,7 +154,7 @@ export const scanService =
 				storageBackend: receiptStorageBackend,
 				scanner: receiptScannerBackend,
 				groupMemberRepo,
-				rasterizer: pdfRasterizer,
+				rasterizer: pdfProcessor,
 				uow: scanConfirmUnitOfWork
 			})
 		: null;
