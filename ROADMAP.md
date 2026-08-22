@@ -51,6 +51,10 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 - [ ] Not started — Export group data (CSV/PDF of expenses and balances)
 - [ ] Not started — Multi-group dashboard (cross-group total owed / owed-to-you)
 
+## Dev environment
+
+- [ ] Not started — Cloudflare Tunnel in devenv: expose the app's running port to a public `*.trycloudflare.com` (or named) URL so the local dev server is reachable from the cloud (e.g. for mobile testing / OAuth callbacks). Wired into `devenv.nix` alongside the existing services.
+
 ## Open questions
 
 - **Receipt storage backend rollout**: `fs` ships now behind `IReceiptStorageBackend`. R2 (published deployment) and Google Drive (personal use) still deferred behind the same interface — Drive in particular has open account/scope/sharing decisions warranting their own ADR/epic.
