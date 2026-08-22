@@ -23,7 +23,6 @@
 		description: string;
 		amountDecimal: string;
 		categoryId: string;
-		date: string;
 		percents: Record<string, string>;
 		customSplitOpen: boolean;
 	};
@@ -39,6 +38,7 @@
 		originalFilename: string | null;
 	} | null>(null);
 	let paidByUserId = $state(untrack(() => data.user?.id ?? data.members[0]?.userId ?? ''));
+	let draftDate = $state(today);
 	let lines = $state<DraftLine[]>([]);
 
 	function memberName(userId: string) {
@@ -76,7 +76,6 @@
 			description: item.description,
 			amountDecimal: item.amountDecimal,
 			categoryId: NO_CATEGORY,
-			date: defaultLineDate(scanned),
 			percents: emptyPercents(),
 			customSplitOpen: false
 		};
@@ -115,6 +114,7 @@
 			storageKey = key;
 			storageMeta = meta;
 			paidByUserId = data.user?.id ?? data.members[0]?.userId ?? '';
+			draftDate = defaultLineDate(scanned);
 			lines = scanned.lineItems.map((item) => lineFromItem(item, scanned));
 			toast.success('Receipt scanned');
 		} catch {
@@ -159,7 +159,7 @@
 						description: line.description,
 						amountDecimal: line.amountDecimal,
 						categoryId: line.categoryId === NO_CATEGORY ? null : line.categoryId,
-						date: line.date,
+						date: draftDate,
 						percents: line.percents
 					}))
 				})
@@ -229,8 +229,6 @@
 				<Card.Title>Draft</Card.Title>
 				<Card.Description>
 					{#if scanResult.merchant}{scanResult.merchant}{:else}Scanned receipt{/if}
-					{#if scanResult.date}
-						· {scanResult.date}{/if}
 				</Card.Description>
 			</Card.Header>
 			<Card.Content class="flex flex-col gap-4">
@@ -246,6 +244,11 @@
 					</Select.Root>
 				</Field.Field>
 
+				<Field.Field>
+					<Field.FieldLabel for="draftDate">Date</Field.FieldLabel>
+					<Input id="draftDate" type="date" bind:value={draftDate} aria-label="Date" />
+				</Field.Field>
+
 				<div class="flex flex-col gap-4">
 					{#each lines as line, i (i)}
 						<div class="rounded-lg border p-3">
@@ -255,17 +258,14 @@
 									placeholder="Description"
 									aria-label="Line description"
 								/>
-								<div class="flex gap-2">
-									<Input
-										bind:value={line.amountDecimal}
-										type="number"
-										step="0.01"
-										min="0"
-										placeholder={data.group.currencyCode}
-										aria-label="Line amount"
-									/>
-									<Input bind:value={line.date} type="date" aria-label="Line date" class="w-40" />
-								</div>
+								<Input
+									bind:value={line.amountDecimal}
+									type="number"
+									step="0.01"
+									min="0"
+									placeholder={data.group.currencyCode}
+									aria-label="Line amount"
+								/>
 								<Select.Root type="single" bind:value={line.categoryId}>
 									<Select.Trigger aria-label="Line category">
 										{categoryLabel(line.categoryId)}
