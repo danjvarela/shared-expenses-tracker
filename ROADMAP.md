@@ -9,7 +9,7 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 - [x] Done — Delete group (blocked while any nonzero `PairBalance` exists in the group; hard delete, cascades Expenses/Settlements/PairBalances once clear via DB-level `ON DELETE CASCADE`). Danger-zone card on group settings page, any member may delete.
 - [x] Done — Invite user to group by email (any member may invite; pre-login User seeded with `displayName = email`, replaced with Google name on first login — see ADR-0009)
 - [x] Done — Set default split percentages per member (`GroupMember.defaultSplitPercent`, prefill-only, unenforced sum — see ADR-0005). Schema, service, whole-group settings UI, and prefill into the expense-add split UI all done.
-- [x] Not started — Kick user from group (blocked while that member has any nonzero `PairBalance` in the group)
+- [x] Done — Kick user from group (blocked while that member has any nonzero `PairBalance` in the group; settings page action via shared `remove-member` service, same as Leave)
 - [x] Done — View a group's members/expenses/balances (read-only)
 
 ## Expenses
@@ -17,8 +17,8 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 - [x] Done — View a group's expenses (read-only list)
 - [x] Done — Add expense manually (form)
 - [ ] Not started — Add expense via free-text input (AI-generated fields)
-- [ ] Not started — Scan receipt to add multiple expenses — pluggable scanner backend behind `IReceiptScanner`, selected via env `RECEIPT_SCANNER_BACKEND` (unset = scan UI not rendered; unknown = boot fail). Dumb scanner: bytes in, `ScanResult` (line items only, no currency/category) out; app maps to a draft ExpenseGroup the user edits then confirms. Ollama vision-model backend ships first (`OLLAMA_BASE_URL`, `OLLAMA_VISION_MODEL`); blocking request for now, background-job deferred. See ADR-0013.
-- [ ] Not started — `ExpenseGroup` entity — modeled in `CONTEXT.md` + ADR-0013:
+- [x] Done — Scan receipt to add multiple expenses — pluggable scanner backend behind `IReceiptScanner`, selected via env `RECEIPT_SCANNER_BACKEND` (unset = scan UI not rendered; unknown = boot fail). Dumb scanner: bytes + mime in, `ScanResult` (line items only, no currency/category) out; app maps to a draft ExpenseGroup the user edits then confirms. Two backends ship: `ollama` (vision model, `OLLAMA_BASE_URL` + `OLLAMA_VISION_MODEL`, ADR-0013) and `ocr` (OCR.space text extraction + Ollama text-model structuring composition, `OCR_API_KEY` + `OLLAMA_TEXT_MODEL`, ADR-0015). `scan.ts` is mime-agnostic; each backend ingests its own way (vision rasterizes PDFs, OCR.space takes them natively). Blocking request for now, background-job deferred.
+- [x] Done — `ExpenseGroup` entity — modeled in `CONTEXT.md` + ADR-0013:
   - Every `Expense.expenseGroupId` is non-null (manual single-add is wrapped in its own one-child `ExpenseGroup` — no batchless Expense, no nullable special case)
   - `ExpenseGroup` is `{ id, groupId, createdAt }` only — carries no defaults; scanned-line payer defaults to the scanning user, splits come from `GroupMember.defaultSplitPercent`, both applied at draft time
   - Each child is a plain, full `Expense` — own category, own payer, own splits, independently editable after creation (no live inheritance)
