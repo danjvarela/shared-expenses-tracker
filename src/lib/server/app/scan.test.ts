@@ -21,6 +21,20 @@ import {
 } from '$lib/server/app/interfaces/pdf-rasterizer';
 import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
+import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
+import type {
+	IExpenseRepository,
+	ExpenseWithSplits
+} from '$lib/server/app/interfaces/repositories/expense';
+import type { IPairBalanceRepository } from '$lib/server/app/interfaces/repositories/pair-balance';
+import type {
+	IExpenseGroupRepository,
+	ExpenseGroupCreateInput
+} from '$lib/server/app/interfaces/repositories/expense-group';
+import type { IExpenseReceiptRepository } from '$lib/server/app/interfaces/repositories/expense-receipt';
+import type { ExpenseGroup } from '$lib/server/domain/expense-group';
+import type { ExpenseReceipt } from '$lib/server/domain/expense-receipt';
+import type { ScanConfirmRepos } from './scan';
 import { createPopplerPdfRasterizer } from '$lib/server/infra/pdf-rasterizer';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -113,10 +127,13 @@ function fakeRasterizer(
 	};
 }
 
-function fakeGroupMemberRepo(member: boolean): IGroupMemberRepository {
+function fakeGroupMemberRepo(
+	member: boolean,
+	members: Array<{ userId: string; displayName: string; defaultSplitPercent: number | null }> = []
+): IGroupMemberRepository {
 	return {
 		async getAllForGroupWithUser() {
-			return [];
+			return members;
 		},
 		async create() {},
 		async updateDefaultSplitPercents() {},
@@ -130,25 +147,207 @@ function fakeGroupMemberRepo(member: boolean): IGroupMemberRepository {
 	};
 }
 
+function fakeUnitOfWork(repos: ScanConfirmRepos): IUnitOfWork<ScanConfirmRepos> {
+	return {
+		async run(fn) {
+			return fn(repos);
+		}
+	};
+}
+
+function fakeConfirmExpenseRepo(): IExpenseRepository & {
+	created: Array<ExpenseWithSplits>;
+} {
+	const created: Array<ExpenseWithSplits> = [];
+	let nextId = 0;
+	return {
+		created,
+		async create(input) {
+			const id = `expense-${nextId++}`;
+			const row: ExpenseWithSplits = {
+				id,
+				groupId: input.groupId,
+				expenseGroupId: input.expenseGroupId,
+				paidByUserId: input.paidByUserId,
+				categoryId: input.categoryId,
+				description: input.description,
+				amountCents: input.amountCents,
+				date: input.date,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				splits: input.splits.map((split, index) => ({
+					id: `split-${id}-${index}`,
+					expenseId: id,
+					userId: split.userId,
+					amountCents: split.amountCents,
+					createdAt: new Date()
+				}))
+			};
+			created.push(row);
+			return row;
+		},
+		async getWithSplits() {
+			return null;
+		},
+		async update() {
+			throw new Error('not implemented');
+		},
+		async delete() {},
+		async countByExpenseGroup() {
+			return 0;
+		},
+		async getAllForGroupWithSplits() {
+			return created;
+		},
+		async getAllForGroupWithDetails() {
+			return [];
+		}
+	};
+}
+
+function fakeConfirmExpenseGroupRepo(): IExpenseGroupRepository & {
+	created: Array<ExpenseGroup>;
+} {
+	const created: Array<ExpenseGroup> = [];
+	let nextId = 0;
+	return {
+		created,
+		async create(input: ExpenseGroupCreateInput) {
+			const group: ExpenseGroup = {
+				id: `expense-group-${nextId++}`,
+				groupId: input.groupId,
+				createdAt: new Date()
+			};
+			created.push(group);
+			return group;
+		},
+		async getById() {
+			return null;
+		},
+		async delete() {}
+	};
+}
+
+function fakeConfirmReceiptRepo(): IExpenseReceiptRepository & {
+	created: Array<ExpenseReceipt>;
+} {
+	const created: Array<ExpenseReceipt> = [];
+	let nextId = 0;
+	return {
+		created,
+		async create(input) {
+			const row: ExpenseReceipt = {
+				id: `receipt-${nextId++}`,
+				expenseGroupId: input.expenseGroupId,
+				storageKey: input.storageKey,
+				mime: input.mime,
+				sizeBytes: input.sizeBytes,
+				originalFilename: input.originalFilename,
+				uploadedByUserId: input.uploadedByUserId,
+				uploadedAt: new Date()
+			};
+			created.push(row);
+			return row;
+		},
+		async getById() {
+			return null;
+		},
+		async getAllForExpenseGroup() {
+			return [];
+		},
+		async delete() {}
+	};
+}
+
+function fakeConfirmPairBalanceRepo(): IPairBalanceRepository & {
+	deltasApplied: Array<{
+		groupId: string;
+		fromUserId: string;
+		toUserId: string;
+		amountCents: number;
+	}>;
+} {
+	const rows = new Map<string, { fromUserId: string; toUserId: string; amountCents: number }>();
+	const deltasApplied: Array<{
+		groupId: string;
+		fromUserId: string;
+		toUserId: string;
+		amountCents: number;
+	}> = [];
+	const key = (a: string, b: string) => [a, b].sort().join('|');
+	return {
+		deltasApplied,
+		async getForPair(_groupId, userA, userB) {
+			return rows.get(key(userA, userB)) ?? null;
+		},
+		async replaceForPair(groupId, userA, userB, next) {
+			if (next) {
+				rows.set(key(userA, userB), next);
+				deltasApplied.push({ groupId, ...next });
+			} else {
+				rows.delete(key(userA, userB));
+			}
+		},
+		async getAllForGroup() {
+			return [];
+		},
+		async getNetForUserInGroups() {
+			return new Map();
+		},
+		async hasBalanceForUserInGroup() {
+			return false;
+		},
+		async getDebtsForUser() {
+			return [];
+		},
+		async getDebtsForUserInGroup() {
+			return [];
+		},
+		async replaceAllForGroup() {}
+	};
+}
+
 function service(
 	opts: {
 		member?: boolean;
 		scanner?: ReturnType<typeof fakeScanner>;
 		rasterizer?: ReturnType<typeof fakeRasterizer>;
 		storage?: ReturnType<typeof fakeStorageBackend>;
+		confirmRepos?: ScanConfirmRepos;
+		members?: Array<{ userId: string; displayName: string; defaultSplitPercent: number | null }>;
 	} = {}
 ) {
 	const storage = opts.storage ?? fakeStorageBackend();
 	const scanner =
 		opts.scanner ?? fakeScanner({ lineItems: [{ description: 'Milk', amountDecimal: '1.00' }] });
 	const rasterizer = opts.rasterizer ?? fakeRasterizer(Buffer.from([0x89, 0x50, 0x4e, 0x47]), 1);
+	const expenseRepo = fakeConfirmExpenseRepo();
+	const pairBalanceRepo = fakeConfirmPairBalanceRepo();
+	const expenseGroupRepo = fakeConfirmExpenseGroupRepo();
+	const receiptRepo = fakeConfirmReceiptRepo();
+	const confirmRepos: ScanConfirmRepos = opts.confirmRepos ?? {
+		expenseRepo,
+		pairBalanceRepo,
+		expenseGroupRepo,
+		receiptRepo
+	};
 	const svc = createScanService({
 		storageBackend: storage,
 		scanner,
-		groupMemberRepo: fakeGroupMemberRepo(opts.member ?? true),
-		rasterizer
+		groupMemberRepo: fakeGroupMemberRepo(opts.member ?? true, opts.members ?? []),
+		rasterizer,
+		uow: fakeUnitOfWork(confirmRepos)
 	});
-	return { svc, storage, scanner, rasterizer };
+	return {
+		svc,
+		storage,
+		scanner,
+		rasterizer,
+		expenseRepo,
+		pairBalanceRepo,
+		expenseGroupRepo,
+		receiptRepo
+	};
 }
 
 describe('sniffMime', () => {
@@ -327,6 +526,201 @@ describe('createScanService.scan', () => {
 		expect(storage.deletedKeys).toHaveLength(0);
 		expect(scanner.calls).toHaveLength(0);
 	});
+
+	it('returns the storage metadata (sniffed mime, size, filename) for the client to echo back at confirm', async () => {
+		const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+		const { svc } = service();
+
+		const result = await svc.scan(alice, {
+			groupId,
+			stream: bufferToStream(png),
+			sniffedMime: PNG_MIME,
+			filename: 'r.png',
+			sizeBytes: png.length
+		});
+
+		expect(result.storageMeta).toEqual({
+			mime: PNG_MIME,
+			sizeBytes: png.length,
+			originalFilename: 'r.png'
+		});
+	});
+});
+
+describe('createScanService.confirmDraft', () => {
+	const alice = 'alice';
+	const bob = 'bob';
+	const groupId = 'group-1';
+	const storageKey = 'stored-key';
+
+	const members = [
+		{ userId: alice, displayName: 'Alice', defaultSplitPercent: 50 },
+		{ userId: bob, displayName: 'Bob', defaultSplitPercent: 50 }
+	];
+
+	function line(
+		overrides: Partial<{
+			description: string;
+			amountDecimal: string;
+			categoryId: string | null;
+			date: string;
+			percents: Record<string, string>;
+		}> = {}
+	) {
+		return {
+			description: 'Milk',
+			amountDecimal: '10.00',
+			categoryId: null,
+			date: '2026-01-01',
+			percents: { [alice]: '50', [bob]: '50' },
+			...overrides
+		};
+	}
+
+	function input(lines: ReturnType<typeof line>[]) {
+		return {
+			groupId,
+			paidByUserId: alice,
+			storageKey,
+			storageMeta: { mime: PNG_MIME, sizeBytes: 99, originalFilename: 'r.png' },
+			lines
+		};
+	}
+
+	it('creates one ExpenseGroup, one child Expense per line with its splits, and links the existing storageKey as the receipt in one transaction', async () => {
+		const { svc, expenseRepo, expenseGroupRepo, receiptRepo } = service({ members });
+
+		const result = await svc.confirmDraft(alice, input([line(), line({ description: 'Bread' })]));
+
+		expect(expenseGroupRepo.created).toHaveLength(1);
+		expect(expenseGroupRepo.created[0].groupId).toBe(groupId);
+		expect(result.expenseGroupId).toBe(expenseGroupRepo.created[0].id);
+
+		expect(expenseRepo.created).toHaveLength(2);
+		expect(expenseRepo.created.map((e) => e.description)).toEqual(['Milk', 'Bread']);
+		for (const expense of expenseRepo.created) {
+			expect(expense.expenseGroupId).toBe(result.expenseGroupId);
+			expect(expense.groupId).toBe(groupId);
+			expect(expense.paidByUserId).toBe(alice);
+			expect(expense.amountCents).toBe(1000);
+			expect(expense.splits).toHaveLength(2);
+		}
+
+		expect(receiptRepo.created).toHaveLength(1);
+		expect(receiptRepo.created[0]).toMatchObject({
+			expenseGroupId: result.expenseGroupId,
+			storageKey,
+			mime: PNG_MIME,
+			sizeBytes: 99,
+			originalFilename: 'r.png',
+			uploadedByUserId: alice
+		});
+		expect(result.expenseIds).toEqual(expenseRepo.created.map((e) => e.id));
+	});
+
+	it('normalizes each line amountDecimal to integer cents (app, not scanner)', async () => {
+		const { svc, expenseRepo } = service({ members });
+
+		await svc.confirmDraft(alice, input([line({ amountDecimal: '3.49' })]));
+
+		expect(expenseRepo.created[0].amountCents).toBe(349);
+		expect(expenseRepo.created[0].splits.reduce((sum, s) => sum + s.amountCents, 0)).toBe(349);
+	});
+
+	it('updates PairBalance via the existing incremental-maintenance path for each child', async () => {
+		const { svc, pairBalanceRepo } = service({ members });
+
+		await svc.confirmDraft(alice, input([line(), line({ description: 'Bread' })]));
+
+		// alice paid, bob owes 50% per line → two 500-cent deltas bob->alice, netted to one 1000.
+		expect(pairBalanceRepo.deltasApplied).toEqual([
+			{ groupId, fromUserId: bob, toUserId: alice, amountCents: 500 },
+			{ groupId, fromUserId: bob, toUserId: alice, amountCents: 1000 }
+		]);
+	});
+
+	it('does not put bytes again — links the existing storageKey as the receipt with no storageBackend.put', async () => {
+		const storage = fakeStorageBackend();
+		const { svc } = service({ members, storage });
+
+		await svc.confirmDraft(alice, input([line()]));
+
+		expect(storage.store.size).toBe(0);
+	});
+
+	it('rejects a non-member before writing anything', async () => {
+		const { svc, expenseRepo, expenseGroupRepo, receiptRepo } = service({ member: false, members });
+
+		await expect(svc.confirmDraft(alice, input([line()]))).rejects.toBeInstanceOf(
+			ReceiptNotAuthorizedError
+		);
+
+		expect(expenseRepo.created).toHaveLength(0);
+		expect(expenseGroupRepo.created).toHaveLength(0);
+		expect(receiptRepo.created).toHaveLength(0);
+	});
+
+	it('rejects a payer who is not a member of the group', async () => {
+		const { svc, expenseGroupRepo } = service({ members });
+
+		await expect(
+			svc.confirmDraft(alice, { ...input([line()]), paidByUserId: 'intruder' })
+		).rejects.toThrow('Select who paid');
+
+		expect(expenseGroupRepo.created).toHaveLength(0);
+	});
+
+	it('rejects an empty draft', async () => {
+		const { svc, expenseGroupRepo } = service({ members });
+
+		await expect(svc.confirmDraft(alice, input([]))).rejects.toThrow('Draft has no line items');
+		expect(expenseGroupRepo.created).toHaveLength(0);
+	});
+
+	it('rejects a line with a non-positive amount', async () => {
+		const { svc } = service({ members });
+
+		await expect(svc.confirmDraft(alice, input([line({ amountDecimal: '0' })]))).rejects.toThrow(
+			'Enter a valid amount'
+		);
+		await expect(
+			svc.confirmDraft(alice, input([line({ amountDecimal: 'not-a-number' })]))
+		).rejects.toThrow('Enter a valid amount');
+	});
+
+	it('falls back to the group default split when no custom percents are given', async () => {
+		const { svc, expenseRepo } = service({ members });
+
+		await svc.confirmDraft(alice, input([line({ percents: { [alice]: '', [bob]: '' } })]));
+
+		const splits = expenseRepo.created[0].splits;
+		expect(splits).toHaveLength(2);
+		expect(splits.reduce((sum, s) => sum + s.amountCents, 0)).toBe(1000);
+		expect(splits.find((s) => s.userId === alice)?.amountCents).toBe(500);
+		expect(splits.find((s) => s.userId === bob)?.amountCents).toBe(500);
+	});
+
+	it('falls back to an equal split when no custom percents and no default split is configured', async () => {
+		const noDefaults = [
+			{ userId: alice, displayName: 'Alice', defaultSplitPercent: null },
+			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
+		];
+		const { svc, expenseRepo } = service({ members: noDefaults });
+
+		await svc.confirmDraft(alice, input([line({ percents: { [alice]: '', [bob]: '' } })]));
+
+		const splits = expenseRepo.created[0].splits;
+		expect(splits).toHaveLength(2);
+		expect(splits.map((s) => s.amountCents)).toEqual([500, 500]);
+	});
+
+	it('normalizes categoryId: empty/none becomes null', async () => {
+		const { svc, expenseRepo } = service({ members });
+
+		await svc.confirmDraft(alice, input([line({ categoryId: 'none' }), line({ categoryId: '' })]));
+
+		expect(expenseRepo.created.map((e) => e.categoryId)).toEqual([null, null]);
+	});
 });
 
 // Real-poppler end-to-end (no UI): a fixture image and a generated single-page
@@ -388,7 +782,13 @@ describe.skipIf(!hasPoppler)('scanService end-to-end with real poppler', () => {
 			storageBackend: fakeStorageBackend(),
 			scanner,
 			groupMemberRepo: fakeGroupMemberRepo(true),
-			rasterizer
+			rasterizer,
+			uow: fakeUnitOfWork({
+				expenseRepo: fakeConfirmExpenseRepo(),
+				pairBalanceRepo: fakeConfirmPairBalanceRepo(),
+				expenseGroupRepo: fakeConfirmExpenseGroupRepo(),
+				receiptRepo: fakeConfirmReceiptRepo()
+			})
 		});
 
 		const result = await svc.scan(alice, {
@@ -413,7 +813,13 @@ describe.skipIf(!hasPoppler)('scanService end-to-end with real poppler', () => {
 			storageBackend: fakeStorageBackend(),
 			scanner,
 			groupMemberRepo: fakeGroupMemberRepo(true),
-			rasterizer
+			rasterizer,
+			uow: fakeUnitOfWork({
+				expenseRepo: fakeConfirmExpenseRepo(),
+				pairBalanceRepo: fakeConfirmPairBalanceRepo(),
+				expenseGroupRepo: fakeConfirmExpenseGroupRepo(),
+				receiptRepo: fakeConfirmReceiptRepo()
+			})
 		});
 
 		await expect(

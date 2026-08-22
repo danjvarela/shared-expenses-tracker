@@ -27,7 +27,7 @@ import { createGroupMemberService } from '$lib/server/app/group-member';
 import { createGroupInviteService, type InviteRepos } from '$lib/server/app/group-invite';
 import { createNotificationService } from '$lib/server/app/notification';
 import { createReceiptService } from '$lib/server/app/receipt';
-import { createScanService } from '$lib/server/app/scan';
+import { createScanService, type ScanConfirmRepos } from '$lib/server/app/scan';
 import type { IOAuthProvider } from '$lib/server/app/interfaces/oauth-provider';
 import { createRemoveMemberService, type RemoveMemberRepos } from './app/remove-member';
 
@@ -78,6 +78,13 @@ const removeMemberUnitOfWork = createUnitOfWork<RemoveMemberRepos>((tx) => ({
 	groupMemberRepo: createGroupMemberRepository(tx),
 	pairBalanceRepo: createPairBalanceRepository(tx),
 	groupRepo: createGroupRepository(tx)
+}));
+
+const scanConfirmUnitOfWork = createUnitOfWork<ScanConfirmRepos>((tx) => ({
+	expenseRepo: createExpenseRepository(tx),
+	pairBalanceRepo: createPairBalanceRepository(tx),
+	expenseGroupRepo: createExpenseGroupRepository(tx),
+	receiptRepo: createExpenseReceiptRepository(tx)
 }));
 
 export const authService = createAuthService({
@@ -147,7 +154,8 @@ export const scanService =
 				storageBackend: receiptStorageBackend,
 				scanner: receiptScannerBackend,
 				groupMemberRepo,
-				rasterizer: pdfRasterizer
+				rasterizer: pdfRasterizer,
+				uow: scanConfirmUnitOfWork
 			})
 		: null;
 

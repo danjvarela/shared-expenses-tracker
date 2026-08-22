@@ -9,21 +9,35 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { ArrowLeft, ChevronDown, LoaderCircle, ScanLine } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { untrack } from 'svelte';
-	import type { ScanResult } from '$lib/server/app/interfaces/receipt-scanner';
+	import type { ScanResult, ReceiptScanLineItem } from '$lib/server/app/interfaces/receipt-scanner';
 
 	const { data } = $props();
+
+	const NO_CATEGORY = 'none';
+	const today = new Date().toISOString().slice(0, 10);
 
 	type DraftLine = {
 		description: string;
 		amountDecimal: string;
+		categoryId: string;
+		date: string;
 		percents: Record<string, string>;
 		customSplitOpen: boolean;
 	};
 
 	let fileInput = $state<HTMLInputElement>();
 	let scanning = $state(false);
+	let confirming = $state(false);
 	let scanResult = $state<ScanResult | null>(null);
+	let storageKey = $state<string>('');
+	let storageMeta = $state<{
+		mime: string;
+		sizeBytes: number;
+		originalFilename: string | null;
+	} | null>(null);
 	let paidByUserId = $state(untrack(() => data.user?.id ?? data.members[0]?.userId ?? ''));
 	let lines = $state<DraftLine[]>([]);
 
@@ -35,6 +49,11 @@
 		return paidByUserId ? memberName(paidByUserId) : 'Select payer';
 	}
 
+	function categoryLabel(categoryId: string) {
+		if (categoryId === NO_CATEGORY) return 'None';
+		return data.categories.find((category) => category.id === categoryId)?.name ?? 'None';
+	}
+
 	function emptyPercents(): Record<string, string> {
 		return Object.fromEntries(
 			data.members.map((member) => [
@@ -42,6 +61,25 @@
 				member.defaultSplitPercent !== null ? String(member.defaultSplitPercent) : ''
 			])
 		);
+	}
+
+	function defaultLineDate(scanned: ScanResult | null): string {
+		if (scanned?.date) {
+			const parsed = new Date(scanned.date);
+			if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+		}
+		return today;
+	}
+
+	function lineFromItem(item: ReceiptScanLineItem, scanned: ScanResult): DraftLine {
+		return {
+			description: item.description,
+			amountDecimal: item.amountDecimal,
+			categoryId: NO_CATEGORY,
+			date: defaultLineDate(scanned),
+			percents: emptyPercents(),
+			customSplitOpen: false
+		};
 	}
 
 	async function onFileChosen() {
@@ -64,15 +102,20 @@
 				return;
 			}
 
-			const { scanResult: scanned } = (await response.json()) as { scanResult: ScanResult };
+			const {
+				scanResult: scanned,
+				storageKey: key,
+				storageMeta: meta
+			} = (await response.json()) as {
+				scanResult: ScanResult;
+				storageKey: string;
+				storageMeta: { mime: string; sizeBytes: number; originalFilename: string | null };
+			};
 			scanResult = scanned;
+			storageKey = key;
+			storageMeta = meta;
 			paidByUserId = data.user?.id ?? data.members[0]?.userId ?? '';
-			lines = scanned.lineItems.map((item) => ({
-				description: item.description,
-				amountDecimal: item.amountDecimal,
-				percents: emptyPercents(),
-				customSplitOpen: false
-			}));
+			lines = scanned.lineItems.map((item) => lineFromItem(item, scanned));
 			toast.success('Receipt scanned');
 		} catch {
 			toast.error('Could not scan the receipt');
@@ -96,7 +139,45 @@
 
 	function discard() {
 		scanResult = null;
+		storageKey = '';
+		storageMeta = null;
 		lines = [];
+	}
+
+	async function confirm() {
+		if (confirming) return;
+		confirming = true;
+		try {
+			const response = await fetch(`/groups/${data.group.id}/scan/confirm`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					paidByUserId,
+					storageKey,
+					storageMeta,
+					lines: lines.map((line) => ({
+						description: line.description,
+						amountDecimal: line.amountDecimal,
+						categoryId: line.categoryId === NO_CATEGORY ? null : line.categoryId,
+						date: line.date,
+						percents: line.percents
+					}))
+				})
+			});
+
+			if (!response.ok) {
+				const message = await response.text();
+				toast.error(message || 'Could not save the expenses');
+				return;
+			}
+
+			toast.success('Expenses saved');
+			await goto(resolve(`/groups/${data.group.id}`));
+		} catch {
+			toast.error('Could not save the expenses');
+		} finally {
+			confirming = false;
+		}
 	}
 </script>
 
@@ -174,18 +255,39 @@
 									placeholder="Description"
 									aria-label="Line description"
 								/>
-								<Input
-									bind:value={line.amountDecimal}
-									type="number"
-									step="0.01"
-									min="0"
-									placeholder={data.group.currencyCode}
-									aria-label="Line amount"
-								/>
+								<div class="flex gap-2">
+									<Input
+										bind:value={line.amountDecimal}
+										type="number"
+										step="0.01"
+										min="0"
+										placeholder={data.group.currencyCode}
+										aria-label="Line amount"
+									/>
+									<Input bind:value={line.date} type="date" aria-label="Line date" class="w-40" />
+								</div>
+								<Select.Root type="single" bind:value={line.categoryId}>
+									<Select.Trigger aria-label="Line category">
+										{categoryLabel(line.categoryId)}
+									</Select.Trigger>
+									<Select.Content>
+										<Select.Item value={NO_CATEGORY}>None</Select.Item>
+										{#each data.categories as category (category.id)}
+											<Select.Item value={category.id}>
+												{category.icon}
+												{category.name}
+											</Select.Item>
+										{/each}
+									</Select.Content>
+								</Select.Root>
 							</div>
 							<Collapsible.Root bind:open={line.customSplitOpen} class="mt-2">
-								<Collapsible.Trigger class="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
-									<ChevronDown class="size-3.5 transition-transform {line.customSplitOpen ? 'rotate-180' : ''}" />
+								<Collapsible.Trigger
+									class="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+								>
+									<ChevronDown
+										class="size-3.5 transition-transform {line.customSplitOpen ? 'rotate-180' : ''}"
+									/>
 									Custom split
 								</Collapsible.Trigger>
 								<Collapsible.Content class="flex flex-col gap-1 pt-2">
@@ -221,11 +323,20 @@
 				{/if}
 
 				<p class="text-xs text-muted-foreground">
-					This draft isn't saved yet. Discarding clears it — you'd need to upload the receipt again to bring it back.
+					This draft isn't saved yet. Discarding clears it — you'd need to upload the receipt again
+					to bring it back.
 				</p>
 
 				<div class="flex gap-2">
-					<Button variant="outline" onclick={discard}>Discard draft</Button>
+					<Button onclick={confirm} disabled={confirming}>
+						{#if confirming}
+							<LoaderCircle class="size-4 animate-spin" />
+							Saving…
+						{:else}
+							Save expenses
+						{/if}
+					</Button>
+					<Button variant="outline" onclick={discard} disabled={confirming}>Discard draft</Button>
 				</div>
 			</Card.Content>
 		</Card.Root>
