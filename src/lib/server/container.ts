@@ -44,8 +44,8 @@ const categoryRepo = createCategoryRepository(db);
 const notificationRepo = createNotificationRepository(db);
 const receiptRepo = createExpenseReceiptRepository(db);
 const receiptStorageBackend = createReceiptStorageBackend();
-const receiptScannerBackend = createReceiptScannerBackend();
 const pdfProcessor = createPopplerPdfProcessor();
+const receiptScannerBackend = createReceiptScannerBackend(pdfProcessor);
 export const scannerEnabled = receiptScannerBackend !== null;
 
 const googleOAuthProvider = createGoogleOAuthProvider();
@@ -154,7 +154,6 @@ export const scanService =
 				storageBackend: receiptStorageBackend,
 				scanner: receiptScannerBackend,
 				groupMemberRepo,
-				rasterizer: pdfProcessor,
 				uow: scanConfirmUnitOfWork
 			})
 		: null;

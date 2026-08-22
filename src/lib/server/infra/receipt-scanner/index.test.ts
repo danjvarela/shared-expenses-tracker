@@ -8,6 +8,16 @@ import {
 	ReceiptScannerConfigError
 } from './index';
 import type { IReceiptScanner, ScanResult } from '$lib/server/app/interfaces/receipt-scanner';
+import type { IPdfProcessor } from '$lib/server/infra/pdf';
+
+const stubPdfProcessor: IPdfProcessor = {
+	async countPages() {
+		return 1;
+	},
+	async rasterizeFirstPage() {
+		return { image: Buffer.alloc(0), pageCount: 1 };
+	}
+};
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PATH = resolve(here, 'fixtures/receipt.png');
@@ -78,11 +88,11 @@ describe('resolveScannerConfig', () => {
 
 describe('createReceiptScannerBackend', () => {
 	it('returns null when the feature is off', () => {
-		expect(createReceiptScannerBackend({})).toBeNull();
+		expect(createReceiptScannerBackend(stubPdfProcessor, {})).toBeNull();
 	});
 
 	it('returns an IReceiptScanner when configured for ollama', () => {
-		const scanner = createReceiptScannerBackend({
+		const scanner = createReceiptScannerBackend(stubPdfProcessor, {
 			RECEIPT_SCANNER_BACKEND: 'ollama',
 			OLLAMA_VISION_MODEL: 'llama3.2-vision'
 		});
@@ -103,7 +113,7 @@ describe('createReceiptScannerBackend', () => {
 		);
 		vi.stubGlobal('fetch', fetchStub);
 
-		const scanner = createReceiptScannerBackend({
+		const scanner = createReceiptScannerBackend(stubPdfProcessor, {
 			RECEIPT_SCANNER_BACKEND: 'ollama',
 			OLLAMA_VISION_MODEL: 'llama3.2-vision'
 		}) as IReceiptScanner;
@@ -125,14 +135,14 @@ describe('createReceiptScannerBackend', () => {
 	});
 
 	it('throws at boot when the model is missing', () => {
-		expect(() => createReceiptScannerBackend({ RECEIPT_SCANNER_BACKEND: 'ollama' })).toThrow(
-			ReceiptScannerConfigError
-		);
+		expect(() =>
+			createReceiptScannerBackend(stubPdfProcessor, { RECEIPT_SCANNER_BACKEND: 'ollama' })
+		).toThrow(ReceiptScannerConfigError);
 	});
 
 	it('throws at boot for an unknown backend', () => {
-		expect(() => createReceiptScannerBackend({ RECEIPT_SCANNER_BACKEND: 'azure-ocr' })).toThrow(
-			ReceiptScannerConfigError
-		);
+		expect(() =>
+			createReceiptScannerBackend(stubPdfProcessor, { RECEIPT_SCANNER_BACKEND: 'azure-ocr' })
+		).toThrow(ReceiptScannerConfigError);
 	});
 });

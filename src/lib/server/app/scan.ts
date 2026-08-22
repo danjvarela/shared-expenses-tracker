@@ -16,13 +16,10 @@ import type {
 } from '$lib/server/app/interfaces/repositories/expense-group';
 import type { IExpenseReceiptRepository } from '$lib/server/app/interfaces/repositories/expense-receipt';
 import type { IReceiptScanner, ScanResult } from '$lib/server/app/interfaces/receipt-scanner';
-import { ReceiptRasterizeError, type IPdfProcessor } from '$lib/server/infra/pdf';
 import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
 import { parseAmountCents } from '$lib/server/app/expense-form';
 import { resolveSplits } from '$lib/server/app/split-resolver';
 import { applyPairBalanceDeltas, expenseDeltas } from '$lib/server/app/pair-balance';
-
-export { ReceiptRasterizeError } from '$lib/server/infra/pdf';
 
 export const PDF_MIME = 'application/pdf';
 export const PNG_MIME = 'image/png';
@@ -108,7 +105,6 @@ export interface ScanServiceDeps {
 	storageBackend: IReceiptStorageBackend;
 	scanner: IReceiptScanner;
 	groupMemberRepo: IGroupMemberRepository;
-	rasterizer: IPdfProcessor;
 	uow: IUnitOfWork<ScanConfirmRepos>;
 }
 
@@ -117,15 +113,6 @@ function sanitizeFilename(filename: string | undefined): string | null {
 	const base = basename(filename);
 	if (!base || base === '.') return null;
 	return base.slice(0, 255);
-}
-
-function bufferToStream(buf: Buffer): ReadableStream<Uint8Array> {
-	return new ReadableStream<Uint8Array>({
-		start(controller) {
-			controller.enqueue(new Uint8Array(buf));
-			controller.close();
-		}
-	});
 }
 
 function formatBytes(bytes: number): string {
@@ -158,27 +145,12 @@ export function createScanService(deps: ScanServiceDeps) {
 		});
 
 		// Put-first, no-persist: bytes are stored, then read back to feed the
-		// scanner. Nothing is rolled back — a failure or a discarded draft
-		// leaves the bytes orphaned (gc'd later).
+		// scanner. Nothing is rolled back — a failure or discarded draft leaves
+		// the bytes orphaned (gc'd later). Rasterization is the backend's
+		// concern, not the service's: PDFs flow straight to the backend untouched.
 		const stored = await deps.storageBackend.getStream(key);
 
-		let scanStream: ReadableStream<Uint8Array>;
-		let scanMime: string;
-		if (input.sniffedMime === PDF_MIME) {
-			const { image, pageCount } = await deps.rasterizer.rasterizeFirstPage(stored);
-			if (pageCount > 1) {
-				throw new ReceiptRasterizeError(
-					'This PDF has multiple pages. Only single-page receipts are supported.'
-				);
-			}
-			scanStream = bufferToStream(image);
-			scanMime = PNG_MIME;
-		} else {
-			scanStream = stored;
-			scanMime = input.sniffedMime;
-		}
-
-		const scanResult = await deps.scanner.scan(scanStream, scanMime);
+		const scanResult = await deps.scanner.scan(stored, input.sniffedMime);
 		return {
 			scanResult,
 			storageKey: key,

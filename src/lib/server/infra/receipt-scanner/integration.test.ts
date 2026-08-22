@@ -4,6 +4,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createOllamaReceiptScanner } from './ollama';
 import { resolveScannerConfig } from './index';
+import { createPopplerPdfProcessor } from '$lib/server/infra/pdf';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -25,7 +26,8 @@ describe.skipIf(!enabled)('ollama scanner integration', () => {
 		const scanner = createOllamaReceiptScanner({
 			baseUrl: config.baseUrl,
 			model: config.model,
-			apiKey: config.apiKey
+			apiKey: config.apiKey,
+			pdfProcessor: createPopplerPdfProcessor()
 		});
 
 		const result = await scanner.scan(

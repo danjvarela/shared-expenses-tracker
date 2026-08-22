@@ -3,14 +3,21 @@ import {
 	ReceiptScannerConfigError,
 	type IReceiptScanner
 } from '$lib/server/app/interfaces/receipt-scanner';
+import type { IPdfProcessor } from '$lib/server/infra/pdf';
 import { createOllamaReceiptScanner } from './ollama';
 
-export type { IReceiptScanner, ScanResult, ReceiptScanLineItem } from '$lib/server/app/interfaces/receipt-scanner';
-export { ReceiptScannerError, ReceiptScannerConfigError } from '$lib/server/app/interfaces/receipt-scanner';
+export type {
+	IReceiptScanner,
+	ScanResult,
+	ReceiptScanLineItem
+} from '$lib/server/app/interfaces/receipt-scanner';
+export {
+	ReceiptScannerError,
+	ReceiptScannerConfigError
+} from '$lib/server/app/interfaces/receipt-scanner';
 
 export type ScannerConfig =
-	| { backend: 'off' }
-	| { backend: 'ollama'; baseUrl: string; model: string; apiKey?: string };
+	{ backend: 'off' } | { backend: 'ollama'; baseUrl: string; model: string; apiKey?: string };
 
 const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
 
@@ -37,6 +44,7 @@ export function resolveScannerConfig(env: NodeJS.ProcessEnv): ScannerConfig {
 }
 
 export function createReceiptScannerBackend(
+	pdfProcessor: IPdfProcessor,
 	envOverride?: NodeJS.ProcessEnv
 ): IReceiptScanner | null {
 	const config = resolveScannerConfig(envOverride ?? env);
@@ -49,7 +57,8 @@ export function createReceiptScannerBackend(
 		return createOllamaReceiptScanner({
 			baseUrl: config.baseUrl,
 			model: config.model,
-			apiKey: config.apiKey
+			apiKey: config.apiKey,
+			pdfProcessor
 		});
 	}
 

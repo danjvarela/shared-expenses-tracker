@@ -4,6 +4,7 @@ import { Writable } from 'node:stream';
 import { createOllamaReceiptScanner, type CreateOllamaScannerOptions } from './ollama';
 import { RESPONSE_FORMAT } from './structuring';
 import { ReceiptScannerError } from '$lib/server/app/interfaces/receipt-scanner';
+import { ReceiptRasterizeError, type IPdfProcessor } from '$lib/server/infra/pdf';
 
 const base64Pattern = /^[A-Za-z0-9+/]*={0,2}$/;
 
@@ -65,6 +66,30 @@ function magickSpawn() {
 	});
 }
 
+const RASTERIZED = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0x01]);
+
+function fakePdfProcessor(
+	pageCount: number,
+	overrides: Partial<IPdfProcessor> = {}
+): IPdfProcessor & {
+	rasterizeCalls: number;
+} {
+	const self: IPdfProcessor & { rasterizeCalls: number } = {
+		rasterizeCalls: 0,
+		async countPages() {
+			return pageCount;
+		},
+		async rasterizeFirstPage() {
+			self.rasterizeCalls++;
+			if (overrides.rasterizeFirstPage) {
+				return overrides.rasterizeFirstPage(new ReadableStream<Uint8Array>());
+			}
+			return { image: RASTERIZED, pageCount };
+		}
+	};
+	return self;
+}
+
 describe('createOllamaReceiptScanner', () => {
 	let fetchMock: ReturnType<typeof vi.fn>;
 
@@ -76,6 +101,7 @@ describe('createOllamaReceiptScanner', () => {
 		return createOllamaReceiptScanner({
 			baseUrl: 'http://ollama:11434',
 			model: 'llama3.2-vision',
+			pdfProcessor: fakePdfProcessor(1),
 			fetch: fetchMock as unknown as typeof fetch,
 			spawn: magickSpawn() as never,
 			...overrides
@@ -221,5 +247,53 @@ describe('createOllamaReceiptScanner', () => {
 		await expect(scanner.scan(makeStream(new Uint8Array([1])), 'image/png')).rejects.toBeInstanceOf(
 			ReceiptScannerError
 		);
+	});
+
+	it('rasterizes a PDF page 1 then sends the prepared image (not the raw PDF bytes)', async () => {
+		fetchMock.mockResolvedValue(ollamaResponse(JSON.stringify({ lineItems: [] })));
+
+		const pdfProcessor = fakePdfProcessor(1);
+		const scanner = makeScanner({ pdfProcessor });
+
+		await scanner.scan(makeStream(new Uint8Array(Buffer.from('%PDF-1.4 ...'))), 'application/pdf');
+
+		expect(pdfProcessor.rasterizeCalls).toBe(1);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+		const body = JSON.parse(init.body as string);
+		// The rasterized page is piped through magick (FAKE_JPEG), not sent raw.
+		expect(body.messages[0].images[0]).toBe(FAKE_JPEG_B64);
+		expect(body.messages[0].images[0]).not.toBe(RASTERIZED.toString('base64'));
+	});
+
+	it('rejects a multi-page PDF with ReceiptRasterizeError and does not call Ollama', async () => {
+		fetchMock.mockResolvedValue(ollamaResponse(JSON.stringify({ lineItems: [] })));
+
+		const pdfProcessor = fakePdfProcessor(2);
+		const scanner = makeScanner({ pdfProcessor });
+
+		await expect(
+			scanner.scan(makeStream(new Uint8Array(Buffer.from('%PDF-1.4'))), 'application/pdf')
+		).rejects.toBeInstanceOf(ReceiptRasterizeError);
+
+		expect(pdfProcessor.rasterizeCalls).toBe(1);
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('rejects a corrupt PDF (rasterize rejects) with ReceiptRasterizeError and does not call Ollama', async () => {
+		fetchMock.mockResolvedValue(ollamaResponse(JSON.stringify({ lineItems: [] })));
+
+		const pdfProcessor = fakePdfProcessor(1, {
+			rasterizeFirstPage: async () => {
+				throw new ReceiptRasterizeError();
+			}
+		});
+		const scanner = makeScanner({ pdfProcessor });
+
+		await expect(
+			scanner.scan(makeStream(new Uint8Array(Buffer.from('%PDF-1.4'))), 'application/pdf')
+		).rejects.toBeInstanceOf(ReceiptRasterizeError);
+
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 });

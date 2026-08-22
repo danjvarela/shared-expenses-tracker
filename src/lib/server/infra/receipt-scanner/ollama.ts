@@ -6,7 +6,11 @@ import {
 	type ScanResult
 } from '$lib/server/app/interfaces/receipt-scanner';
 import { prepareImage, type SpawnFn } from '$lib/server/infra/image-prep';
+import { ReceiptRasterizeError, type IPdfProcessor } from '$lib/server/infra/pdf';
 import { RESPONSE_FORMAT, STRUCTURING_RULES, extractJson, normalize } from './structuring';
+
+const PDF_MIME = 'application/pdf';
+const MULTI_PAGE_MESSAGE = 'This PDF has multiple pages. Only single-page receipts are supported.';
 
 const PROMPT = `You are a financial document parser. The image may be a receipt, an invoice, or a bank/credit-card statement screenshot. Extract structured data from it.
 Return JSON with these fields:
@@ -47,10 +51,20 @@ async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffe
 	return Buffer.concat(chunks);
 }
 
+function bufferToStream(buf: Buffer): ReadableStream<Uint8Array> {
+	return new ReadableStream<Uint8Array>({
+		start(controller) {
+			controller.enqueue(new Uint8Array(buf));
+			controller.close();
+		}
+	});
+}
+
 export interface CreateOllamaScannerOptions {
 	baseUrl: string;
 	model: string;
 	apiKey?: string;
+	pdfProcessor: IPdfProcessor;
 	fetch?: typeof fetch;
 	spawn?: SpawnFn;
 }
@@ -59,6 +73,7 @@ export function createOllamaReceiptScanner({
 	baseUrl,
 	model,
 	apiKey,
+	pdfProcessor,
 	fetch = globalThis.fetch,
 	spawn: spawnFn = spawn
 }: CreateOllamaScannerOptions): IReceiptScanner {
@@ -69,12 +84,25 @@ export function createOllamaReceiptScanner({
 	}
 
 	return {
-		async scan(stream): Promise<ScanResult> {
+		async scan(stream, mime): Promise<ScanResult> {
 			const input = await streamToBuffer(stream);
 			console.log('scanning with ollama', { scanInputSize: formatBytes(input.length) });
 
 			try {
-				const image = await prepareImage(input, spawnFn);
+				let source: Buffer;
+				if (mime === PDF_MIME) {
+					const { image: rasterized, pageCount } = await pdfProcessor.rasterizeFirstPage(
+						bufferToStream(input)
+					);
+					if (pageCount > 1) {
+						throw new ReceiptRasterizeError(MULTI_PAGE_MESSAGE);
+					}
+					source = rasterized;
+				} else {
+					source = input;
+				}
+
+				const image = await prepareImage(source, spawnFn);
 
 				let response: Response;
 				try {
