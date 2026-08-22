@@ -3,9 +3,10 @@ import { Readable } from 'node:stream';
 import {
 	ReceiptScannerError,
 	type IReceiptScanner,
-	type ReceiptScanLineItem,
 	type ScanResult
 } from '$lib/server/app/interfaces/receipt-scanner';
+import { prepareImage, type SpawnFn } from '$lib/server/infra/image-prep';
+import { RESPONSE_FORMAT, STRUCTURING_RULES, extractJson, normalize } from './structuring';
 
 const PROMPT = `You are a financial document parser. The image may be a receipt, an invoice, or a bank/credit-card statement screenshot. Extract structured data from it.
 Return JSON with these fields:
@@ -16,43 +17,10 @@ Return JSON with these fields:
   - description: the entry description as printed (a purchased item on a receipt, or a posted transaction on a statement)
   - amount: the line amount exactly as printed, as a raw decimal string (e.g. "3.49")
 
-Rules:
-- Amounts are raw decimal strings exactly as printed. Never invent cents, never convert currency, never round, never strip a leading minus sign.
-- For a receipt or invoice, include only purchased line items. Exclude subtotals, tax, discounts, totals, and payment lines.
-- For a bank or credit-card statement screenshot, treat each posted transaction as a line item. Exclude the header row, column labels, running balances, statement totals, opening/closing balance, and any non-transaction rows.
-- If a field is absent on the document, return an empty string for it.`;
+${STRUCTURING_RULES}`;
 
-const RESPONSE_FORMAT = {
-	type: 'object',
-	properties: {
-		merchant: { type: 'string' },
-		date: { type: 'string' },
-		total: { type: 'string' },
-		lineItems: {
-			type: 'array',
-			items: {
-				type: 'object',
-				properties: {
-					description: { type: 'string' },
-					amount: { type: 'string' }
-				},
-				required: ['description', 'amount']
-			}
-		}
-	},
-	required: ['lineItems']
-} as const;
-
-// Ollama Cloud rejects request bodies over ~20MB with HTTP 413, and a
-// poppler-rasterized PDF at 150 DPI PNG blows past that once base64-encoded.
-// Ollama also downsamples images internally per-model, so feeding a huge
-// image is pure waste. Resize/re-encode to JPEG before sending. num_ctx is
-// bumped so the vision tokens don't truncate the prompt into garbage output.
-// See docs/adr/0014-ollama-cloud-image-compression.md.
-const MAX_LONG_EDGE = 1568;
-const JPEG_QUALITY = 80;
+// num_ctx is bumped so the vision tokens don't truncate the prompt into garbage output.
 const NUM_CTX = 8192;
-const PREPARE_FAILED_MESSAGE = 'Scanner could not read this image';
 
 interface OllamaChatResponse {
 	message?: { content?: string };
@@ -78,89 +46,6 @@ async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffe
 	}
 	return Buffer.concat(chunks);
 }
-
-function prepareImage(input: Buffer, spawnFn: SpawnFn): Promise<Buffer> {
-	return new Promise((resolve, reject) => {
-		const proc = spawnFn(
-			'magick',
-			[
-				'-',
-				'-resize',
-				`${MAX_LONG_EDGE}x${MAX_LONG_EDGE}>`,
-				'-quality',
-				String(JPEG_QUALITY),
-				'jpg:-'
-			],
-			{ stdio: ['pipe', 'pipe', 'pipe'] }
-		);
-		const stdout: Buffer[] = [];
-		const stderr: Buffer[] = [];
-		proc.stdout.on('data', (chunk: Buffer) => stdout.push(chunk));
-		proc.stderr.on('data', (chunk: Buffer) => stderr.push(chunk));
-
-		function fail(reason: string): void {
-			console.error(
-				'Receipt image prepare failed',
-				reason,
-				Buffer.concat(stderr).toString().trim()
-			);
-			reject(new ReceiptScannerError(PREPARE_FAILED_MESSAGE));
-		}
-
-		proc.on('error', () => fail('magick spawn failed'));
-		proc.on('close', (code) => {
-			if (code !== 0) {
-				fail(`magick exited ${code}`);
-				return;
-			}
-			const image = Buffer.concat(stdout);
-			if (image.length === 0) {
-				fail('magick produced no output');
-				return;
-			}
-			resolve(image);
-		});
-
-		proc.stdin.end(input);
-	});
-}
-
-function extractJson(content: string): string {
-	const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/i);
-	const candidate = fenced ? fenced[1] : content;
-	const start = candidate.indexOf('{');
-	const end = candidate.lastIndexOf('}');
-	if (start !== -1 && end !== -1 && end > start) {
-		return candidate.slice(start, end + 1);
-	}
-	return candidate.trim();
-}
-
-function normalize(raw: unknown): ScanResult {
-	const obj = (raw ?? {}) as Record<string, unknown>;
-	const lineItems: ReceiptScanLineItem[] = Array.isArray(obj.lineItems)
-		? obj.lineItems
-				.map((item) => {
-					const entry = (item ?? {}) as Record<string, unknown>;
-					return {
-						description: String(entry.description ?? '').trim(),
-						amountDecimal: String(entry.amount ?? '').trim()
-					};
-				})
-				.filter((item) => item.description && item.amountDecimal)
-		: [];
-
-	const result: ScanResult = { lineItems };
-	const merchant = String(obj.merchant ?? '').trim();
-	const date = String(obj.date ?? '').trim();
-	const total = String(obj.total ?? '').trim();
-	if (merchant) result.merchant = merchant;
-	if (date) result.date = date;
-	if (total) result.totalDecimal = total;
-	return result;
-}
-
-export type SpawnFn = typeof spawn;
 
 export interface CreateOllamaScannerOptions {
 	baseUrl: string;

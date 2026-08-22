@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EventEmitter } from 'node:events';
 import { Writable } from 'node:stream';
 import { createOllamaReceiptScanner, type CreateOllamaScannerOptions } from './ollama';
+import { RESPONSE_FORMAT } from './structuring';
 import { ReceiptScannerError } from '$lib/server/app/interfaces/receipt-scanner';
 
 const base64Pattern = /^[A-Za-z0-9+/]*={0,2}$/;
@@ -52,11 +53,11 @@ function makeProc(): FakeProc {
 const FAKE_JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 0xff, 0xd9]);
 const FAKE_JPEG_B64 = FAKE_JPEG.toString('base64');
 
-function magickSpawn(output: Buffer = FAKE_JPEG) {
+function magickSpawn() {
 	return vi.fn(() => {
 		const proc = makeProc();
 		queueMicrotask(() => {
-			proc.stdout.push(output);
+			proc.stdout.push(FAKE_JPEG);
 			proc.stdout.push(null);
 			proc.emit('close', 0);
 		});
@@ -108,8 +109,7 @@ describe('createOllamaReceiptScanner', () => {
 		const body = JSON.parse(init.body as string);
 		expect(body.model).toBe('llama3.2-vision');
 		expect(body.stream).toBe(false);
-		expect(body.format.type).toBe('object');
-		expect(body.format.required).toEqual(['lineItems']);
+		expect(body.format).toEqual(RESPONSE_FORMAT);
 		expect(body.messages).toHaveLength(1);
 		expect(body.messages[0].role).toBe('user');
 		expect(body.messages[0].images).toHaveLength(1);
@@ -129,22 +129,6 @@ describe('createOllamaReceiptScanner', () => {
 		const body = JSON.parse(init.body as string);
 		expect(body.messages[0].images[0]).toBe(FAKE_JPEG_B64);
 		expect(body.messages[0].images[0]).not.toBe(Buffer.from(rawInput).toString('base64'));
-	});
-
-	it('invokes magick with the resize/quality args and a JPEG stdout target', async () => {
-		fetchMock.mockResolvedValue(ollamaResponse(JSON.stringify({ lineItems: [] })));
-
-		const spawnFn = magickSpawn();
-		const scanner = makeScanner({ spawn: spawnFn as never });
-
-		await scanner.scan(makeStream(new Uint8Array([1, 2, 3, 4])), 'image/png');
-
-		expect(spawnFn).toHaveBeenCalledTimes(1);
-		const [, args] = (spawnFn as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [
-			string,
-			string[]
-		];
-		expect(args).toEqual(['-', '-resize', '1568x1568>', '-quality', '80', 'jpg:-']);
 	});
 
 	it('sets num_ctx in the request options to avoid prompt truncation', async () => {
@@ -199,63 +183,6 @@ describe('createOllamaReceiptScanner', () => {
 		expect(headers.get('Authorization')).toBeNull();
 	});
 
-	it('maps the model payload into ScanResult, renaming total/amount to decimal fields', async () => {
-		fetchMock.mockResolvedValue(
-			ollamaResponse(
-				JSON.stringify({
-					merchant: 'Fresh Mart',
-					date: '2026-08-21',
-					total: '12.48',
-					lineItems: [
-						{ description: 'Milk', amount: '3.49' },
-						{ description: 'Bread', amount: '2.10' }
-					]
-				})
-			)
-		);
-
-		const scanner = makeScanner();
-
-		const result = await scanner.scan(makeStream(new Uint8Array([1])), 'image/png');
-
-		expect(result).toEqual({
-			merchant: 'Fresh Mart',
-			date: '2026-08-21',
-			totalDecimal: '12.48',
-			lineItems: [
-				{ description: 'Milk', amountDecimal: '3.49' },
-				{ description: 'Bread', amountDecimal: '2.10' }
-			]
-		});
-	});
-
-	it('drops empty optional fields and line items missing description or amount', async () => {
-		fetchMock.mockResolvedValue(
-			ollamaResponse(
-				JSON.stringify({
-					merchant: '',
-					total: '   ',
-					lineItems: [
-						{ description: 'Milk', amount: '3.49' },
-						{ description: 'Subtotal', amount: '' },
-						{ description: '', amount: '0.99' }
-					]
-				})
-			)
-		);
-
-		const scanner = makeScanner();
-
-		const result = await scanner.scan(makeStream(new Uint8Array([1])), 'image/png');
-
-		expect(result).toEqual({
-			lineItems: [{ description: 'Milk', amountDecimal: '3.49' }]
-		});
-		expect('merchant' in result).toBe(false);
-		expect('date' in result).toBe(false);
-		expect('totalDecimal' in result).toBe(false);
-	});
-
 	it('throws ReceiptScannerError when the request rejects', async () => {
 		fetchMock.mockRejectedValue(new Error('ECONNREFUSED'));
 
@@ -294,63 +221,5 @@ describe('createOllamaReceiptScanner', () => {
 		await expect(scanner.scan(makeStream(new Uint8Array([1])), 'image/png')).rejects.toBeInstanceOf(
 			ReceiptScannerError
 		);
-	});
-
-	it('throws ReceiptScannerError when ImageMagick exits non-zero', async () => {
-		fetchMock.mockResolvedValue(ollamaResponse(JSON.stringify({ lineItems: [] })));
-
-		const spawnFn = vi.fn(() => {
-			const proc = makeProc();
-			queueMicrotask(() => {
-				proc.stderr.push('magick: decode error\n');
-				proc.stderr.push(null);
-				proc.emit('close', 1);
-			});
-			return proc;
-		});
-
-		const scanner = makeScanner({ spawn: spawnFn as never });
-
-		await expect(scanner.scan(makeStream(new Uint8Array([1])), 'image/png')).rejects.toBeInstanceOf(
-			ReceiptScannerError
-		);
-		expect(fetchMock).not.toHaveBeenCalled();
-	});
-
-	it('throws ReceiptScannerError when ImageMagick emits no image', async () => {
-		fetchMock.mockResolvedValue(ollamaResponse(JSON.stringify({ lineItems: [] })));
-
-		const spawnFn = vi.fn(() => {
-			const proc = makeProc();
-			queueMicrotask(() => {
-				proc.stdout.push(null);
-				proc.emit('close', 0);
-			});
-			return proc;
-		});
-
-		const scanner = makeScanner({ spawn: spawnFn as never });
-
-		await expect(scanner.scan(makeStream(new Uint8Array([1])), 'image/png')).rejects.toBeInstanceOf(
-			ReceiptScannerError
-		);
-		expect(fetchMock).not.toHaveBeenCalled();
-	});
-
-	it('throws ReceiptScannerError when the ImageMagick spawn itself fails (ENOENT)', async () => {
-		fetchMock.mockResolvedValue(ollamaResponse(JSON.stringify({ lineItems: [] })));
-
-		const spawnFn = vi.fn(() => {
-			const proc = makeProc();
-			queueMicrotask(() => proc.emit('error', new Error('spawn ENOENT')));
-			return proc;
-		});
-
-		const scanner = makeScanner({ spawn: spawnFn as never });
-
-		await expect(scanner.scan(makeStream(new Uint8Array([1])), 'image/png')).rejects.toBeInstanceOf(
-			ReceiptScannerError
-		);
-		expect(fetchMock).not.toHaveBeenCalled();
 	});
 });
