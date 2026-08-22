@@ -13,3 +13,5 @@ Ollama Cloud (our configured `OLLAMA_BASE_URL`) rejects request bodies over ~20M
 - `magick` must be on the runtime PATH (already in `devenv.nix`). A deployment without it fails scan with `ReceiptScannerError`, not a crash.
 - 1568px / q80 / `num_ctx` 8192 are constants in `ollama.ts`, not env-tunable — one model, one cloud, YAGNI. Revise here if a second scanner backend or a non-cloud target is added.
 - Compression affects only what is sent to Ollama; stored receipt bytes stay original.
+
+> Revised by ADR-0015 (second scanner backend added): the "shared `image-prepare` interface rejected — only one consumer" premise no longer holds — both backends now consume shared `infra/image-prep` and structuring modules, and `IPdfRasterizer` became `IPdfProcessor` (gains `countPages`) in `infra/pdf/`. The constants stance carries forward (OCR.space params are likewise constants in `ocr.ts`); `num_ctx: 8192` remains Ollama-vision-backend-only.

@@ -43,7 +43,7 @@ The act of turning receipt bytes into a draft ExpenseGroup: the scanner returns 
 _Avoid_: OCR, extraction (implementation detail of a backend, not the domain act)
 
 **Scanner**:
-A pluggable backend that turns receipt bytes into a `ScanResult`. Dumb by design: it receives only bytes and mime, knows nothing about the Group, its members, splits, or categories. Selected at boot via env `RECEIPT_SCANNER_BACKEND` (unset = feature off; unknown = boot fail). Today only an Ollama vision-model backend ships. See ADR-0013.
+A pluggable backend that turns receipt bytes into a `ScanResult`. Dumb by design: it receives only bytes and mime, knows nothing about the Group, its members, splits, or categories. Selected at boot via env `RECEIPT_SCANNER_BACKEND` (unset = feature off; unknown = boot fail). Today an Ollama vision-model backend and an OCR.space backend ship. See ADR-0013.
 _Avoid_: OCR engine, recognizer
 
 **ScanResult**:

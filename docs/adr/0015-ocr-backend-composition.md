@@ -1,0 +1,27 @@
+# OCR scanner backend composes OCR.space text + Ollama structuring
+
+A second receipt scanner backend ships behind the existing dumb `IReceiptScanner` contract (ADR-0013), selected at boot via `RECEIPT_SCANNER_BACKEND=ocr`. Adding it fired the trigger ADR-0014 left in its consequences ("revise here if a second scanner backend is added") and forced a refactor of how PDFs and image-prep reach a backend. The OCR backend is a **composition**: OCR.space extracts text from the bytes, then an Ollama **text** model (`OLLAMA_TEXT_MODEL`) structures that text into a `ScanResult`. No new domain concept — the OCR.space→Ollama split is backend-internal, invisible to the `scan(stream, mime) → ScanResult` contract and to `CONTEXT.md`'s glossary.
+
+## Rasterization moved into the backends; `scan.ts` is mime-agnostic
+
+`scan.ts` no longer rasterizes PDFs before handing bytes to the scanner. It stores the upload, reads the bytes back, and passes them through with the sniffed mime — "PDFs flow straight to the backend untouched." Each backend decides how to ingest its input: the Ollama vision backend rasterizes the first page with poppler (a vision model needs pixels); the OCR backend does **not** rasterize, because OCR.space accepts PDFs natively, and rasterizing a PDF only to feed it to an OCR API is wasted work. The `IPdfRasterizer` of ADR-0014 became `IPdfProcessor` (gains `countPages`), relocated to `infra/pdf/`, and is now injected into each backend that needs it.
+
+**Trade-off:** a bigger one-time refactor plus relocating the scan tests (PDF handling moves from the service's concern to each backend's) versus per-backend optimal ingestion. We take the refactor: forcing every backend through a shared rasterize step would re-introduce the waste for OCR.space and lie about the dumb scanner's "bytes + mime in" contract.
+
+## OCR.space (text) + Ollama text model (structuring), no heuristic parser
+
+The OCR backend splits the job: OCR.space does faithful text extraction (it prints exactly what's on the page), and an Ollama text model does the structuring/classification into `ScanResult`. A heuristic parser (regex/stoplist) was rejected: the structuring cases a regex cannot reliably handle are exactly the ones that matter — amounts with leading currency symbols, quantity-prefixed lines ("2 x $3.49"), Spanish thousands separators ("1.234,50"), and merchant name extraction. The LLM handles these; a regex would not, and would encode receipt-format assumptions into the codebase. Structuring is a single Ollama `/api/chat` call with the shared `RESPONSE_FORMAT` JSON schema and `STRUCTURING_RULES` prompt (the same rules the vision backend uses, since they describe document types, not input modality).
+
+**Trade-off — rejected a shared `IReceiptTextParser` interface:** the structuring step is one Ollama call in both backends, not a pluggable strategy. The shared `normalize`/`extractJson`/`RESPONSE_FORMAT` module is already reused directly by both; a text-parser *interface* would have a single consumer (only the OCR backend parses text), so it would over-engineer one call site. **Trade-off — rejected a heuristic fallback:** if the Ollama structuring call fails, the backend throws `ReceiptScannerError`; the user re-scans. There is no degraded heuristic path that silently returns lower-quality results.
+
+## Shared infra extracted; ADR-0014's "shared module rejected" premise revised
+
+ADR-0014 rejected a shared `image-prepare` interface on the grounds that "only the Ollama backend consumes it." That premise no longer holds: both backends now consume image-prep (`prepareImage`, the ImageMagick `magick` resize to ≤1568px / JPEG q80) and the structuring module (`RESPONSE_FORMAT`, `STRUCTURING_RULES`, `extractJson`, `normalize`). They are extracted to shared `infra/` — `infra/image-prep.ts` and `infra/receipt-scanner/structuring.ts` — rather than duplicated. The `IPdfRasterizer` → `IPdfProcessor` rename (adds `countPages`) and its relocation to `infra/pdf/` is part of the same move: two backends consume it, so it lives in shared infra and is injected, not owned.
+
+`num_ctx: 8192` remains Ollama-vision-backend-only (ADR-0014) — it guards against vision-token prompt truncation, a failure mode the text-model structuring call does not have. The constants stance from ADR-0014 carries to the OCR backend's OCR.space params (`language=eng`, `OCREngine=2`, `isTable`, `scale`, `detectOrientation`): constants in `ocr.ts`, not env-tunable. Only `OCR_API_KEY` and `OLLAMA_TEXT_MODEL` are env.
+
+## Single-page PDF invariant enforced per-backend, not app-wide
+
+Single-page-PDF receipts only — but the check is per-backend, at the point each backend can actually make it, not a single app-wide guard in `scan.ts`. The Ollama vision backend rasterizes the first page and rejects multi-page **after** rasterize (it already paid for poppler to get `pageCount`); the OCR backend calls `pdfProcessor.countPages` and rejects multi-page **before** the OCR.space API call (no reason to spend a metered API hit on a PDF we will refuse). Both throw `ReceiptRasterizeError` with the same user-facing message.
+
+**Trade-off:** behaviour could differ by backend capability — a backend that can't count pages couldn't enforce this. We choose uniform single-page-only across both backends (YAGNI on multi-page receipts); revisit if multi-page support is wanted, at which point the per-backend enforcement point is the right place to relax it.
