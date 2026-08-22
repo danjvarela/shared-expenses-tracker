@@ -23,7 +23,7 @@
 		description: string;
 		amountDecimal: string;
 		categoryId: string;
-		percents: Record<string, string>;
+		percents: Record<string, string> | null;
 		customSplitOpen: boolean;
 	};
 
@@ -40,6 +40,40 @@
 	let paidByUserId = $state(untrack(() => data.user?.id ?? data.members[0]?.userId ?? ''));
 	let draftDate = $state(today);
 	let lines = $state<DraftLine[]>([]);
+	let draftPercents = $state<Record<string, string> | null>(null);
+	let draftSplitOpen = $state(false);
+
+	const groupDefaultPercents = $derived(
+		Object.fromEntries(
+			data.members.map((member) => [
+				member.userId,
+				member.defaultSplitPercent !== null ? String(member.defaultSplitPercent) : ''
+			])
+		)
+	);
+	const anyDefaultsSet = $derived(
+		data.members.some((member) => member.defaultSplitPercent !== null)
+	);
+
+	let effectiveDraftPercents = $derived(draftPercents ?? groupDefaultPercents);
+
+	function effectiveLinePercents(line: DraftLine): Record<string, string> {
+		return line.percents ?? effectiveDraftPercents;
+	}
+
+	function setDraftPercent(userId: string, value: string) {
+		if (draftPercents === null) {
+			draftPercents = { ...effectiveDraftPercents };
+		}
+		draftPercents = { ...draftPercents, [userId]: value };
+	}
+
+	function setLinePercent(line: DraftLine, userId: string, value: string) {
+		if (line.percents === null) {
+			line.percents = { ...effectiveLinePercents(line) };
+		}
+		line.percents = { ...line.percents, [userId]: value };
+	}
 
 	function memberName(userId: string) {
 		return data.members.find((member) => member.userId === userId)?.displayName ?? userId;
@@ -54,15 +88,6 @@
 		return data.categories.find((category) => category.id === categoryId)?.name ?? 'None';
 	}
 
-	function emptyPercents(): Record<string, string> {
-		return Object.fromEntries(
-			data.members.map((member) => [
-				member.userId,
-				member.defaultSplitPercent !== null ? String(member.defaultSplitPercent) : ''
-			])
-		);
-	}
-
 	function defaultLineDate(scanned: ScanResult | null): string {
 		if (scanned?.date) {
 			const parsed = new Date(scanned.date);
@@ -71,15 +96,38 @@
 		return today;
 	}
 
-	function lineFromItem(item: ReceiptScanLineItem, scanned: ScanResult): DraftLine {
+	function lineFromItem(item: ReceiptScanLineItem): DraftLine {
 		return {
 			description: item.description,
 			amountDecimal: item.amountDecimal,
 			categoryId: NO_CATEGORY,
-			percents: emptyPercents(),
+			percents: null,
 			customSplitOpen: false
 		};
 	}
+
+	function splitPercentLabel(value: string): string {
+		return value === '' ? '0' : value;
+	}
+
+	let draftSplitNote = $derived.by(() => {
+		if (draftPercents !== null) {
+			const percents = draftPercents;
+			const parts = data.members.map(
+				(member) =>
+					`${memberName(member.userId)} ${splitPercentLabel(percents[member.userId] ?? '')}%`
+			);
+			return `Draft split: ${parts.join(', ')}`;
+		}
+		if (anyDefaultsSet) {
+			const parts = data.members.map(
+				(member) =>
+					`${memberName(member.userId)} ${splitPercentLabel(groupDefaultPercents[member.userId])}%`
+			);
+			return `Group defaults: ${parts.join(', ')}`;
+		}
+		return `Splitting equally among all ${data.members.length} members`;
+	});
 
 	async function onFileChosen() {
 		const file = fileInput?.files?.[0];
@@ -115,7 +163,7 @@
 			storageMeta = meta;
 			paidByUserId = data.user?.id ?? data.members[0]?.userId ?? '';
 			draftDate = defaultLineDate(scanned);
-			lines = scanned.lineItems.map((item) => lineFromItem(item, scanned));
+			lines = scanned.lineItems.map((item) => lineFromItem(item));
 			toast.success('Receipt scanned');
 		} catch {
 			toast.error('Could not scan the receipt');
@@ -160,7 +208,7 @@
 						amountDecimal: line.amountDecimal,
 						categoryId: line.categoryId === NO_CATEGORY ? null : line.categoryId,
 						date: draftDate,
-						percents: line.percents
+						percents: effectiveLinePercents(line)
 					}))
 				})
 			});
@@ -249,6 +297,43 @@
 					<Input id="draftDate" type="date" bind:value={draftDate} aria-label="Date" />
 				</Field.Field>
 
+				<div class="flex flex-col gap-1">
+					<p class="text-sm text-muted-foreground">{draftSplitNote}</p>
+					<Collapsible.Root bind:open={draftSplitOpen}>
+						<Collapsible.Trigger
+							class="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+						>
+							<ChevronDown
+								class="size-3.5 transition-transform {draftSplitOpen ? 'rotate-180' : ''}"
+							/>
+							Custom split{draftPercents !== null ? ' (customized)' : ''}
+						</Collapsible.Trigger>
+						<Collapsible.Content class="flex flex-col gap-1 pt-2">
+							{#each data.members as member (member.userId)}
+								<div class="flex items-center gap-2">
+									<Label
+										for={`draft-percent-${member.userId}`}
+										class="w-28 shrink-0 text-xs"
+									>
+										{member.displayName}
+									</Label>
+									<Input
+										id={`draft-percent-${member.userId}`}
+										type="number"
+										step="0.01"
+										min="0"
+										max="100"
+										placeholder="%"
+										value={effectiveDraftPercents[member.userId]}
+										oninput={(e) =>
+											setDraftPercent(member.userId, e.currentTarget.value)}
+									/>
+								</div>
+							{/each}
+						</Collapsible.Content>
+					</Collapsible.Root>
+				</div>
+
 				<div class="flex flex-col gap-4">
 					{#each lines as line, i (i)}
 						<div class="rounded-lg border p-3">
@@ -288,12 +373,15 @@
 									<ChevronDown
 										class="size-3.5 transition-transform {line.customSplitOpen ? 'rotate-180' : ''}"
 									/>
-									Custom split
+									Custom split{line.percents !== null ? ' (customized)' : ''}
 								</Collapsible.Trigger>
 								<Collapsible.Content class="flex flex-col gap-1 pt-2">
 									{#each data.members as member (member.userId)}
 										<div class="flex items-center gap-2">
-											<Label for={`percent-${i}-${member.userId}`} class="w-28 shrink-0 text-xs">
+											<Label
+												for={`percent-${i}-${member.userId}`}
+												class="w-28 shrink-0 text-xs"
+											>
 												{member.displayName}
 											</Label>
 											<Input
@@ -303,7 +391,9 @@
 												min="0"
 												max="100"
 												placeholder="%"
-												bind:value={line.percents[member.userId]}
+												value={effectiveLinePercents(line)[member.userId]}
+												oninput={(e) =>
+													setLinePercent(line, member.userId, e.currentTarget.value)}
 											/>
 										</div>
 									{/each}
