@@ -1,18 +1,30 @@
 import { describe, it, expect } from 'vitest';
-import { groupExpensesForList, type ExpenseListLike } from './expense-list-grouping';
+import {
+	groupExpensesForList,
+	sectionExpensesByMonth,
+	expenseListItemDate,
+	type ExpenseListLike
+} from './expense-list-grouping';
 
 interface Entry extends ExpenseListLike {
 	id: string;
 	description: string;
 }
 
-function entry(id: string, expenseGroupId: string, createdAt: number, amountCents = 100): Entry {
+function entry(
+	id: string,
+	expenseGroupId: string,
+	createdAt: number,
+	amountCents = 100,
+	date?: number
+): Entry {
 	return {
 		id,
 		expenseGroupId,
 		description: `${id} desc`,
 		amountCents,
-		createdAt: new Date(createdAt)
+		createdAt: new Date(createdAt),
+		date: new Date(date ?? createdAt)
 	};
 }
 
@@ -52,27 +64,106 @@ describe('groupExpensesForList', () => {
 		expect(group.children.map((child) => child.id)).toEqual(['e1', 'e2', 'e3']);
 	});
 
-	it('preserves first-appearance order across mixed single and multi-child groups', () => {
+	it('sorts items by date descending', () => {
 		const items = groupExpensesForList([
-			entry('a1', 'ga', 1),
-			entry('b1', 'gb', 2),
-			entry('b2', 'gb', 3),
-			entry('c1', 'gc', 4)
+			entry('a1', 'ga', 1, 100, Date.UTC(2026, 7, 5)),
+			entry('c1', 'gc', 4, 100, Date.UTC(2026, 8, 20)),
+			entry('b1', 'gb', 2, 100, Date.UTC(2026, 8, 3))
 		]);
 
-		expect(items).toEqual([
-			{ kind: 'single', expense: entry('a1', 'ga', 1) },
-			{
-				kind: 'group',
-				expenseGroupId: 'gb',
-				totalCents: 200,
-				children: [entry('b1', 'gb', 2), entry('b2', 'gb', 3)]
-			},
-			{ kind: 'single', expense: entry('c1', 'gc', 4) }
+		expect(items.map((i) => (i.kind === 'single' ? i.expense.id : ''))).toEqual(['c1', 'b1', 'a1']);
+	});
+
+	it('breaks date ties by createdAt descending', () => {
+		const items = groupExpensesForList([
+			entry('old', 'g1', 100, 100, Date.UTC(2026, 8, 1)),
+			entry('new', 'g2', 200, 100, Date.UTC(2026, 8, 1))
+		]);
+
+		expect(items.map((i) => (i.kind === 'single' ? i.expense.id : ''))).toEqual(['new', 'old']);
+	});
+
+	it('orders a multi-child group by its latest child date', () => {
+		const items = groupExpensesForList([
+			entry('c1', 'g1', 10, 100, Date.UTC(2026, 8, 10)),
+			entry('c2', 'g1', 20, 100, Date.UTC(2026, 7, 5)),
+			entry('s', 'g2', 30, 100, Date.UTC(2026, 8, 8))
+		]);
+
+		expect(items.map((i) => (i.kind === 'group' ? i.expenseGroupId : i.expense.id))).toEqual([
+			'g1',
+			's'
 		]);
 	});
 
 	it('returns an empty list for no expenses', () => {
 		expect(groupExpensesForList([])).toEqual([]);
+	});
+});
+
+describe('sectionExpensesByMonth', () => {
+	it('groups items into month sections with the latest month first', () => {
+		const items = groupExpensesForList([
+			entry('a', 'ga', 1, 100, Date.UTC(2026, 7, 5)),
+			entry('b', 'gb', 2, 100, Date.UTC(2026, 8, 3)),
+			entry('c', 'gc', 3, 100, Date.UTC(2026, 8, 20))
+		]);
+
+		const sections = sectionExpensesByMonth(items);
+
+		expect(sections.map((s) => s.monthKey)).toEqual(['2026-09', '2026-08']);
+		expect(sections[0].items.map((i) => (i.kind === 'single' ? i.expense.id : ''))).toEqual([
+			'c',
+			'b'
+		]);
+		expect(sections[1].items.map((i) => (i.kind === 'single' ? i.expense.id : ''))).toEqual(['a']);
+	});
+
+	it('formats monthKey as YYYY-MM and monthLabel as "Month Year"', () => {
+		const items = groupExpensesForList([entry('a', 'ga', 1, 100, Date.UTC(2026, 8, 3))]);
+
+		const [section] = sectionExpensesByMonth(items);
+
+		expect(section.monthKey).toBe('2026-09');
+		expect(section.monthLabel).toBe('September 2026');
+	});
+
+	it('sections a multi-child group by its latest child date', () => {
+		const items = groupExpensesForList([
+			entry('c1', 'g1', 10, 100, Date.UTC(2026, 8, 10)),
+			entry('c2', 'g1', 20, 100, Date.UTC(2026, 7, 5)),
+			entry('s', 'g2', 30, 100, Date.UTC(2026, 8, 8))
+		]);
+
+		const sections = sectionExpensesByMonth(items);
+
+		expect(sections).toHaveLength(1);
+		expect(sections[0].monthKey).toBe('2026-09');
+		expect(sections[0].items[0].kind).toBe('group');
+		expect(sections[0].items[1].kind).toBe('single');
+	});
+
+	it('returns an empty list for no items', () => {
+		expect(sectionExpensesByMonth([])).toEqual([]);
+	});
+});
+
+describe('expenseListItemDate', () => {
+	it('returns the expense date for a single item', () => {
+		const [item] = groupExpensesForList([entry('a', 'ga', 1, 100, Date.UTC(2026, 8, 3))]);
+
+		expect(expenseListItemDate(item).valueOf()).toBe(Date.UTC(2026, 8, 3));
+	});
+
+	it('returns the latest child date for a multi-child group, not the earliest-createdAt child date', () => {
+		// earliest-createdAt child (c1) has the earlier date; latest-date child (c2) has later createdAt
+		const [item] = groupExpensesForList([
+			entry('c1', 'g1', 10, 100, Date.UTC(2026, 7, 5)),
+			entry('c2', 'g1', 20, 100, Date.UTC(2026, 8, 10))
+		]);
+
+		if (item.kind !== 'group') throw new Error('expected group');
+		expect(item.children[0].id).toBe('c1'); // sorted by createdAt asc
+		expect(expenseListItemDate(item).valueOf()).toBe(Date.UTC(2026, 8, 10));
 	});
 });
