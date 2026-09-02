@@ -8,23 +8,38 @@ export interface ExpenseListLike {
 export interface FilterableExpense {
 	description: string;
 	categoryName: string | null;
+	categoryId: string | null;
 }
+
+export const UNCATEGORIZED_ID = '__uncategorized__';
 
 export interface ExpenseListFilter {
 	search: string | null;
+	categoryIds: string[] | null;
 }
 
 export function filterExpenses<E extends FilterableExpense>(
 	expenses: E[],
 	filter: ExpenseListFilter
 ): E[] {
+	let result = expenses;
+
 	const search = filter.search?.trim().toLowerCase();
-	if (!search) return expenses;
-	return expenses.filter(
-		(expense) =>
-			expense.description.toLowerCase().includes(search) ||
-			(expense.categoryName?.toLowerCase().includes(search) ?? false)
-	);
+	if (search) {
+		result = result.filter(
+			(expense) =>
+				expense.description.toLowerCase().includes(search) ||
+				(expense.categoryName?.toLowerCase().includes(search) ?? false)
+		);
+	}
+
+	const categoryIds = filter.categoryIds;
+	if (categoryIds && categoryIds.length > 0) {
+		const picked = new Set(categoryIds);
+		result = result.filter((expense) => picked.has(expense.categoryId ?? UNCATEGORIZED_ID));
+	}
+
+	return result;
 }
 
 export type ExpenseListItem<E> =

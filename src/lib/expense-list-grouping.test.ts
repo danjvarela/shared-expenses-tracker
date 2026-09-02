@@ -7,6 +7,7 @@ import {
 	hasMoreToLoad,
 	filterExpenses,
 	RENDER_WINDOW_SIZE,
+	UNCATEGORIZED_ID,
 	type ExpenseListLike
 } from './expense-list-grouping';
 
@@ -14,6 +15,7 @@ interface Entry extends ExpenseListLike {
 	id: string;
 	description: string;
 	categoryName: string | null;
+	categoryId: string | null;
 }
 
 function entry(
@@ -22,7 +24,8 @@ function entry(
 	createdAt: number,
 	amountCents = 100,
 	date?: number,
-	categoryName: string | null = null
+	categoryName: string | null = null,
+	categoryId: string | null = null
 ): Entry {
 	return {
 		id,
@@ -31,7 +34,8 @@ function entry(
 		amountCents,
 		createdAt: new Date(createdAt),
 		date: new Date(date ?? createdAt),
-		categoryName
+		categoryName,
+		categoryId
 	};
 }
 
@@ -211,14 +215,14 @@ describe('filterExpenses', () => {
 	it('returns all expenses when the search is null', () => {
 		const expenses = [entry('a', 'ga', 1), entry('b', 'gb', 2)];
 
-		expect(filterExpenses(expenses, { search: null })).toEqual(expenses);
+		expect(filterExpenses(expenses, { search: null, categoryIds: null })).toEqual(expenses);
 	});
 
 	it('returns all expenses when the search is empty or whitespace', () => {
 		const expenses = [entry('a', 'ga', 1)];
 
-		expect(filterExpenses(expenses, { search: '' })).toEqual(expenses);
-		expect(filterExpenses(expenses, { search: '   ' })).toEqual(expenses);
+		expect(filterExpenses(expenses, { search: '', categoryIds: null })).toEqual(expenses);
+		expect(filterExpenses(expenses, { search: '   ', categoryIds: null })).toEqual(expenses);
 	});
 
 	it('matches expenses by description substring, case-insensitive', () => {
@@ -229,40 +233,102 @@ describe('filterExpenses', () => {
 		expenses[0].description = 'Coffee';
 		expenses[1].description = 'Groceries';
 
-		expect(filterExpenses(expenses, { search: 'COFF' }).map((e) => e.id)).toEqual(['a']);
+		expect(filterExpenses(expenses, { search: 'COFF', categoryIds: null }).map((e) => e.id)).toEqual(['a']);
 	});
 
 	it('matches expenses by categoryName substring, case-insensitive', () => {
 		const expenses = [
-			entry('a', 'ga', 1, 100, undefined, 'Food'),
-			entry('b', 'gb', 2, 100, undefined, 'Travel')
+			entry('a', 'ga', 1, 100, undefined, 'Food', 'cat-food'),
+			entry('b', 'gb', 2, 100, undefined, 'Travel', 'cat-travel')
 		];
 
-		expect(filterExpenses(expenses, { search: 'foo' }).map((e) => e.id)).toEqual(['a']);
+		expect(filterExpenses(expenses, { search: 'foo', categoryIds: null }).map((e) => e.id)).toEqual(['a']);
 	});
 
 	it('returns no expenses when nothing matches', () => {
 		const expenses = [
-			entry('a', 'ga', 1, 100, undefined, 'Food'),
-			entry('b', 'gb', 2, 100, undefined, 'Travel')
+			entry('a', 'ga', 1, 100, undefined, 'Food', 'cat-food'),
+			entry('b', 'gb', 2, 100, undefined, 'Travel', 'cat-travel')
 		];
 
-		expect(filterExpenses(expenses, { search: 'nonexistent' })).toEqual([]);
+		expect(filterExpenses(expenses, { search: 'nonexistent', categoryIds: null })).toEqual([]);
 	});
 
 	it('trims the search before matching', () => {
-		const expenses = [entry('a', 'ga', 1, 100, undefined, 'Food')];
+		const expenses = [entry('a', 'ga', 1, 100, undefined, 'Food', 'cat-food')];
 
-		expect(filterExpenses(expenses, { search: '  food  ' }).map((e) => e.id)).toEqual(['a']);
+		expect(filterExpenses(expenses, { search: '  food  ', categoryIds: null }).map((e) => e.id)).toEqual([
+			'a'
+		]);
 	});
 
 	it('preserves the original order of matching expenses', () => {
 		const expenses = [
-			entry('a', 'ga', 1, 100, undefined, 'Food'),
-			entry('b', 'gb', 2, 100, undefined, 'Travel'),
-			entry('c', 'gc', 3, 100, undefined, 'Food')
+			entry('a', 'ga', 1, 100, undefined, 'Food', 'cat-food'),
+			entry('b', 'gb', 2, 100, undefined, 'Travel', 'cat-travel'),
+			entry('c', 'gc', 3, 100, undefined, 'Food', 'cat-food')
 		];
 
-		expect(filterExpenses(expenses, { search: 'food' }).map((e) => e.id)).toEqual(['a', 'c']);
+		expect(filterExpenses(expenses, { search: 'food', categoryIds: null }).map((e) => e.id)).toEqual([
+			'a',
+			'c'
+		]);
+	});
+
+	it('returns all expenses when categoryIds is null or empty', () => {
+		const expenses = [
+			entry('a', 'ga', 1, 100, undefined, 'Food', 'cat-food'),
+			entry('b', 'gb', 2, 100, undefined, 'Travel', 'cat-travel')
+		];
+
+		expect(filterExpenses(expenses, { search: null, categoryIds: null }).map((e) => e.id)).toEqual([
+			'a',
+			'b'
+		]);
+		expect(filterExpenses(expenses, { search: null, categoryIds: [] }).map((e) => e.id)).toEqual([
+			'a',
+			'b'
+		]);
+	});
+
+	it('unions expenses matching any selected category id', () => {
+		const expenses = [
+			entry('a', 'ga', 1, 100, undefined, 'Food', 'cat-food'),
+			entry('b', 'gb', 2, 100, undefined, 'Travel', 'cat-travel'),
+			entry('c', 'gc', 3, 100, undefined, 'Food', 'cat-food')
+		];
+
+		expect(
+			filterExpenses(expenses, { search: null, categoryIds: ['cat-food', 'cat-travel'] }).map((e) => e.id)
+		).toEqual(['a', 'b', 'c']);
+		expect(
+			filterExpenses(expenses, { search: null, categoryIds: ['cat-travel'] }).map((e) => e.id)
+		).toEqual(['b']);
+	});
+
+	it('matches uncategorized expenses via the UNCATEGORIZED_ID sentinel', () => {
+		const expenses = [
+			entry('a', 'ga', 1, 100, undefined, null, null),
+			entry('b', 'gb', 2, 100, undefined, 'Food', 'cat-food')
+		];
+
+		expect(
+			filterExpenses(expenses, { search: null, categoryIds: [UNCATEGORIZED_ID] }).map((e) => e.id)
+		).toEqual(['a']);
+	});
+
+	it('combines search and category filters', () => {
+		const expenses = [
+			entry('a', 'ga', 1, 100, undefined, 'Food', 'cat-food'),
+			entry('b', 'gb', 2, 100, undefined, 'Travel', 'cat-travel'),
+			entry('c', 'gc', 3, 100, undefined, 'Food', 'cat-food')
+		];
+		expenses[0].description = 'Coffee';
+		expenses[1].description = 'Groceries';
+		expenses[2].description = 'Coffee';
+
+		expect(
+			filterExpenses(expenses, { search: 'coff', categoryIds: ['cat-food'] }).map((e) => e.id)
+		).toEqual(['a', 'c']);
 	});
 });

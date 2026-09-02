@@ -6,7 +6,7 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import { ArrowLeft, ChevronDown, Plus, Settings, ScanLine, Search } from '@lucide/svelte';
+	import { ArrowLeft, ChevronDown, Plus, Settings, ScanLine, Search, Tags, X } from '@lucide/svelte';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
@@ -18,7 +18,8 @@
 		nextVisibleCount,
 		hasMoreToLoad,
 		filterExpenses,
-		RENDER_WINDOW_SIZE
+		RENDER_WINDOW_SIZE,
+		UNCATEGORIZED_ID
 	} from '$lib/expense-list-grouping';
 	import { Input } from '$lib/components/ui/input/index.js';
 
@@ -40,11 +41,35 @@
 	let searchTimer: ReturnType<typeof setTimeout> | undefined = undefined;
 	let lastWritten = page.url.searchParams.get('search') ?? '';
 
-	const filtered = $derived(filterExpenses(data.groupExpenses, { search: searchInput.trim() || null }));
+	function parseCategoryParam(value: string | null): string[] {
+		if (!value) return [];
+		return value
+			.split(',')
+			.map((part) => part.trim())
+			.filter((part) => part.length > 0);
+	}
+
+	let selectedCategoryIds = $state<string[]>(parseCategoryParam(page.url.searchParams.get('category')));
+	let lastWrittenCategory = page.url.searchParams.get('category') ?? '';
+
+	const filtered = $derived(
+		filterExpenses(data.groupExpenses, {
+			search: searchInput.trim() || null,
+			categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : null
+		})
+	);
 	const items = $derived(groupExpensesForList(filtered));
 	let visibleCount = $state(RENDER_WINDOW_SIZE);
 	const sections = $derived(sectionExpensesByMonth(items.slice(0, visibleCount)));
 	const hasMore = $derived(hasMoreToLoad(visibleCount, items.length));
+
+	const categoryById = $derived(
+		new Map(data.categories.map((category) => [category.id, category]))
+	);
+	const categoryBadgeLabel = (id: string) =>
+		id === UNCATEGORIZED_ID ? 'Uncategorized' : (categoryById.get(id)?.name ?? id);
+	const hasCategoryFilter = $derived(selectedCategoryIds.length > 0);
+	const hasActiveFilters = $derived(searchInput.trim().length > 0 || hasCategoryFilter);
 
 	function loadMore() {
 		visibleCount = nextVisibleCount(visibleCount, items.length);
@@ -53,6 +78,7 @@
 	$effect(() => {
 		data.group.id;
 		searchInput;
+		selectedCategoryIds;
 		visibleCount = RENDER_WINDOW_SIZE;
 	});
 
@@ -63,11 +89,28 @@
 		replaceState(url, {});
 	}
 
+	function setCategory(ids: string[]) {
+		const value = ids.join(',');
+		const url = new URL(page.url);
+		if (value) url.searchParams.set('category', value);
+		else url.searchParams.delete('category');
+		lastWrittenCategory = value;
+		replaceState(url, {});
+	}
+
 	$effect(() => {
 		const urlSearch = page.url.searchParams.get('search') ?? '';
 		if (urlSearch !== lastWritten) {
 			searchInput = urlSearch;
 			lastWritten = urlSearch;
+		}
+	});
+
+	$effect(() => {
+		const urlCategory = page.url.searchParams.get('category') ?? '';
+		if (urlCategory !== lastWrittenCategory) {
+			selectedCategoryIds = parseCategoryParam(urlCategory);
+			lastWrittenCategory = urlCategory;
 		}
 	});
 
@@ -91,6 +134,26 @@
 		searchInput = '';
 		lastWritten = '';
 		setSearch('');
+	}
+
+	function toggleCategory(id: string, checked: boolean) {
+		selectedCategoryIds = checked
+			? [...selectedCategoryIds, id]
+			: selectedCategoryIds.filter((existing) => existing !== id);
+		setCategory(selectedCategoryIds);
+	}
+
+	function removeCategory(id: string) {
+		selectedCategoryIds = selectedCategoryIds.filter((existing) => existing !== id);
+		setCategory(selectedCategoryIds);
+	}
+
+	function clearFilters() {
+		clearSearch();
+		if (selectedCategoryIds.length > 0) {
+			selectedCategoryIds = [];
+			setCategory([]);
+		}
 	}
 
 	function loadMoreSentinel(node: HTMLElement, _visibleCount: number) {
@@ -167,22 +230,77 @@
 
 	{#if data.groupExpenses.length}
 		<div class="mb-4 flex flex-col gap-2">
-			<div class="relative">
-				<Search class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-				<Input
-					type="search"
-					placeholder="Search"
-					bind:value={searchInput}
-					class="pl-8"
-					aria-label="Search expenses"
-				/>
+			<div class="flex items-center gap-2">
+				<div class="relative flex-1">
+					<Search class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+					<Input
+						type="search"
+						placeholder="Search"
+						bind:value={searchInput}
+						class="pl-8"
+						aria-label="Search expenses"
+					/>
+				</div>
+				<DropdownMenu.Root>
+					<DropdownMenu.Trigger>
+						{#snippet child({ props })}
+							<div class="relative">
+								<Button {...props} variant="outline" size="icon" aria-label="Filter by category">
+									<Tags class="size-4" />
+								</Button>
+								{#if hasCategoryFilter}
+									<span
+										class="absolute top-1 right-1 size-2 rounded-full bg-primary"
+										aria-hidden="true"
+									></span>
+								{/if}
+							</div>
+						{/snippet}
+					</DropdownMenu.Trigger>
+					<DropdownMenu.Content align="end" class="max-h-[300px] min-w-[240px] overflow-y-auto">
+						<DropdownMenu.Group>
+							<DropdownMenu.GroupHeading class="text-xs text-muted-foreground">Category</DropdownMenu.GroupHeading>
+							<DropdownMenu.CheckboxItem
+								checked={selectedCategoryIds.includes(UNCATEGORIZED_ID)}
+								onCheckedChange={(checked) => toggleCategory(UNCATEGORIZED_ID, checked)}
+							>
+								Uncategorized
+							</DropdownMenu.CheckboxItem>
+							{#each data.categories as category (category.id)}
+								<DropdownMenu.CheckboxItem
+									checked={selectedCategoryIds.includes(category.id)}
+									onCheckedChange={(checked) => toggleCategory(category.id, checked)}
+								>
+									{category.icon} {category.name}
+								</DropdownMenu.CheckboxItem>
+							{/each}
+						</DropdownMenu.Group>
+					</DropdownMenu.Content>
+				</DropdownMenu.Root>
 			</div>
-			{#if searchInput.trim()}
+			{#if hasActiveFilters}
 				<div class="flex flex-wrap items-center gap-2">
-					<Badge variant="secondary">
-						<span class="truncate">Search: "{searchInput.trim()}"</span>
-					</Badge>
-					<Button variant="ghost" size="sm" onclick={clearSearch}>Clear</Button>
+					{#if searchInput.trim()}
+						<Badge variant="secondary">
+							<span class="truncate">Search: "{searchInput.trim()}"</span>
+						</Badge>
+					{/if}
+					{#each selectedCategoryIds as categoryId (categoryId)}
+						{@const label = categoryBadgeLabel(categoryId)}
+						<Badge variant="secondary" class="gap-1 pr-1">
+							<span class="truncate">{label}</span>
+							<Button
+								variant="ghost"
+								size="icon"
+								class="size-5 text-muted-foreground hover:text-foreground"
+								onclick={() => removeCategory(categoryId)}
+								aria-label="Remove {label} filter"
+							>
+								<X class="size-3" />
+							</Button>
+						</Badge>
+					{/each}
+					<Button variant="ghost" size="sm" onclick={clearFilters}>Clear</Button>
 				</div>
 			{/if}
 		</div>
