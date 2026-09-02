@@ -36,8 +36,11 @@
 		});
 	}
 
-	const searchParam = $derived(page.url.searchParams.get('search') ?? '');
-	const filtered = $derived(filterExpenses(data.groupExpenses, { search: searchParam || null }));
+	let searchInput = $state(page.url.searchParams.get('search') ?? '');
+	let searchTimer: ReturnType<typeof setTimeout> | undefined = undefined;
+	let lastWritten = page.url.searchParams.get('search') ?? '';
+
+	const filtered = $derived(filterExpenses(data.groupExpenses, { search: searchInput.trim() || null }));
 	const items = $derived(groupExpensesForList(filtered));
 	let visibleCount = $state(RENDER_WINDOW_SIZE);
 	const sections = $derived(sectionExpensesByMonth(items.slice(0, visibleCount)));
@@ -49,30 +52,33 @@
 
 	$effect(() => {
 		data.group.id;
-		searchParam;
+		searchInput;
 		visibleCount = RENDER_WINDOW_SIZE;
-	});
-
-	let searchInput = $state(page.url.searchParams.get('search') ?? '');
-	let searchTimer: ReturnType<typeof setTimeout> | undefined = undefined;
-
-	$effect(() => {
-		searchInput = searchParam;
 	});
 
 	function setSearch(value: string) {
 		const url = new URL(page.url);
-		if (value.trim()) url.searchParams.set('search', value.trim());
+		if (value) url.searchParams.set('search', value);
 		else url.searchParams.delete('search');
 		replaceState(url, {});
 	}
 
 	$effect(() => {
-		const value = searchInput;
-		const current = searchParam;
-		if (value.trim() === current.trim()) return;
+		const urlSearch = page.url.searchParams.get('search') ?? '';
+		if (urlSearch !== lastWritten) {
+			searchInput = urlSearch;
+			lastWritten = urlSearch;
+		}
+	});
+
+	$effect(() => {
+		const value = searchInput.trim();
+		if (value === lastWritten) return;
 		if (searchTimer) clearTimeout(searchTimer);
-		searchTimer = setTimeout(() => setSearch(value.trim()), 250);
+		searchTimer = setTimeout(() => {
+			lastWritten = value;
+			setSearch(value);
+		}, 250);
 	});
 
 	$effect(() => {
@@ -83,6 +89,7 @@
 
 	function clearSearch() {
 		searchInput = '';
+		lastWritten = '';
 		setSearch('');
 	}
 
@@ -119,9 +126,11 @@
 			</Button>
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
-					<Button size="icon" aria-label="Add expense">
-						<Plus class="size-4" />
-					</Button>
+					{#snippet child({ props })}
+						<Button {...props} size="icon" aria-label="Add expense">
+							<Plus class="size-4" />
+						</Button>
+					{/snippet}
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Content align="end" class="w-[200px]">
 					<DropdownMenu.Item>
@@ -168,10 +177,10 @@
 					aria-label="Search expenses"
 				/>
 			</div>
-			{#if searchParam}
+			{#if searchInput.trim()}
 				<div class="flex flex-wrap items-center gap-2">
 					<Badge variant="secondary">
-						<span class="truncate">Search: "{searchParam}"</span>
+						<span class="truncate">Search: "{searchInput.trim()}"</span>
 					</Badge>
 					<Button variant="ghost" size="sm" onclick={clearSearch}>Clear</Button>
 				</div>
