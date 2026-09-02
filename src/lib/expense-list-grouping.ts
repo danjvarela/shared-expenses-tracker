@@ -5,6 +5,28 @@ export interface ExpenseListLike {
 	date: Date;
 }
 
+export interface FilterableExpense {
+	description: string;
+	categoryName: string | null;
+}
+
+export interface ExpenseListFilter {
+	search: string | null;
+}
+
+export function filterExpenses<E extends FilterableExpense>(
+	expenses: E[],
+	filter: ExpenseListFilter
+): E[] {
+	const search = filter.search?.trim().toLowerCase();
+	if (!search) return expenses;
+	return expenses.filter(
+		(expense) =>
+			expense.description.toLowerCase().includes(search) ||
+			(expense.categoryName?.toLowerCase().includes(search) ?? false)
+	);
+}
+
 export type ExpenseListItem<E> =
 	| { kind: 'single'; expense: E }
 	| { kind: 'group'; expenseGroupId: string; children: E[]; totalCents: number };

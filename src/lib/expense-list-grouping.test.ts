@@ -5,6 +5,7 @@ import {
 	expenseListItemDate,
 	nextVisibleCount,
 	hasMoreToLoad,
+	filterExpenses,
 	RENDER_WINDOW_SIZE,
 	type ExpenseListLike
 } from './expense-list-grouping';
@@ -12,6 +13,7 @@ import {
 interface Entry extends ExpenseListLike {
 	id: string;
 	description: string;
+	categoryName: string | null;
 }
 
 function entry(
@@ -19,7 +21,8 @@ function entry(
 	expenseGroupId: string,
 	createdAt: number,
 	amountCents = 100,
-	date?: number
+	date?: number,
+	categoryName: string | null = null
 ): Entry {
 	return {
 		id,
@@ -27,7 +30,8 @@ function entry(
 		description: `${id} desc`,
 		amountCents,
 		createdAt: new Date(createdAt),
-		date: new Date(date ?? createdAt)
+		date: new Date(date ?? createdAt),
+		categoryName
 	};
 }
 
@@ -200,5 +204,65 @@ describe('render window', () => {
 		expect(hasMoreToLoad(50, 50)).toBe(false);
 		expect(hasMoreToLoad(20, 20)).toBe(false);
 		expect(hasMoreToLoad(0, 0)).toBe(false);
+	});
+});
+
+describe('filterExpenses', () => {
+	it('returns all expenses when the search is null', () => {
+		const expenses = [entry('a', 'ga', 1), entry('b', 'gb', 2)];
+
+		expect(filterExpenses(expenses, { search: null })).toEqual(expenses);
+	});
+
+	it('returns all expenses when the search is empty or whitespace', () => {
+		const expenses = [entry('a', 'ga', 1)];
+
+		expect(filterExpenses(expenses, { search: '' })).toEqual(expenses);
+		expect(filterExpenses(expenses, { search: '   ' })).toEqual(expenses);
+	});
+
+	it('matches expenses by description substring, case-insensitive', () => {
+		const expenses = [
+			entry('a', 'ga', 1, 100, undefined, null),
+			entry('b', 'gb', 2, 100, undefined, null)
+		];
+		expenses[0].description = 'Coffee';
+		expenses[1].description = 'Groceries';
+
+		expect(filterExpenses(expenses, { search: 'COFF' }).map((e) => e.id)).toEqual(['a']);
+	});
+
+	it('matches expenses by categoryName substring, case-insensitive', () => {
+		const expenses = [
+			entry('a', 'ga', 1, 100, undefined, 'Food'),
+			entry('b', 'gb', 2, 100, undefined, 'Travel')
+		];
+
+		expect(filterExpenses(expenses, { search: 'foo' }).map((e) => e.id)).toEqual(['a']);
+	});
+
+	it('returns no expenses when nothing matches', () => {
+		const expenses = [
+			entry('a', 'ga', 1, 100, undefined, 'Food'),
+			entry('b', 'gb', 2, 100, undefined, 'Travel')
+		];
+
+		expect(filterExpenses(expenses, { search: 'nonexistent' })).toEqual([]);
+	});
+
+	it('trims the search before matching', () => {
+		const expenses = [entry('a', 'ga', 1, 100, undefined, 'Food')];
+
+		expect(filterExpenses(expenses, { search: '  food  ' }).map((e) => e.id)).toEqual(['a']);
+	});
+
+	it('preserves the original order of matching expenses', () => {
+		const expenses = [
+			entry('a', 'ga', 1, 100, undefined, 'Food'),
+			entry('b', 'gb', 2, 100, undefined, 'Travel'),
+			entry('c', 'gc', 3, 100, undefined, 'Food')
+		];
+
+		expect(filterExpenses(expenses, { search: 'food' }).map((e) => e.id)).toEqual(['a', 'c']);
 	});
 });

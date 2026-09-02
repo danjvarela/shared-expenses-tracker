@@ -6,8 +6,10 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import { ArrowLeft, ChevronDown, Plus, Settings, ScanLine } from '@lucide/svelte';
+	import { ArrowLeft, ChevronDown, Plus, Settings, ScanLine, Search } from '@lucide/svelte';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	import { replaceState } from '$app/navigation';
 	import { formatAmountCents } from '$lib/currency';
 	import {
 		groupExpensesForList,
@@ -15,8 +17,10 @@
 		expenseListItemDate,
 		nextVisibleCount,
 		hasMoreToLoad,
+		filterExpenses,
 		RENDER_WINDOW_SIZE
 	} from '$lib/expense-list-grouping';
+	import { Input } from '$lib/components/ui/input/index.js';
 
 	const { data } = $props();
 
@@ -32,7 +36,9 @@
 		});
 	}
 
-	const items = $derived(groupExpensesForList(data.groupExpenses));
+	const searchParam = $derived(page.url.searchParams.get('search') ?? '');
+	const filtered = $derived(filterExpenses(data.groupExpenses, { search: searchParam || null }));
+	const items = $derived(groupExpensesForList(filtered));
 	let visibleCount = $state(RENDER_WINDOW_SIZE);
 	const sections = $derived(sectionExpensesByMonth(items.slice(0, visibleCount)));
 	const hasMore = $derived(hasMoreToLoad(visibleCount, items.length));
@@ -43,8 +49,42 @@
 
 	$effect(() => {
 		data.group.id;
+		searchParam;
 		visibleCount = RENDER_WINDOW_SIZE;
 	});
+
+	let searchInput = $state(page.url.searchParams.get('search') ?? '');
+	let searchTimer: ReturnType<typeof setTimeout> | undefined = undefined;
+
+	$effect(() => {
+		searchInput = searchParam;
+	});
+
+	function setSearch(value: string) {
+		const url = new URL(page.url);
+		if (value.trim()) url.searchParams.set('search', value.trim());
+		else url.searchParams.delete('search');
+		replaceState(url, {});
+	}
+
+	$effect(() => {
+		const value = searchInput;
+		const current = searchParam;
+		if (value.trim() === current.trim()) return;
+		if (searchTimer) clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => setSearch(value.trim()), 250);
+	});
+
+	$effect(() => {
+		return () => {
+			if (searchTimer) clearTimeout(searchTimer);
+		};
+	});
+
+	function clearSearch() {
+		searchInput = '';
+		setSearch('');
+	}
 
 	function loadMoreSentinel(node: HTMLElement, _visibleCount: number) {
 		const observer = new IntersectionObserver(
@@ -117,6 +157,26 @@
 	{/if}
 
 	{#if data.groupExpenses.length}
+		<div class="mb-4 flex flex-col gap-2">
+			<div class="relative">
+				<Search class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+				<Input
+					type="search"
+					placeholder="Search"
+					bind:value={searchInput}
+					class="pl-8"
+					aria-label="Search expenses"
+				/>
+			</div>
+			{#if searchParam}
+				<div class="flex flex-wrap items-center gap-2">
+					<Badge variant="secondary">
+						<span class="truncate">Search: "{searchParam}"</span>
+					</Badge>
+					<Button variant="ghost" size="sm" onclick={clearSearch}>Clear</Button>
+				</div>
+			{/if}
+		</div>
 		<div class="flex flex-col gap-6">
 			{#each sections as section (section.monthKey)}
 				<section class="flex flex-col gap-3">
