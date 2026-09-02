@@ -3,6 +3,9 @@ import {
 	groupExpensesForList,
 	sectionExpensesByMonth,
 	expenseListItemDate,
+	nextVisibleCount,
+	hasMoreToLoad,
+	RENDER_WINDOW_SIZE,
 	type ExpenseListLike
 } from './expense-list-grouping';
 
@@ -165,5 +168,37 @@ describe('expenseListItemDate', () => {
 		if (item.kind !== 'group') throw new Error('expected group');
 		expect(item.children[0].id).toBe('c1'); // sorted by createdAt asc
 		expect(expenseListItemDate(item).valueOf()).toBe(Date.UTC(2026, 8, 10));
+	});
+});
+
+describe('render window', () => {
+	it('exposes a render window size of 20', () => {
+		expect(RENDER_WINDOW_SIZE).toBe(20);
+	});
+
+	it('loads the next window batch, capped at the total row count', () => {
+		expect(nextVisibleCount(20, 50)).toBe(40);
+		expect(nextVisibleCount(40, 50)).toBe(50);
+	});
+
+	it('loads all remaining rows when fewer than a window remain', () => {
+		expect(nextVisibleCount(20, 25)).toBe(25);
+		expect(nextVisibleCount(20, 21)).toBe(21);
+	});
+
+	it('does not advance past the total when exactly at the boundary', () => {
+		expect(nextVisibleCount(20, 20)).toBe(20);
+		expect(nextVisibleCount(50, 50)).toBe(50);
+	});
+
+	it('reports more rows to load while the visible count is below the total', () => {
+		expect(hasMoreToLoad(20, 50)).toBe(true);
+		expect(hasMoreToLoad(40, 50)).toBe(true);
+	});
+
+	it('reports no more rows when the visible count reaches the total', () => {
+		expect(hasMoreToLoad(50, 50)).toBe(false);
+		expect(hasMoreToLoad(20, 20)).toBe(false);
+		expect(hasMoreToLoad(0, 0)).toBe(false);
 	});
 });

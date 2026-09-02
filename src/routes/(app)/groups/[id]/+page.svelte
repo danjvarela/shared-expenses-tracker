@@ -12,7 +12,10 @@
 	import {
 		groupExpensesForList,
 		sectionExpensesByMonth,
-		expenseListItemDate
+		expenseListItemDate,
+		nextVisibleCount,
+		hasMoreToLoad,
+		RENDER_WINDOW_SIZE
 	} from '$lib/expense-list-grouping';
 
 	const { data } = $props();
@@ -29,7 +32,38 @@
 		});
 	}
 
-	const sections = $derived(sectionExpensesByMonth(groupExpensesForList(data.groupExpenses)));
+	const items = $derived(groupExpensesForList(data.groupExpenses));
+	let visibleCount = $state(RENDER_WINDOW_SIZE);
+	const sections = $derived(sectionExpensesByMonth(items.slice(0, visibleCount)));
+	const hasMore = $derived(hasMoreToLoad(visibleCount, items.length));
+
+	function loadMore() {
+		visibleCount = nextVisibleCount(visibleCount, items.length);
+	}
+
+	$effect(() => {
+		data.group.id;
+		visibleCount = RENDER_WINDOW_SIZE;
+	});
+
+	function loadMoreSentinel(node: HTMLElement, _visibleCount: number) {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) loadMore();
+			},
+			{ rootMargin: '200px' }
+		);
+		observer.observe(node);
+		return {
+			update() {
+				observer.disconnect();
+				observer.observe(node);
+			},
+			destroy() {
+				observer.disconnect();
+			}
+		};
+	}
 </script>
 
 <div class="container mx-auto max-w-xl p-4">
@@ -169,6 +203,9 @@
 					{/each}
 				</section>
 			{/each}
+			{#if hasMore}
+				<div use:loadMoreSentinel={visibleCount} class="h-1 w-full" aria-hidden="true"></div>
+			{/if}
 		</div>
 	{:else}
 		<Empty.Root>

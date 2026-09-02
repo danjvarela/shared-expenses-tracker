@@ -95,3 +95,13 @@ export function sectionExpensesByMonth<E extends ExpenseListLike>(
 	}
 	return sections;
 }
+
+export const RENDER_WINDOW_SIZE = 20;
+
+export function nextVisibleCount(visible: number, total: number): number {
+	return Math.min(visible + RENDER_WINDOW_SIZE, total);
+}
+
+export function hasMoreToLoad(visible: number, total: number): boolean {
+	return visible < total;
+}
