@@ -6,7 +6,17 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import { ArrowLeft, ChevronDown, Plus, Settings, ScanLine, Search, Tags, X } from '@lucide/svelte';
+	import {
+		ArrowLeft,
+		ChevronDown,
+		Plus,
+		Settings,
+		ScanLine,
+		Search,
+		Tags,
+		Users,
+		X
+	} from '@lucide/svelte';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
@@ -41,7 +51,7 @@
 	let searchTimer: ReturnType<typeof setTimeout> | undefined = undefined;
 	let lastWritten = page.url.searchParams.get('search') ?? '';
 
-	function parseCategoryParam(value: string | null): string[] {
+	function parseListParam(value: string | null): string[] {
 		if (!value) return [];
 		return value
 			.split(',')
@@ -49,13 +59,17 @@
 			.filter((part) => part.length > 0);
 	}
 
-	let selectedCategoryIds = $state<string[]>(parseCategoryParam(page.url.searchParams.get('category')));
+	let selectedCategoryIds = $state<string[]>(parseListParam(page.url.searchParams.get('category')));
 	let lastWrittenCategory = page.url.searchParams.get('category') ?? '';
+
+	let selectedPayerNames = $state<string[]>(parseListParam(page.url.searchParams.get('payer')));
+	let lastWrittenPayer = page.url.searchParams.get('payer') ?? '';
 
 	const filtered = $derived(
 		filterExpenses(data.groupExpenses, {
 			search: searchInput.trim() || null,
-			categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : null
+			categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : null,
+			payerNames: selectedPayerNames.length > 0 ? selectedPayerNames : null
 		})
 	);
 	const items = $derived(groupExpensesForList(filtered));
@@ -69,7 +83,10 @@
 	const categoryBadgeLabel = (id: string) =>
 		id === UNCATEGORIZED_ID ? 'Uncategorized' : (categoryById.get(id)?.name ?? id);
 	const hasCategoryFilter = $derived(selectedCategoryIds.length > 0);
-	const hasActiveFilters = $derived(searchInput.trim().length > 0 || hasCategoryFilter);
+	const hasPayerFilter = $derived(selectedPayerNames.length > 0);
+	const hasActiveFilters = $derived(
+		searchInput.trim().length > 0 || hasCategoryFilter || hasPayerFilter
+	);
 
 	function loadMore() {
 		visibleCount = nextVisibleCount(visibleCount, items.length);
@@ -79,6 +96,7 @@
 		data.group.id;
 		searchInput;
 		selectedCategoryIds;
+		selectedPayerNames;
 		visibleCount = RENDER_WINDOW_SIZE;
 	});
 
@@ -98,6 +116,15 @@
 		replaceState(url, {});
 	}
 
+	function setPayer(names: string[]) {
+		const value = names.join(',');
+		const url = new URL(page.url);
+		if (value) url.searchParams.set('payer', value);
+		else url.searchParams.delete('payer');
+		lastWrittenPayer = value;
+		replaceState(url, {});
+	}
+
 	$effect(() => {
 		const urlSearch = page.url.searchParams.get('search') ?? '';
 		if (urlSearch !== lastWritten) {
@@ -109,8 +136,16 @@
 	$effect(() => {
 		const urlCategory = page.url.searchParams.get('category') ?? '';
 		if (urlCategory !== lastWrittenCategory) {
-			selectedCategoryIds = parseCategoryParam(urlCategory);
+			selectedCategoryIds = parseListParam(urlCategory);
 			lastWrittenCategory = urlCategory;
+		}
+	});
+
+	$effect(() => {
+		const urlPayer = page.url.searchParams.get('payer') ?? '';
+		if (urlPayer !== lastWrittenPayer) {
+			selectedPayerNames = parseListParam(urlPayer);
+			lastWrittenPayer = urlPayer;
 		}
 	});
 
@@ -148,11 +183,27 @@
 		setCategory(selectedCategoryIds);
 	}
 
+	function togglePayer(name: string, checked: boolean) {
+		selectedPayerNames = checked
+			? [...selectedPayerNames, name]
+			: selectedPayerNames.filter((existing) => existing !== name);
+		setPayer(selectedPayerNames);
+	}
+
+	function removePayer(name: string) {
+		selectedPayerNames = selectedPayerNames.filter((existing) => existing !== name);
+		setPayer(selectedPayerNames);
+	}
+
 	function clearFilters() {
 		clearSearch();
 		if (selectedCategoryIds.length > 0) {
 			selectedCategoryIds = [];
 			setCategory([]);
+		}
+		if (selectedPayerNames.length > 0) {
+			selectedPayerNames = [];
+			setPayer([]);
 		}
 	}
 
@@ -232,7 +283,9 @@
 		<div class="mb-4 flex flex-col gap-2">
 			<div class="flex items-center gap-2">
 				<div class="relative flex-1">
-					<Search class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+					<Search
+						class="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+					/>
 					<Input
 						type="search"
 						placeholder="Search"
@@ -259,7 +312,9 @@
 					</DropdownMenu.Trigger>
 					<DropdownMenu.Content align="end" class="max-h-[300px] min-w-[240px] overflow-y-auto">
 						<DropdownMenu.Group>
-							<DropdownMenu.GroupHeading class="text-xs text-muted-foreground">Category</DropdownMenu.GroupHeading>
+							<DropdownMenu.GroupHeading class="text-xs text-muted-foreground"
+								>Category</DropdownMenu.GroupHeading
+							>
 							<DropdownMenu.CheckboxItem
 								checked={selectedCategoryIds.includes(UNCATEGORIZED_ID)}
 								onCheckedChange={(checked) => toggleCategory(UNCATEGORIZED_ID, checked)}
@@ -271,7 +326,40 @@
 									checked={selectedCategoryIds.includes(category.id)}
 									onCheckedChange={(checked) => toggleCategory(category.id, checked)}
 								>
-									{category.icon} {category.name}
+									{category.icon}
+									{category.name}
+								</DropdownMenu.CheckboxItem>
+							{/each}
+						</DropdownMenu.Group>
+					</DropdownMenu.Content>
+				</DropdownMenu.Root>
+				<DropdownMenu.Root>
+					<DropdownMenu.Trigger>
+						{#snippet child({ props })}
+							<div class="relative">
+								<Button {...props} variant="outline" size="icon" aria-label="Filter by payer">
+									<Users class="size-4" />
+								</Button>
+								{#if hasPayerFilter}
+									<span
+										class="absolute top-1 right-1 size-2 rounded-full bg-primary"
+										aria-hidden="true"
+									></span>
+								{/if}
+							</div>
+						{/snippet}
+					</DropdownMenu.Trigger>
+					<DropdownMenu.Content align="end" class="max-h-[300px] min-w-[240px] overflow-y-auto">
+						<DropdownMenu.Group>
+							<DropdownMenu.GroupHeading class="text-xs text-muted-foreground"
+								>Payer</DropdownMenu.GroupHeading
+							>
+							{#each data.members as member (member.userId)}
+								<DropdownMenu.CheckboxItem
+									checked={selectedPayerNames.includes(member.displayName)}
+									onCheckedChange={(checked) => togglePayer(member.displayName, checked)}
+								>
+									{member.displayName}
 								</DropdownMenu.CheckboxItem>
 							{/each}
 						</DropdownMenu.Group>
@@ -295,6 +383,20 @@
 								class="size-5 text-muted-foreground hover:text-foreground"
 								onclick={() => removeCategory(categoryId)}
 								aria-label="Remove {label} filter"
+							>
+								<X class="size-3" />
+							</Button>
+						</Badge>
+					{/each}
+					{#each selectedPayerNames as payerName (payerName)}
+						<Badge variant="secondary" class="gap-1 pr-1">
+							<span class="truncate">{payerName}</span>
+							<Button
+								variant="ghost"
+								size="icon"
+								class="size-5 text-muted-foreground hover:text-foreground"
+								onclick={() => removePayer(payerName)}
+								aria-label="Remove {payerName} filter"
 							>
 								<X class="size-3" />
 							</Button>

@@ -9,6 +9,7 @@ export interface FilterableExpense {
 	description: string;
 	categoryName: string | null;
 	categoryId: string | null;
+	paidByName: string;
 }
 
 export const UNCATEGORIZED_ID = '__uncategorized__';
@@ -16,6 +17,7 @@ export const UNCATEGORIZED_ID = '__uncategorized__';
 export interface ExpenseListFilter {
 	search: string | null;
 	categoryIds: string[] | null;
+	payerNames: string[] | null;
 }
 
 export function filterExpenses<E extends FilterableExpense>(
@@ -37,6 +39,12 @@ export function filterExpenses<E extends FilterableExpense>(
 	if (categoryIds && categoryIds.length > 0) {
 		const picked = new Set(categoryIds);
 		result = result.filter((expense) => picked.has(expense.categoryId ?? UNCATEGORIZED_ID));
+	}
+
+	const payerNames = filter.payerNames;
+	if (payerNames && payerNames.length > 0) {
+		const picked = new Set(payerNames);
+		result = result.filter((expense) => picked.has(expense.paidByName));
 	}
 
 	return result;
