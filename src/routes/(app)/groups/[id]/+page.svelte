@@ -5,7 +5,8 @@
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { ArrowLeft, ChevronDown } from '@lucide/svelte';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import { ArrowLeft, ChevronDown, Plus, Settings, ScanLine } from '@lucide/svelte';
 	import { resolve } from '$app/paths';
 	import { formatAmountCents } from '$lib/currency';
 	import { groupExpensesForList } from '$lib/expense-list-grouping';
@@ -35,11 +36,36 @@
 	<div class="mb-4 flex items-center justify-between">
 		<h1 class="text-2xl font-semibold">{data.group.name}</h1>
 		<div class="flex gap-2">
-			<Button variant="outline" href="{data.group.id}/settings">Settings</Button>
-			{#if data.scannerEnabled}
-				<Button variant="outline" href="{data.group.id}/scan">Scan receipt</Button>
-			{/if}
-			<Button href="{data.group.id}/expenses/new">Add expense</Button>
+			<Button variant="outline" size="icon" href="{data.group.id}/settings" aria-label="Settings">
+				<Settings class="size-4" />
+			</Button>
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger>
+					<Button size="icon" aria-label="Add expense">
+						<Plus class="size-4" />
+					</Button>
+				</DropdownMenu.Trigger>
+				<DropdownMenu.Content align="end" class="w-[200px]">
+					<DropdownMenu.Item>
+						{#snippet child({ props })}
+							<a {...props} href="{data.group.id}/expenses/new">
+								<Plus class="size-4" />
+								Add expense
+							</a>
+						{/snippet}
+					</DropdownMenu.Item>
+					{#if data.scannerEnabled}
+						<DropdownMenu.Item>
+							{#snippet child({ props })}
+								<a {...props} href="{data.group.id}/scan">
+									<ScanLine class="size-4" />
+									Scan receipt
+								</a>
+							{/snippet}
+						</DropdownMenu.Item>
+					{/if}
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
 		</div>
 	</div>
 
