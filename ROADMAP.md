@@ -15,7 +15,7 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 ## Expenses
 
 - [x] Done — View a group's expenses (read-only list)
-- [ ] Not started — Expense list UI revamp: filter (category, payer, date range, settlement state) and search (free-text over description/category) on the per-group expenses list
+- [x] Done — Expense list UI revamp: sort by date w/ month sections, load-more render window, filter (category, payer, date range) + search toolbar, no-matches empty state. Settlement-state filter not included.
 - [x] Done — Add expense manually (form)
 - [ ] Not started — Add expense via free-text input (AI-generated fields)
 - [x] Done — Scan receipt to add multiple expenses — pluggable scanner backend behind `IReceiptScanner`, selected via env `RECEIPT_SCANNER_BACKEND` (unset = scan UI not rendered; unknown = boot fail). Dumb scanner: bytes + mime in, `ScanResult` (line items only, no currency/category) out; app maps to a draft ExpenseGroup the user edits then confirms. Two backends ship: `ollama` (vision model, `OLLAMA_BASE_URL` + `OLLAMA_VISION_MODEL`, ADR-0013) and `ocr` (OCR.space text extraction + Ollama text-model structuring composition, `OCR_API_KEY` + `OLLAMA_TEXT_MODEL`, ADR-0015). `scan.ts` is mime-agnostic; each backend ingests its own way (vision rasterizes PDFs, OCR.space takes them natively). Blocking request for now, background-job deferred.
