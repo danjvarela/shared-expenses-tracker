@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { CalendarRange } from '@lucide/svelte';
 	import * as Popover from '$lib/components/ui/popover/index.js';
+	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as RangeCalendar from '$lib/components/ui/range-calendar/index.js';
 	import { CalendarDate, type DateValue } from '@internationalized/date';
@@ -21,13 +22,12 @@
 	const MODE_ORDER: DateFilterMode[] = ['today', 'this-week', 'this-month', 'custom'];
 
 	let open = $state(false);
-	let calendarOpen = $state(false);
+	let dialogOpen = $state(false);
 	let rangeValue = $state<DateRange | undefined>(undefined);
-	let placeholder = $state<CalendarDate>(toCalendarDate(new Date()));
-	let lastAppliedKey = '';
+	let placeholder = $state<DateValue>(toCalendarDate(new Date()));
 
 	const isActive = $derived(filterState.mode !== 'all');
-	const showCalendar = $derived(calendarOpen || filterState.mode === 'custom');
+	const canApply = $derived(!!rangeValue?.start && !!rangeValue?.end);
 
 	function toCalendarDate(date: Date): CalendarDate {
 		return new CalendarDate(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
@@ -44,36 +44,28 @@
 		};
 	}
 
-	$effect(() => {
-		if (!open) calendarOpen = false;
-	});
-
-	$effect(() => {
-		if (filterState.mode !== 'custom') return;
-		const key = `${filterState.range.from.valueOf()}-${filterState.range.to.valueOf()}`;
-		if (key === lastAppliedKey) return;
-		lastAppliedKey = key;
-		rangeValue = {
-			start: toCalendarDate(filterState.range.from),
-			end: toCalendarDate(filterState.range.to)
-		};
-		placeholder = toCalendarDate(filterState.range.from);
-	});
-
 	function choosePreset(preset: DateRangePreset) {
 		onSelect({ mode: 'preset', preset });
 		open = false;
 	}
 
-	function revealCustom() {
-		calendarOpen = true;
+	function openCustomDialog() {
+		rangeValue =
+			filterState.mode === 'custom'
+				? {
+						start: toCalendarDate(filterState.range.from),
+						end: toCalendarDate(filterState.range.to)
+					}
+				: undefined;
+		placeholder = rangeValue?.start ?? toCalendarDate(new Date());
+		open = false;
+		dialogOpen = true;
 	}
 
-	function handleRangeChange(value: DateRange | undefined) {
-		rangeValue = value;
-		if (value?.start && value?.end) {
-			onSelect({ mode: 'custom', range: toCustomRange(value) });
-		}
+	function applyCustomRange() {
+		if (!rangeValue?.start || !rangeValue?.end) return;
+		onSelect({ mode: 'custom', range: toCustomRange(rangeValue) });
+		dialogOpen = false;
 	}
 
 	function modeLabel(mode: DateFilterMode): string {
@@ -100,7 +92,7 @@
 			</div>
 		{/snippet}
 	</Popover.Trigger>
-	<Popover.Content align="end" class={showCalendar ? 'w-[min(90vw,560px)]' : 'w-[240px]'}>
+	<Popover.Content align="end" class="w-[240px]">
 		<div class="flex flex-col gap-1">
 			<Button
 				variant={filterState.mode === 'all' ? 'secondary' : 'ghost'}
@@ -118,23 +110,32 @@
 					variant={isModeActive(mode) ? 'secondary' : 'ghost'}
 					size="sm"
 					class="justify-start"
-					onclick={() => (mode === 'custom' ? revealCustom() : choosePreset(mode))}
+					onclick={() => (mode === 'custom' ? openCustomDialog() : choosePreset(mode))}
 				>
 					{modeLabel(mode)}
 				</Button>
 			{/each}
 		</div>
-		{#if showCalendar}
-			<div class="mt-2 max-w-full overflow-x-auto border-t pt-2">
-				<RangeCalendar.RangeCalendar
-					bind:value={rangeValue}
-					bind:placeholder
-					numberOfMonths={2}
-					pagedNavigation
-					class="max-sm:[--cell-size:--spacing(6)]"
-					onValueChange={handleRangeChange}
-				/>
-			</div>
-		{/if}
 	</Popover.Content>
 </Popover.Root>
+
+<Dialog.Root bind:open={dialogOpen}>
+	<Dialog.Content class="w-fit max-w-[95vw] sm:max-w-fit">
+		<Dialog.Header>
+			<Dialog.Title>Custom range</Dialog.Title>
+		</Dialog.Header>
+		<div class="max-w-full overflow-x-auto">
+			<RangeCalendar.RangeCalendar
+				bind:value={rangeValue}
+				bind:placeholder
+				numberOfMonths={2}
+				pagedNavigation
+				class="max-sm:[--cell-size:--spacing(6)]"
+			/>
+		</div>
+		<Dialog.Footer>
+			<Button variant="outline" onclick={() => (dialogOpen = false)}>Cancel</Button>
+			<Button disabled={!canApply} onclick={applyCustomRange}>Apply</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
