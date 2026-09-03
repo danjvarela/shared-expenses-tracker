@@ -100,7 +100,7 @@
 			</div>
 		{/snippet}
 	</Popover.Trigger>
-	<Popover.Content align="end" class="w-[320px]">
+	<Popover.Content align="end" class={showCalendar ? 'w-[min(90vw,560px)]' : 'w-[240px]'}>
 		<div class="flex flex-col gap-1">
 			<Button
 				variant={filterState.mode === 'all' ? 'secondary' : 'ghost'}
@@ -125,12 +125,13 @@
 			{/each}
 		</div>
 		{#if showCalendar}
-			<div class="mt-2 border-t pt-2">
+			<div class="mt-2 max-w-full overflow-x-auto border-t pt-2">
 				<RangeCalendar.RangeCalendar
 					bind:value={rangeValue}
 					bind:placeholder
 					numberOfMonths={2}
 					pagedNavigation
+					class="max-sm:[--cell-size:--spacing(6)]"
 					onValueChange={handleRangeChange}
 				/>
 			</div>
