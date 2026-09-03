@@ -31,7 +31,15 @@
 		RENDER_WINDOW_SIZE,
 		UNCATEGORIZED_ID
 	} from '$lib/expense-list-grouping';
+	import {
+		parseDateFilterParams,
+		serializeDateFilterParams,
+		resolveDateFilterRange,
+		dateFilterBadgeLabel,
+		type DateFilterState
+	} from '$lib/expense-date-filter';
 	import { Input } from '$lib/components/ui/input/index.js';
+	import DateFilterButton from '$lib/components/date-filter-button.svelte';
 
 	const { data } = $props();
 
@@ -65,11 +73,25 @@
 	let selectedPayerNames = $state<string[]>(parseListParam(page.url.searchParams.get('payer')));
 	let lastWrittenPayer = page.url.searchParams.get('payer') ?? '';
 
+	function readDateFilter(): DateFilterState {
+		return parseDateFilterParams({
+			range: page.url.searchParams.get('range'),
+			from: page.url.searchParams.get('from'),
+			to: page.url.searchParams.get('to')
+		});
+	}
+	function dateFilterUrlKey(url: URL): string {
+		return `${url.searchParams.get('range') ?? ''}|${url.searchParams.get('from') ?? ''}|${url.searchParams.get('to') ?? ''}`;
+	}
+	let dateFilter = $state<DateFilterState>(readDateFilter());
+	let lastWrittenDate = dateFilterUrlKey(page.url);
+
 	const filtered = $derived(
 		filterExpenses(data.groupExpenses, {
 			search: searchInput.trim() || null,
 			categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : null,
-			payerNames: selectedPayerNames.length > 0 ? selectedPayerNames : null
+			payerNames: selectedPayerNames.length > 0 ? selectedPayerNames : null,
+			dateRange: resolveDateFilterRange(dateFilter, new Date())
 		})
 	);
 	const items = $derived(groupExpensesForList(filtered));
@@ -84,8 +106,10 @@
 		id === UNCATEGORIZED_ID ? 'Uncategorized' : (categoryById.get(id)?.name ?? id);
 	const hasCategoryFilter = $derived(selectedCategoryIds.length > 0);
 	const hasPayerFilter = $derived(selectedPayerNames.length > 0);
+	const hasDateFilter = $derived(dateFilter.mode !== 'all');
+	const dateBadgeLabel = $derived(dateFilterBadgeLabel(dateFilter));
 	const hasActiveFilters = $derived(
-		searchInput.trim().length > 0 || hasCategoryFilter || hasPayerFilter
+		searchInput.trim().length > 0 || hasCategoryFilter || hasPayerFilter || hasDateFilter
 	);
 
 	function loadMore() {
@@ -97,6 +121,7 @@
 		searchInput;
 		selectedCategoryIds;
 		selectedPayerNames;
+		dateFilter;
 		visibleCount = RENDER_WINDOW_SIZE;
 	});
 
@@ -125,6 +150,20 @@
 		replaceState(url, {});
 	}
 
+	function setDateFilter(next: DateFilterState) {
+		const url = new URL(page.url);
+		const { range, from, to } = serializeDateFilterParams(next);
+		if (range) url.searchParams.set('range', range);
+		else url.searchParams.delete('range');
+		if (from) url.searchParams.set('from', from);
+		else url.searchParams.delete('from');
+		if (to) url.searchParams.set('to', to);
+		else url.searchParams.delete('to');
+		lastWrittenDate = dateFilterUrlKey(url);
+		dateFilter = next;
+		replaceState(url, {});
+	}
+
 	$effect(() => {
 		const urlSearch = page.url.searchParams.get('search') ?? '';
 		if (urlSearch !== lastWritten) {
@@ -146,6 +185,14 @@
 		if (urlPayer !== lastWrittenPayer) {
 			selectedPayerNames = parseListParam(urlPayer);
 			lastWrittenPayer = urlPayer;
+		}
+	});
+
+	$effect(() => {
+		const key = dateFilterUrlKey(page.url);
+		if (key !== lastWrittenDate) {
+			dateFilter = readDateFilter();
+			lastWrittenDate = key;
 		}
 	});
 
@@ -195,6 +242,10 @@
 		setPayer(selectedPayerNames);
 	}
 
+	function removeDateFilter() {
+		setDateFilter({ mode: 'all' });
+	}
+
 	function clearFilters() {
 		clearSearch();
 		if (selectedCategoryIds.length > 0) {
@@ -204,6 +255,9 @@
 		if (selectedPayerNames.length > 0) {
 			selectedPayerNames = [];
 			setPayer([]);
+		}
+		if (dateFilter.mode !== 'all') {
+			setDateFilter({ mode: 'all' });
 		}
 	}
 
@@ -365,6 +419,7 @@
 						</DropdownMenu.Group>
 					</DropdownMenu.Content>
 				</DropdownMenu.Root>
+				<DateFilterButton filterState={dateFilter} onSelect={setDateFilter} />
 			</div>
 			{#if hasActiveFilters}
 				<div class="flex flex-wrap items-center gap-2">
@@ -402,6 +457,20 @@
 							</Button>
 						</Badge>
 					{/each}
+					{#if dateBadgeLabel}
+						<Badge variant="secondary" class="gap-1 pr-1">
+							<span class="truncate">{dateBadgeLabel}</span>
+							<Button
+								variant="ghost"
+								size="icon"
+								class="size-5 text-muted-foreground hover:text-foreground"
+								onclick={removeDateFilter}
+								aria-label="Remove date filter"
+							>
+								<X class="size-3" />
+							</Button>
+						</Badge>
+					{/if}
 					<Button variant="ghost" size="sm" onclick={clearFilters}>Clear</Button>
 				</div>
 			{/if}

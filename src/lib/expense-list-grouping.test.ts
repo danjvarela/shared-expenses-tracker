@@ -218,19 +218,29 @@ describe('filterExpenses', () => {
 	it('returns all expenses when the search is null', () => {
 		const expenses = [entry('a', 'ga', 1), entry('b', 'gb', 2)];
 
-		expect(filterExpenses(expenses, { search: null, categoryIds: null, payerNames: null })).toEqual(
-			expenses
-		);
+		expect(
+			filterExpenses(expenses, {
+				search: null,
+				categoryIds: null,
+				payerNames: null,
+				dateRange: null
+			})
+		).toEqual(expenses);
 	});
 
 	it('returns all expenses when the search is empty or whitespace', () => {
 		const expenses = [entry('a', 'ga', 1)];
 
-		expect(filterExpenses(expenses, { search: '', categoryIds: null, payerNames: null })).toEqual(
-			expenses
-		);
 		expect(
-			filterExpenses(expenses, { search: '   ', categoryIds: null, payerNames: null })
+			filterExpenses(expenses, { search: '', categoryIds: null, payerNames: null, dateRange: null })
+		).toEqual(expenses);
+		expect(
+			filterExpenses(expenses, {
+				search: '   ',
+				categoryIds: null,
+				payerNames: null,
+				dateRange: null
+			})
 		).toEqual(expenses);
 	});
 
@@ -243,9 +253,12 @@ describe('filterExpenses', () => {
 		expenses[1].description = 'Groceries';
 
 		expect(
-			filterExpenses(expenses, { search: 'COFF', categoryIds: null, payerNames: null }).map(
-				(e) => e.id
-			)
+			filterExpenses(expenses, {
+				search: 'COFF',
+				categoryIds: null,
+				payerNames: null,
+				dateRange: null
+			}).map((e) => e.id)
 		).toEqual(['a']);
 	});
 
@@ -256,9 +269,12 @@ describe('filterExpenses', () => {
 		];
 
 		expect(
-			filterExpenses(expenses, { search: 'foo', categoryIds: null, payerNames: null }).map(
-				(e) => e.id
-			)
+			filterExpenses(expenses, {
+				search: 'foo',
+				categoryIds: null,
+				payerNames: null,
+				dateRange: null
+			}).map((e) => e.id)
 		).toEqual(['a']);
 	});
 
@@ -269,7 +285,12 @@ describe('filterExpenses', () => {
 		];
 
 		expect(
-			filterExpenses(expenses, { search: 'nonexistent', categoryIds: null, payerNames: null })
+			filterExpenses(expenses, {
+				search: 'nonexistent',
+				categoryIds: null,
+				payerNames: null,
+				dateRange: null
+			})
 		).toEqual([]);
 	});
 
@@ -277,9 +298,12 @@ describe('filterExpenses', () => {
 		const expenses = [entry('a', 'ga', 1, 100, undefined, 'Food', 'cat-food')];
 
 		expect(
-			filterExpenses(expenses, { search: '  food  ', categoryIds: null, payerNames: null }).map(
-				(e) => e.id
-			)
+			filterExpenses(expenses, {
+				search: '  food  ',
+				categoryIds: null,
+				payerNames: null,
+				dateRange: null
+			}).map((e) => e.id)
 		).toEqual(['a']);
 	});
 
@@ -291,9 +315,12 @@ describe('filterExpenses', () => {
 		];
 
 		expect(
-			filterExpenses(expenses, { search: 'food', categoryIds: null, payerNames: null }).map(
-				(e) => e.id
-			)
+			filterExpenses(expenses, {
+				search: 'food',
+				categoryIds: null,
+				payerNames: null,
+				dateRange: null
+			}).map((e) => e.id)
 		).toEqual(['a', 'c']);
 	});
 
@@ -304,12 +331,20 @@ describe('filterExpenses', () => {
 		];
 
 		expect(
-			filterExpenses(expenses, { search: null, categoryIds: null, payerNames: null }).map(
-				(e) => e.id
-			)
+			filterExpenses(expenses, {
+				search: null,
+				categoryIds: null,
+				payerNames: null,
+				dateRange: null
+			}).map((e) => e.id)
 		).toEqual(['a', 'b']);
 		expect(
-			filterExpenses(expenses, { search: null, categoryIds: [], payerNames: null }).map((e) => e.id)
+			filterExpenses(expenses, {
+				search: null,
+				categoryIds: [],
+				payerNames: null,
+				dateRange: null
+			}).map((e) => e.id)
 		).toEqual(['a', 'b']);
 	});
 
@@ -324,13 +359,17 @@ describe('filterExpenses', () => {
 			filterExpenses(expenses, {
 				search: null,
 				categoryIds: ['cat-food', 'cat-travel'],
-				payerNames: null
+				payerNames: null,
+				dateRange: null
 			}).map((e) => e.id)
 		).toEqual(['a', 'b', 'c']);
 		expect(
-			filterExpenses(expenses, { search: null, categoryIds: ['cat-travel'], payerNames: null }).map(
-				(e) => e.id
-			)
+			filterExpenses(expenses, {
+				search: null,
+				categoryIds: ['cat-travel'],
+				payerNames: null,
+				dateRange: null
+			}).map((e) => e.id)
 		).toEqual(['b']);
 	});
 
@@ -344,7 +383,8 @@ describe('filterExpenses', () => {
 			filterExpenses(expenses, {
 				search: null,
 				categoryIds: [UNCATEGORIZED_ID],
-				payerNames: null
+				payerNames: null,
+				dateRange: null
 			}).map((e) => e.id)
 		).toEqual(['a']);
 	});
@@ -360,9 +400,12 @@ describe('filterExpenses', () => {
 		expenses[2].description = 'Coffee';
 
 		expect(
-			filterExpenses(expenses, { search: 'coff', categoryIds: ['cat-food'], payerNames: null }).map(
-				(e) => e.id
-			)
+			filterExpenses(expenses, {
+				search: 'coff',
+				categoryIds: ['cat-food'],
+				payerNames: null,
+				dateRange: null
+			}).map((e) => e.id)
 		).toEqual(['a', 'c']);
 	});
 
@@ -373,12 +416,20 @@ describe('filterExpenses', () => {
 		];
 
 		expect(
-			filterExpenses(expenses, { search: null, categoryIds: null, payerNames: null }).map(
-				(e) => e.id
-			)
+			filterExpenses(expenses, {
+				search: null,
+				categoryIds: null,
+				payerNames: null,
+				dateRange: null
+			}).map((e) => e.id)
 		).toEqual(['a', 'b']);
 		expect(
-			filterExpenses(expenses, { search: null, categoryIds: null, payerNames: [] }).map((e) => e.id)
+			filterExpenses(expenses, {
+				search: null,
+				categoryIds: null,
+				payerNames: [],
+				dateRange: null
+			}).map((e) => e.id)
 		).toEqual(['a', 'b']);
 	});
 
@@ -393,13 +444,17 @@ describe('filterExpenses', () => {
 			filterExpenses(expenses, {
 				search: null,
 				categoryIds: null,
-				payerNames: ['Alice', 'Bob']
+				payerNames: ['Alice', 'Bob'],
+				dateRange: null
 			}).map((e) => e.id)
 		).toEqual(['a', 'b', 'c']);
 		expect(
-			filterExpenses(expenses, { search: null, categoryIds: null, payerNames: ['Bob'] }).map(
-				(e) => e.id
-			)
+			filterExpenses(expenses, {
+				search: null,
+				categoryIds: null,
+				payerNames: ['Bob'],
+				dateRange: null
+			}).map((e) => e.id)
 		).toEqual(['b']);
 	});
 
@@ -410,9 +465,12 @@ describe('filterExpenses', () => {
 		];
 
 		expect(
-			filterExpenses(expenses, { search: null, categoryIds: null, payerNames: ['Alice'] }).map(
-				(e) => e.id
-			)
+			filterExpenses(expenses, {
+				search: null,
+				categoryIds: null,
+				payerNames: ['Alice'],
+				dateRange: null
+			}).map((e) => e.id)
 		).toEqual(['a']);
 	});
 
@@ -427,8 +485,86 @@ describe('filterExpenses', () => {
 			filterExpenses(expenses, {
 				search: null,
 				categoryIds: ['cat-food'],
-				payerNames: ['Alice']
+				payerNames: ['Alice'],
+				dateRange: null
 			}).map((e) => e.id)
 		).toEqual(['a']);
+	});
+
+	describe('dateRange', () => {
+		it('returns all expenses when dateRange is null', () => {
+			const expenses = [
+				entry('a', 'ga', 1, 100, Date.UTC(2026, 8, 1)),
+				entry('b', 'gb', 2, 100, Date.UTC(2026, 7, 1))
+			];
+
+			expect(
+				filterExpenses(expenses, {
+					search: null,
+					categoryIds: null,
+					payerNames: null,
+					dateRange: null
+				}).map((e) => e.id)
+			).toEqual(['a', 'b']);
+		});
+
+		it('keeps expenses whose date falls within the inclusive range', () => {
+			const expenses = [
+				entry('a', 'ga', 1, 100, Date.UTC(2026, 8, 1)),
+				entry('b', 'gb', 2, 100, Date.UTC(2026, 8, 15)),
+				entry('c', 'gc', 3, 100, Date.UTC(2026, 8, 30))
+			];
+
+			expect(
+				filterExpenses(expenses, {
+					search: null,
+					categoryIds: null,
+					payerNames: null,
+					dateRange: {
+						from: new Date(Date.UTC(2026, 8, 10)),
+						to: new Date(Date.UTC(2026, 8, 20, 23, 59, 59, 999))
+					}
+				}).map((e) => e.id)
+			).toEqual(['b']);
+		});
+
+		it('includes expenses on the range boundaries', () => {
+			const expenses = [
+				entry('a', 'ga', 1, 100, Date.UTC(2026, 8, 10)),
+				entry('b', 'gb', 2, 100, Date.UTC(2026, 8, 20))
+			];
+
+			expect(
+				filterExpenses(expenses, {
+					search: null,
+					categoryIds: null,
+					payerNames: null,
+					dateRange: {
+						from: new Date(Date.UTC(2026, 8, 10)),
+						to: new Date(Date.UTC(2026, 8, 20, 23, 59, 59, 999))
+					}
+				}).map((e) => e.id)
+			).toEqual(['a', 'b']);
+		});
+
+		it('combines dateRange with a category filter', () => {
+			const expenses = [
+				entry('a', 'ga', 1, 100, Date.UTC(2026, 8, 1), 'Food', 'cat-food'),
+				entry('b', 'gb', 2, 100, Date.UTC(2026, 8, 15), 'Travel', 'cat-travel'),
+				entry('c', 'gc', 3, 100, Date.UTC(2026, 8, 15), 'Food', 'cat-food')
+			];
+
+			expect(
+				filterExpenses(expenses, {
+					search: null,
+					categoryIds: ['cat-food'],
+					payerNames: null,
+					dateRange: {
+						from: new Date(Date.UTC(2026, 8, 10)),
+						to: new Date(Date.UTC(2026, 8, 20, 23, 59, 59, 999))
+					}
+				}).map((e) => e.id)
+			).toEqual(['c']);
+		});
 	});
 });

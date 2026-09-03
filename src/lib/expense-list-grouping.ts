@@ -1,3 +1,5 @@
+import type { ExpenseDateRange } from './expense-date-filter';
+
 export interface ExpenseListLike {
 	expenseGroupId: string;
 	amountCents: number;
@@ -10,6 +12,7 @@ export interface FilterableExpense {
 	categoryName: string | null;
 	categoryId: string | null;
 	paidByName: string;
+	date: Date;
 }
 
 export const UNCATEGORIZED_ID = '__uncategorized__';
@@ -18,6 +21,7 @@ export interface ExpenseListFilter {
 	search: string | null;
 	categoryIds: string[] | null;
 	payerNames: string[] | null;
+	dateRange: ExpenseDateRange | null;
 }
 
 export function filterExpenses<E extends FilterableExpense>(
@@ -45,6 +49,15 @@ export function filterExpenses<E extends FilterableExpense>(
 	if (payerNames && payerNames.length > 0) {
 		const picked = new Set(payerNames);
 		result = result.filter((expense) => picked.has(expense.paidByName));
+	}
+
+	const dateRange = filter.dateRange;
+	if (dateRange) {
+		const from = dateRange.from.valueOf();
+		const to = dateRange.to.valueOf();
+		result = result.filter(
+			(expense) => expense.date.valueOf() >= from && expense.date.valueOf() <= to
+		);
 	}
 
 	return result;
