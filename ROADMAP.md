@@ -41,7 +41,7 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 - [x] Done — Upload + display an image receipt on the expense detail page (`/groups/[id]/expenses/[expenseId]`), end-to-end (fs adapter, `expense_receipt` table, membership-guarded endpoints).
 - [x] Done — Delete a receipt (row-first DB delete, best-effort `adapter.delete`; idempotent; trash button + confirm Dialog on detail page).
 - [x] Done — PDF receipts (`application/pdf` in upload allowlist; detail page renders `<object type="application/pdf">` with new-tab fallback).
-- [ ] Not started — Receipt orphan gc (reconcile backend keys vs expense_receipt.storageKey; needs additive listKeys() on the storage adapter interface)
+- [x] Done — Receipt orphan gc: `POST /gc/receipts` (outside the `(app)` group, token-gated by env `GC_SECRET` — boot fails if unset) reconciles `storageBackend.listKeys()` against `expense_receipt.storageKey` via `receipt-gc.ts`. Orphan = absent from DB AND older than a 24h grace period (protects mid-upload receipts). Defaults to dry-run; `{ apply: true }` performs best-effort per-key deletes. Response `{ dryRun, totalKeys, orphanCount, orphanKeys, deletedKeys }`.
 
 ## Additional suggested features
 

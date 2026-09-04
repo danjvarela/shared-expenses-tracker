@@ -28,4 +28,6 @@
   env.RUN_SCANNER_INTEGRATION = "0";
   
   env.OCR_API_KEY = config.secretspec.secrets.OCR_API_KEY or "";
+
+  env.GC_SECRET = config.secretspec.secrets.GC_SECRET or "";
 }

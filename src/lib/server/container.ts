@@ -27,9 +27,11 @@ import { createGroupMemberService } from '$lib/server/app/group-member';
 import { createGroupInviteService, type InviteRepos } from '$lib/server/app/group-invite';
 import { createNotificationService } from '$lib/server/app/notification';
 import { createReceiptService } from '$lib/server/app/receipt';
+import { createReceiptGcService } from '$lib/server/app/receipt-gc';
 import { createScanService, type ScanConfirmRepos } from '$lib/server/app/scan';
 import type { IOAuthProvider } from '$lib/server/app/interfaces/oauth-provider';
 import { createRemoveMemberService, type RemoveMemberRepos } from './app/remove-member';
+import { env } from '$env/dynamic/private';
 
 const userRepo = createUserRepository(db);
 const identityRepo = createIdentityRepository(db);
@@ -157,6 +159,19 @@ export const scanService =
 				uow: scanConfirmUnitOfWork
 			})
 		: null;
+
+export const receiptGcService = createReceiptGcService({
+	receiptRepo,
+	storageBackend: receiptStorageBackend
+});
+
+const gcSecret = env.GC_SECRET;
+if (!gcSecret) {
+	console.error('GC_SECRET is not set');
+	throw new Error('GC_SECRET is not set');
+}
+const resolvedGcSecret: string = gcSecret;
+export { resolvedGcSecret as gcSecret };
 
 export {
 	groupRepo,

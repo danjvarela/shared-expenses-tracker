@@ -5,7 +5,8 @@ const PUBLIC_ROUTES = new Set([
 	'/login',
 	'/login/[provider]',
 	'/login/[provider]/callback',
-	'/logout'
+	'/logout',
+	'/gc/receipts'
 ]);
 
 export const handle: Handle = async ({ event, resolve }) => {
