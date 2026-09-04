@@ -9,8 +9,9 @@
 {
   packages = [
     pkgs.playwright-driver.browsers
-    pkgs.imagemagick 
+    pkgs.imagemagick
     pkgs.poppler-utils
+    pkgs.cloudflared
   ];
 
   env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
@@ -30,4 +31,15 @@
   env.OCR_API_KEY = config.secretspec.secrets.OCR_API_KEY or "";
 
   env.GC_SECRET = config.secretspec.secrets.GC_SECRET or "";
+
+  env.CLOUDFLARE_TUNNEL_TOKEN = config.secretspec.secrets.CLOUDFLARE_TUNNEL_TOKEN or "";
+
+  processes.vite.exec = "pnpm dev";
+  processes.tunnel.exec = ''
+    if [ -z "$CLOUDFLARE_TUNNEL_TOKEN" ]; then
+      echo "CLOUDFLARE_TUNNEL_TOKEN not set, skipping cloudflared tunnel"
+      exit 0
+    fi
+    cloudflared tunnel run --token "$CLOUDFLARE_TUNNEL_TOKEN"
+  '';
 }

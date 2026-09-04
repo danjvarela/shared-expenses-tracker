@@ -5,6 +5,10 @@ import adapter from '@sveltejs/adapter-auto';
 import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
+	server: {
+		port: 5173,
+		strictPort: true
+	},
 	plugins: [
 		tailwindcss(),
 		sveltekit({
