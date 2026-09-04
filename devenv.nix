@@ -32,8 +32,6 @@
 
   env.GC_SECRET = config.secretspec.secrets.GC_SECRET or "";
 
-  env.CLOUDFLARE_TUNNEL_TOKEN = config.secretspec.secrets.CLOUDFLARE_TUNNEL_TOKEN or "";
-
   profiles.development.module = {
     env.RECEIPT_STORAGE_BACKEND = "fs";
     env.RECEIPT_STORAGE_FS_DIR = "./uploads";
@@ -52,5 +50,6 @@
     env.RECEIPT_STORAGE_BACKEND = "fs";
     env.RECEIPT_STORAGE_FS_DIR = "REDACTED_RECEIPT_DIR";
     env.CLOUDFLARE_TUNNEL_HOSTNAME = "redacted.example.com";
+    env.CLOUDFLARE_TUNNEL_TOKEN = config.secretspec.secrets.CLOUDFLARE_TUNNEL_TOKEN or "";
   };
 }
