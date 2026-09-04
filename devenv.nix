@@ -47,14 +47,11 @@
     env.PORT = "5173";
 
     processes.dev.exec = "pnpm build && node build";
-    processes.dev.process-compose.readiness_probe = {
-      http_get = {
-        host = "localhost";
+    processes.dev.ready = {
+      http.get = {
         port = 5173;
         path = "/";
       };
-      initial_delay_seconds = 1;
-      period_seconds = 1;
     };
 
     processes.tunnel.exec = ''
@@ -64,6 +61,6 @@
       fi
       cloudflared tunnel run --token "$CLOUDFLARE_TUNNEL_TOKEN"
     '';
-    processes.tunnel.process-compose.depends_on.dev.condition = "process_healthy";
+    processes.tunnel.after = [ "devenv:processes:dev" ];
   };
 }
