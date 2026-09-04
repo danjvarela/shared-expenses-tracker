@@ -35,10 +35,28 @@
   profiles.development.module = {
     env.RECEIPT_STORAGE_BACKEND = "fs";
     env.RECEIPT_STORAGE_FS_DIR = "./uploads";
+
+    processes.dev.exec = "pnpm dev";
   };
 
   profiles.production.module = {
-    processes.vite.exec = "pnpm dev";
+    env.RECEIPT_STORAGE_BACKEND = "fs";
+    env.RECEIPT_STORAGE_FS_DIR = "REDACTED_RECEIPT_DIR";
+    env.CLOUDFLARE_TUNNEL_HOSTNAME = "redacted.example.com";
+    env.CLOUDFLARE_TUNNEL_TOKEN = config.secretspec.secrets.CLOUDFLARE_TUNNEL_TOKEN or "";
+    env.PORT = "5173";
+
+    processes.dev.exec = "pnpm build && node build";
+    processes.dev.process-compose.readiness_probe = {
+      http_get = {
+        host = "localhost";
+        port = 5173;
+        path = "/";
+      };
+      initial_delay_seconds = 1;
+      period_seconds = 1;
+    };
+
     processes.tunnel.exec = ''
       if [ -z "$CLOUDFLARE_TUNNEL_TOKEN" ]; then
         echo "CLOUDFLARE_TUNNEL_TOKEN not set, skipping cloudflared tunnel"
@@ -46,10 +64,6 @@
       fi
       cloudflared tunnel run --token "$CLOUDFLARE_TUNNEL_TOKEN"
     '';
-
-    env.RECEIPT_STORAGE_BACKEND = "fs";
-    env.RECEIPT_STORAGE_FS_DIR = "REDACTED_RECEIPT_DIR";
-    env.CLOUDFLARE_TUNNEL_HOSTNAME = "redacted.example.com";
-    env.CLOUDFLARE_TUNNEL_TOKEN = config.secretspec.secrets.CLOUDFLARE_TUNNEL_TOKEN or "";
+    processes.tunnel.process-compose.depends_on.dev.condition = "process_healthy";
   };
 }
