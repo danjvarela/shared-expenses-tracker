@@ -51,5 +51,6 @@
   profiles.production.module = {
     env.RECEIPT_STORAGE_BACKEND = "fs";
     env.RECEIPT_STORAGE_FS_DIR = "REDACTED_RECEIPT_DIR";
+    env.CLOUDFLARE_TUNNEL_HOSTNAME = "redacted.example.com";
   };
 }

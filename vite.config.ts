@@ -8,7 +8,9 @@ export default defineConfig({
 	server: {
 		port: 5173,
 		strictPort: true,
-		allowedHosts: ['redacted.example.com']
+		allowedHosts: process.env.CLOUDFLARE_TUNNEL_HOSTNAME
+			? [process.env.CLOUDFLARE_TUNNEL_HOSTNAME]
+			: undefined
 	},
 	plugins: [
 		tailwindcss(),
