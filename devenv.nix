@@ -42,4 +42,14 @@
     fi
     cloudflared tunnel run --token "$CLOUDFLARE_TUNNEL_TOKEN"
   '';
+
+  profiles.development.module = {
+    env.RECEIPT_STORAGE_BACKEND = "fs";
+    env.RECEIPT_STORAGE_FS_DIR = "./uploads";
+  };
+
+  profiles.production.module = {
+    env.RECEIPT_STORAGE_BACKEND = "fs";
+    env.RECEIPT_STORAGE_FS_DIR = "REDACTED_RECEIPT_DIR";
+  };
 }
