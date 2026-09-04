@@ -27,21 +27,12 @@
   env.OLLAMA_VISION_MODEL = "qwen3.5:397b-cloud";
   env.OLLAMA_TEXT_MODEL = "qwen3.5:397b-cloud";
   env.RUN_SCANNER_INTEGRATION = "0";
-  
+
   env.OCR_API_KEY = config.secretspec.secrets.OCR_API_KEY or "";
 
   env.GC_SECRET = config.secretspec.secrets.GC_SECRET or "";
 
   env.CLOUDFLARE_TUNNEL_TOKEN = config.secretspec.secrets.CLOUDFLARE_TUNNEL_TOKEN or "";
-
-  processes.vite.exec = "pnpm dev";
-  processes.tunnel.exec = ''
-    if [ -z "$CLOUDFLARE_TUNNEL_TOKEN" ]; then
-      echo "CLOUDFLARE_TUNNEL_TOKEN not set, skipping cloudflared tunnel"
-      exit 0
-    fi
-    cloudflared tunnel run --token "$CLOUDFLARE_TUNNEL_TOKEN"
-  '';
 
   profiles.development.module = {
     env.RECEIPT_STORAGE_BACKEND = "fs";
@@ -49,6 +40,15 @@
   };
 
   profiles.production.module = {
+    processes.vite.exec = "pnpm dev";
+    processes.tunnel.exec = ''
+      if [ -z "$CLOUDFLARE_TUNNEL_TOKEN" ]; then
+        echo "CLOUDFLARE_TUNNEL_TOKEN not set, skipping cloudflared tunnel"
+        exit 0
+      fi
+      cloudflared tunnel run --token "$CLOUDFLARE_TUNNEL_TOKEN"
+    '';
+
     env.RECEIPT_STORAGE_BACKEND = "fs";
     env.RECEIPT_STORAGE_FS_DIR = "REDACTED_RECEIPT_DIR";
     env.CLOUDFLARE_TUNNEL_HOSTNAME = "redacted.example.com";
