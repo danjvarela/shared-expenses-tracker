@@ -1,4 +1,4 @@
-import { access, rm } from 'node:fs/promises';
+import { access, rm, readdir, stat } from 'node:fs/promises';
 import { createWriteStream, createReadStream, mkdirSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -7,7 +7,8 @@ import { isAbsolute, join, resolve } from 'node:path';
 import {
 	ReceiptStorageError,
 	type IReceiptStorageBackend,
-	type ReceiptPutResult
+	type ReceiptPutResult,
+	type ReceiptStorageKey
 } from '$lib/server/app/interfaces/receipt-storage';
 
 function safeKey(key: string): string {
@@ -53,7 +54,18 @@ export function createFileSystemReceiptStorageBackend(dir: string): IReceiptStor
 		await rm(join(dir, safeKey(key)), { force: true });
 	};
 
-	return { put, getReadUrl, getStream, delete: remove };
+	const listKeys = async (): Promise<ReceiptStorageKey[]> => {
+		const entries = await readdir(dir, { withFileTypes: true });
+		const files = entries.filter((entry) => entry.isFile());
+		const keys: ReceiptStorageKey[] = [];
+		for (const file of files) {
+			const { mtime } = await stat(join(dir, file.name));
+			keys.push({ key: file.name, createdAt: mtime });
+		}
+		return keys;
+	};
+
+	return { put, getReadUrl, getStream, delete: remove, listKeys };
 }
 
 export function resolveFsDir(dir: string): string {

@@ -37,6 +37,13 @@ const getAllForExpenseGroup =
 			.orderBy(asc(expenseReceipt.uploadedAt));
 	};
 
+const getAllStorageKeys =
+	(db: Database): IExpenseReceiptRepository['getAllStorageKeys'] =>
+	async () => {
+		const rows = await db.select({ storageKey: expenseReceipt.storageKey }).from(expenseReceipt);
+		return rows.map((row) => row.storageKey);
+	};
+
 const remove =
 	(db: Database): IExpenseReceiptRepository['delete'] =>
 	async (id) => {
@@ -48,6 +55,7 @@ export function createExpenseReceiptRepository(db: Database): IExpenseReceiptRep
 		create: create(db),
 		getById: getById(db),
 		getAllForExpenseGroup: getAllForExpenseGroup(db),
+		getAllStorageKeys: getAllStorageKeys(db),
 		delete: remove(db)
 	};
 }

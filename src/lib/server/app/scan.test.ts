@@ -77,6 +77,9 @@ function fakeStorageBackend(): IReceiptStorageBackend & {
 		async delete(key) {
 			deletedKeys.push(key);
 			store.delete(key);
+		},
+		async listKeys() {
+			return Array.from(store.keys()).map((key) => ({ key, createdAt: new Date() }));
 		}
 	};
 }
@@ -224,6 +227,9 @@ function fakeConfirmReceiptRepo(): IExpenseReceiptRepository & {
 		},
 		async getAllForExpenseGroup() {
 			return [];
+		},
+		async getAllStorageKeys() {
+			return created.map((row) => row.storageKey);
 		},
 		async delete() {}
 	};

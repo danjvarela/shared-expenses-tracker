@@ -9,11 +9,17 @@ export interface ReceiptPutResult {
 	key: string;
 }
 
+export interface ReceiptStorageKey {
+	key: string;
+	createdAt: Date;
+}
+
 export interface IReceiptStorageBackend {
 	put(stream: ReadableStream<Uint8Array>, input: ReceiptPutInput): Promise<ReceiptPutResult>;
 	getReadUrl(key: string, ttlSeconds?: number): Promise<string | null>;
 	getStream(key: string): Promise<ReadableStream<Uint8Array>>;
 	delete(key: string): Promise<void>;
+	listKeys(): Promise<ReceiptStorageKey[]>;
 }
 
 export class ReceiptStorageError extends AppError {

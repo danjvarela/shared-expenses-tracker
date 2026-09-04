@@ -13,5 +13,6 @@ export interface IExpenseReceiptRepository {
 	create(input: ExpenseReceiptCreateInput): Promise<ExpenseReceipt>;
 	getById(id: string): Promise<ExpenseReceipt | null>;
 	getAllForExpenseGroup(expenseGroupId: string): Promise<Array<ExpenseReceipt>>;
+	getAllStorageKeys(): Promise<string[]>;
 	delete(id: string): Promise<void>;
 }

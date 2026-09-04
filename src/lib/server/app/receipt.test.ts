@@ -133,6 +133,9 @@ function fakeReceiptRepo(): IExpenseReceiptRepository & {
 		async getAllForExpenseGroup() {
 			return Array.from(rows.values());
 		},
+		async getAllStorageKeys() {
+			return Array.from(rows.values()).map((row) => row.storageKey);
+		},
 		async delete(id) {
 			deleted.push(id);
 			rows.delete(id);
@@ -171,6 +174,9 @@ function fakeStorageBackend(): IReceiptStorageBackend & {
 		async delete(key) {
 			deletedKeys.push(key);
 			streams.delete(key);
+		},
+		async listKeys() {
+			return putKeys.map((key) => ({ key, createdAt: new Date() }));
 		}
 	};
 }
