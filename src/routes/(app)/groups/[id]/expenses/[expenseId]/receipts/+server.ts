@@ -30,7 +30,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	try {
 		const receipt = await receiptService.createReceipt(actor, {
 			expenseId: params.expenseId,
-			stream: new Blob([bytes]).stream(),
+			bytes,
 			mime: sniffedMime,
 			filename: file.name,
 			sizeBytes: file.size

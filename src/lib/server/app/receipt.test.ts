@@ -7,6 +7,10 @@ import type {
 import type { IExpenseGroupRepository } from '$lib/server/app/interfaces/repositories/expense-group';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
 import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
+import type {
+	IReceiptNormalizer,
+	NormalizedReceipt
+} from '$lib/server/app/interfaces/receipt-normalizer';
 import type { ExpenseReceipt } from '$lib/server/domain/expense-receipt';
 import {
 	createReceiptService,
@@ -16,7 +20,7 @@ import {
 	ReceiptNotFoundError,
 	MAX_RECEIPT_BYTES
 } from './receipt';
-import { ALLOWED_RECEIPT_MIMES } from './receipt-format';
+import { ALLOWED_RECEIPT_MIMES, JPEG_MIME, PDF_MIME } from './receipt-format';
 import { ExpenseGroupNotFoundError } from './expense';
 
 const alice = 'alice';
@@ -181,13 +185,33 @@ function fakeStorageBackend(): IReceiptStorageBackend & {
 	};
 }
 
-function makeStream(): ReadableStream<Uint8Array> {
-	return new ReadableStream<Uint8Array>({
-		start(controller) {
-			controller.enqueue(new Uint8Array([1, 2, 3]));
-			controller.close();
+function makeBytes(): Uint8Array {
+	return new Uint8Array([1, 2, 3]);
+}
+
+async function drainStream(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
+	const reader = stream.getReader();
+	const chunks: Buffer[] = [];
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		chunks.push(Buffer.from(value));
+	}
+	return Buffer.concat(chunks);
+}
+
+function fakeNormalizer(): IReceiptNormalizer & {
+	calls: Array<{ bytes: Uint8Array; mime: string }>;
+} {
+	const calls: Array<{ bytes: Uint8Array; mime: string }> = [];
+	return {
+		calls,
+		async normalize(bytes, mime): Promise<NormalizedReceipt> {
+			calls.push({ bytes: Buffer.from(bytes), mime });
+			if (mime === PDF_MIME) return { bytes: Buffer.from(bytes), mime: PDF_MIME };
+			return { bytes: Buffer.from(bytes), mime: JPEG_MIME };
 		}
-	});
+	};
 }
 
 function service(opts: {
@@ -196,20 +220,23 @@ function service(opts: {
 	expenseGroup?: boolean;
 	storage?: ReturnType<typeof fakeStorageBackend>;
 	receipt?: ReturnType<typeof fakeReceiptRepo>;
+	normalizer?: ReturnType<typeof fakeNormalizer>;
 	shouldThrowOnCreate?: boolean;
 }) {
 	const storage = opts.storage ?? fakeStorageBackend();
 	const receipt = opts.receipt ?? fakeReceiptRepo();
+	const normalizer = opts.normalizer ?? fakeNormalizer();
 	if (opts.shouldThrowOnCreate !== undefined)
 		receipt.shouldThrowOnCreate = opts.shouldThrowOnCreate;
 	const svc = createReceiptService({
 		receiptRepo: receipt,
 		storageBackend: storage,
+		normalizer,
 		expenseRepo: fakeExpenseRepo(opts.expense === false ? [] : [expenseRow()]),
 		expenseGroupRepo: fakeExpenseGroupRepo(opts.expenseGroup === false),
 		groupMemberRepo: fakeGroupMemberRepo(opts.member ?? true)
 	});
-	return { svc, storage, receipt };
+	return { svc, storage, receipt, normalizer };
 }
 
 describe('createReceiptService.createReceipt', () => {
@@ -218,7 +245,7 @@ describe('createReceiptService.createReceipt', () => {
 
 		const created = await svc.createReceipt(alice, {
 			expenseId,
-			stream: makeStream(),
+			bytes: makeBytes(),
 			mime: 'image/png',
 			filename: 'receipt.png',
 			sizeBytes: 3
@@ -237,7 +264,7 @@ describe('createReceiptService.createReceipt', () => {
 		await expect(
 			svc.createReceipt(alice, {
 				expenseId,
-				stream: makeStream(),
+				bytes: makeBytes(),
 				mime: 'image/png',
 				filename: 'r.png',
 				sizeBytes: 3
@@ -254,7 +281,7 @@ describe('createReceiptService.createReceipt', () => {
 		await expect(
 			svc.createReceipt(alice, {
 				expenseId,
-				stream: makeStream(),
+				bytes: makeBytes(),
 				mime: 'image/png',
 				filename: 'r.png',
 				sizeBytes: 3
@@ -270,7 +297,7 @@ describe('createReceiptService.createReceipt', () => {
 		await expect(
 			svc.createReceipt(alice, {
 				expenseId,
-				stream: makeStream(),
+				bytes: makeBytes(),
 				mime: 'image/png',
 				filename: 'r.png',
 				sizeBytes: MAX_RECEIPT_BYTES + 1
@@ -287,7 +314,7 @@ describe('createReceiptService.createReceipt', () => {
 		await expect(
 			svc.createReceipt(alice, {
 				expenseId,
-				stream: makeStream(),
+				bytes: makeBytes(),
 				mime: 'text/plain',
 				filename: 'r.txt',
 				sizeBytes: 3
@@ -304,7 +331,7 @@ describe('createReceiptService.createReceipt', () => {
 		await expect(
 			svc.createReceipt(alice, {
 				expenseId,
-				stream: makeStream(),
+				bytes: makeBytes(),
 				mime: 'image/png',
 				filename: 'r.png',
 				sizeBytes: 3
@@ -326,7 +353,7 @@ describe('createReceiptService.createReceipt', () => {
 		await expect(
 			svc.createReceipt(alice, {
 				expenseId,
-				stream: makeStream(),
+				bytes: makeBytes(),
 				mime: 'image/png',
 				filename: 'r.png',
 				sizeBytes: 3
@@ -342,7 +369,7 @@ describe('createReceiptService.createReceipt', () => {
 
 		await svc.createReceipt(alice, {
 			expenseId,
-			stream: makeStream(),
+			bytes: makeBytes(),
 			mime: 'image/png',
 			filename: '/etc/passwd/../../receipt.png',
 			sizeBytes: 3
@@ -356,7 +383,7 @@ describe('createReceiptService.createReceipt', () => {
 
 		await svc.createReceipt(alice, {
 			expenseId,
-			stream: makeStream(),
+			bytes: makeBytes(),
 			mime: 'image/png',
 			sizeBytes: 3
 		});
@@ -369,7 +396,7 @@ describe('createReceiptService.createReceipt', () => {
 			const { svc, receipt } = service({});
 			await svc.createReceipt(alice, {
 				expenseId,
-				stream: makeStream(),
+				bytes: makeBytes(),
 				mime,
 				filename: 'r',
 				sizeBytes: 3
@@ -383,7 +410,7 @@ describe('createReceiptService.createReceipt', () => {
 
 		const created = await svc.createReceipt(alice, {
 			expenseId,
-			stream: makeStream(),
+			bytes: makeBytes(),
 			mime: 'application/pdf',
 			filename: 'receipt.pdf',
 			sizeBytes: 3
@@ -400,13 +427,91 @@ describe('createReceiptService.createReceipt', () => {
 			const { svc, receipt } = service({});
 			await svc.createReceipt(alice, {
 				expenseId,
-				stream: makeStream(),
+				bytes: makeBytes(),
 				mime,
 				filename: 'r',
 				sizeBytes: 3
 			});
 			expect(receipt.created).toHaveLength(1);
 		}
+	});
+
+	it('normalizes an image to JPEG before storage and stores the normalized mime/size', async () => {
+		const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 9, 9, 9, 0xff, 0xd9]);
+		const normalizer = fakeNormalizer();
+		normalizer.normalize = vi.fn(async (bytes, mime) => {
+			normalizer.calls.push({ bytes: Buffer.from(bytes), mime });
+			return { bytes: jpeg, mime: JPEG_MIME };
+		});
+		const { svc, storage, receipt } = service({ normalizer });
+
+		const created = await svc.createReceipt(alice, {
+			expenseId,
+			bytes: new Uint8Array([10, 20, 30]),
+			mime: 'image/png',
+			filename: 'r.png',
+			sizeBytes: 3
+		});
+
+		expect(normalizer.calls).toEqual([{ bytes: Buffer.from([10, 20, 30]), mime: 'image/png' }]);
+		expect(created.mime).toBe(JPEG_MIME);
+		expect(created.sizeBytes).toBe(jpeg.length);
+
+		const stored = await drainStream(storage.streams.get(storage.putKeys[0])!);
+		expect(stored.equals(jpeg)).toBe(true);
+
+		expect(receipt.created[0].mime).toBe(JPEG_MIME);
+		expect(receipt.created[0].sizeBytes).toBe(jpeg.length);
+	});
+
+	it('normalizes a PDF via the compressor before storage and keeps the PDF mime', async () => {
+		const compressed = Buffer.from('%PDF-1.4\ncompressed\n');
+		const normalizer = fakeNormalizer();
+		normalizer.normalize = vi.fn(async (bytes, mime) => {
+			normalizer.calls.push({ bytes: Buffer.from(bytes), mime });
+			return { bytes: compressed, mime: PDF_MIME };
+		});
+		const { svc, storage, receipt } = service({ normalizer });
+
+		const created = await svc.createReceipt(alice, {
+			expenseId,
+			bytes: new Uint8Array(Buffer.from('%PDF-1.4 original\n')),
+			mime: 'application/pdf',
+			filename: 'r.pdf',
+			sizeBytes: 20
+		});
+
+		expect(normalizer.calls[0].mime).toBe('application/pdf');
+		expect(created.mime).toBe(PDF_MIME);
+		expect(created.sizeBytes).toBe(compressed.length);
+
+		const stored = await drainStream(storage.streams.get(storage.putKeys[0])!);
+		expect(stored.equals(compressed)).toBe(true);
+		expect(stored.equals(Buffer.from('%PDF-1.4 original\n'))).toBe(false);
+
+		expect(receipt.created[0].mime).toBe(PDF_MIME);
+		expect(receipt.created[0].sizeBytes).toBe(compressed.length);
+	});
+
+	it('does not store anything when normalization fails', async () => {
+		const normalizer = fakeNormalizer();
+		normalizer.normalize = vi.fn(async () => {
+			throw new Error('magick failed');
+		});
+		const { svc, storage, receipt } = service({ normalizer });
+
+		await expect(
+			svc.createReceipt(alice, {
+				expenseId,
+				bytes: makeBytes(),
+				mime: 'image/png',
+				filename: 'r.png',
+				sizeBytes: 3
+			})
+		).rejects.toThrow('magick failed');
+
+		expect(storage.putKeys).toHaveLength(0);
+		expect(receipt.created).toHaveLength(0);
 	});
 });
 
@@ -417,7 +522,7 @@ describe('createReceiptService.getReceiptsForExpense', () => {
 
 		await svc.createReceipt(alice, {
 			expenseId,
-			stream: makeStream(),
+			bytes: makeBytes(),
 			mime: 'image/png',
 			filename: 'r.png',
 			sizeBytes: 3
@@ -446,7 +551,7 @@ describe('createReceiptService.getReadAccess', () => {
 		const receipt = fakeReceiptRepo();
 		const created = await service({ receipt }).svc.createReceipt(alice, {
 			expenseId,
-			stream: makeStream(),
+			bytes: makeBytes(),
 			mime: 'image/png',
 			filename: 'r.png',
 			sizeBytes: 3
@@ -456,7 +561,7 @@ describe('createReceiptService.getReadAccess', () => {
 
 		const access = await svc.getReadAccess(alice, created.id);
 		if (!('stream' in access)) throw new Error('expected stream access');
-		expect(access.mime).toBe('image/png');
+		expect(access.mime).toBe('image/jpeg');
 		expect(access.storageKey).toBe(created.storageKey);
 	});
 
@@ -466,7 +571,7 @@ describe('createReceiptService.getReadAccess', () => {
 		const receipt = fakeReceiptRepo();
 		const created = await service({ storage, receipt }).svc.createReceipt(alice, {
 			expenseId,
-			stream: makeStream(),
+			bytes: makeBytes(),
 			mime: 'image/jpeg',
 			filename: 'r.jpg',
 			sizeBytes: 3
@@ -490,7 +595,7 @@ describe('createReceiptService.getReadAccess', () => {
 		const receipt = fakeReceiptRepo();
 		const created = await service({ receipt }).svc.createReceipt(alice, {
 			expenseId,
-			stream: makeStream(),
+			bytes: makeBytes(),
 			mime: 'image/png',
 			filename: 'r.png',
 			sizeBytes: 3
@@ -509,7 +614,7 @@ describe('createReceiptService.deleteReceipt', () => {
 		const receipt = fakeReceiptRepo();
 		const created = await service({ receipt, storage: opts.storage }).svc.createReceipt(alice, {
 			expenseId,
-			stream: makeStream(),
+			bytes: makeBytes(),
 			mime: 'image/png',
 			filename: 'r.png',
 			sizeBytes: 3

@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createScanService } from './scan';
-import { PDF_MIME, PNG_MIME } from './receipt-format';
+import { PDF_MIME, PNG_MIME, JPEG_MIME } from './receipt-format';
 import {
 	ReceiptNotAuthorizedError,
 	ReceiptTooLargeError,
@@ -13,6 +13,10 @@ import {
 	type ScanResult
 } from '$lib/server/app/interfaces/receipt-scanner';
 import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
+import type {
+	IReceiptNormalizer,
+	NormalizedReceipt
+} from '$lib/server/app/interfaces/receipt-normalizer';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
 import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
 import type {
@@ -284,16 +288,32 @@ function fakeConfirmPairBalanceRepo(): IPairBalanceRepository & {
 	};
 }
 
+function fakeNormalizer(): IReceiptNormalizer & {
+	calls: Array<{ bytes: Uint8Array; mime: string }>;
+} {
+	const calls: Array<{ bytes: Uint8Array; mime: string }> = [];
+	return {
+		calls,
+		async normalize(bytes, mime): Promise<NormalizedReceipt> {
+			calls.push({ bytes: Buffer.from(bytes), mime });
+			if (mime === PDF_MIME) return { bytes: Buffer.from(bytes), mime: PDF_MIME };
+			return { bytes: Buffer.from(bytes), mime: JPEG_MIME };
+		}
+	};
+}
+
 function service(
 	opts: {
 		member?: boolean;
 		scanner?: ReturnType<typeof fakeScanner>;
 		storage?: ReturnType<typeof fakeStorageBackend>;
+		normalizer?: ReturnType<typeof fakeNormalizer>;
 		confirmRepos?: ScanConfirmRepos;
 		members?: Array<{ userId: string; displayName: string; defaultSplitPercent: number | null }>;
 	} = {}
 ) {
 	const storage = opts.storage ?? fakeStorageBackend();
+	const normalizer = opts.normalizer ?? fakeNormalizer();
 	const scanner =
 		opts.scanner ?? fakeScanner({ lineItems: [{ description: 'Milk', amountDecimal: '1.00' }] });
 	const expenseRepo = fakeConfirmExpenseRepo();
@@ -308,6 +328,7 @@ function service(
 	};
 	const svc = createScanService({
 		storageBackend: storage,
+		normalizer,
 		scanner,
 		groupMemberRepo: fakeGroupMemberRepo(opts.member ?? true, opts.members ?? []),
 		uow: fakeUnitOfWork(confirmRepos)
@@ -315,6 +336,7 @@ function service(
 	return {
 		svc,
 		storage,
+		normalizer,
 		scanner,
 		expenseRepo,
 		pairBalanceRepo,
@@ -324,14 +346,14 @@ function service(
 }
 
 describe('createScanService.scan', () => {
-	it('scans an image directly: stores bytes, feeds the stored stream to the scanner', async () => {
+	it('scans an image: normalizes to JPEG, stores bytes, feeds the stored stream to the scanner with the normalized mime', async () => {
 		const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0a]);
 		const scanner = fakeScanner({ lineItems: [{ description: 'Bread', amountDecimal: '2.50' }] });
 		const { svc, storage } = service({ scanner });
 
 		const result = await svc.scan(alice, {
 			groupId,
-			stream: bufferToStream(png),
+			bytes: png,
 			sniffedMime: PNG_MIME,
 			filename: 'r.png',
 			sizeBytes: png.length
@@ -340,18 +362,18 @@ describe('createScanService.scan', () => {
 		expect(result.scanResult.lineItems).toHaveLength(1);
 		expect(result.storageKey).toBe(storage.store.keys().next().value);
 		expect(scanner.calls).toHaveLength(1);
-		expect(scanner.calls[0].mime).toBe(PNG_MIME);
+		expect(scanner.calls[0].mime).toBe(JPEG_MIME);
 		expect(scanner.calls[0].bytes.equals(png)).toBe(true);
 	});
 
-	it('is mime-agnostic: hands the original PDF stream and sniffed mime straight to the backend untouched', async () => {
+	it('normalizes a PDF via the compressor, stores it, and feeds the stored PDF to the scanner', async () => {
 		const pdf = Buffer.from('%PDF-1.4 ...');
 		const scanner = fakeScanner({ lineItems: [{ description: 'Eggs', amountDecimal: '3.00' }] });
 		const { svc } = service({ scanner });
 
 		const result = await svc.scan(alice, {
 			groupId,
-			stream: bufferToStream(pdf),
+			bytes: pdf,
 			sniffedMime: PDF_MIME,
 			filename: 'r.pdf',
 			sizeBytes: pdf.length
@@ -372,7 +394,7 @@ describe('createScanService.scan', () => {
 		await expect(
 			svc.scan(alice, {
 				groupId,
-				stream: bufferToStream(png),
+				bytes: png,
 				sniffedMime: PNG_MIME,
 				sizeBytes: png.length
 			})
@@ -388,7 +410,7 @@ describe('createScanService.scan', () => {
 		await expect(
 			svc.scan(alice, {
 				groupId,
-				stream: bufferToStream(Buffer.from([0x89, 0x50])),
+				bytes: Buffer.from([0x89, 0x50]),
 				sniffedMime: PNG_MIME,
 				sizeBytes: 2
 			})
@@ -404,7 +426,7 @@ describe('createScanService.scan', () => {
 		await expect(
 			svc.scan(alice, {
 				groupId,
-				stream: bufferToStream(Buffer.from([0x89, 0x50, 0x4e, 0x47])),
+				bytes: Buffer.from([0x89, 0x50, 0x4e, 0x47]),
 				sniffedMime: PNG_MIME,
 				sizeBytes: MAX_RECEIPT_BYTES + 1
 			})
@@ -419,7 +441,7 @@ describe('createScanService.scan', () => {
 		await expect(
 			svc.scan(alice, {
 				groupId,
-				stream: bufferToStream(Buffer.from('GIF89a')),
+				bytes: Buffer.from('GIF89a'),
 				sniffedMime: 'image/gif',
 				sizeBytes: 6
 			})
@@ -428,23 +450,67 @@ describe('createScanService.scan', () => {
 		expect(storage.store.size).toBe(0);
 	});
 
-	it('returns the storage metadata (sniffed mime, size, filename) for the client to echo back at confirm', async () => {
+	it('returns the storage metadata (normalized mime, normalized size, filename) for the client to echo back at confirm', async () => {
 		const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 		const { svc } = service();
 
 		const result = await svc.scan(alice, {
 			groupId,
-			stream: bufferToStream(png),
+			bytes: png,
 			sniffedMime: PNG_MIME,
 			filename: 'r.png',
 			sizeBytes: png.length
 		});
 
 		expect(result.storageMeta).toEqual({
-			mime: PNG_MIME,
+			mime: JPEG_MIME,
 			sizeBytes: png.length,
 			originalFilename: 'r.png'
 		});
+	});
+
+	it('passes the normalized mime (not the sniffed one) to the scanner for an image', async () => {
+		const heic = Buffer.from([0, 0, 0, 0x18, ...Buffer.from('ftypheic')]);
+		const scanner = fakeScanner({
+			lineItems: [{ description: 'Coffee', amountDecimal: '4.20' }]
+		});
+		const { svc } = service({ scanner });
+
+		const result = await svc.scan(alice, {
+			groupId,
+			bytes: heic,
+			sniffedMime: 'image/heic',
+			filename: 'r.heic',
+			sizeBytes: heic.length
+		});
+
+		expect(scanner.calls[0].mime).toBe(JPEG_MIME);
+		expect(scanner.calls[0].bytes.equals(heic)).toBe(true);
+		expect(result.scanResult.lineItems).toHaveLength(1);
+		expect(result.scanResult.lineItems[0].description).toBe('Coffee');
+	});
+
+	it('stores the normalized artifact and not the original upload bytes', async () => {
+		const original = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0a, 0x01, 0x02]);
+		const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x07, 0xff, 0xd9]);
+		const normalizer = fakeNormalizer();
+		normalizer.normalize = vi.fn(async (bytes, mime) => {
+			normalizer.calls.push({ bytes: Buffer.from(bytes), mime });
+			return { bytes: jpeg, mime: JPEG_MIME };
+		});
+		const { svc, storage } = service({ normalizer });
+
+		await svc.scan(alice, {
+			groupId,
+			bytes: original,
+			sniffedMime: PNG_MIME,
+			filename: 'r.png',
+			sizeBytes: original.length
+		});
+
+		const stored = storage.store.get(storage.store.keys().next().value as string)!;
+		expect(stored.equals(jpeg)).toBe(true);
+		expect(stored.equals(original)).toBe(false);
 	});
 });
 

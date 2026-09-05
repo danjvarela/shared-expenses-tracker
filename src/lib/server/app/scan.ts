@@ -18,13 +18,14 @@ import type {
 import type { IExpenseReceiptRepository } from '$lib/server/app/interfaces/repositories/expense-receipt';
 import type { IReceiptScanner, ScanResult } from '$lib/server/app/interfaces/receipt-scanner';
 import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
+import type { IReceiptNormalizer } from '$lib/server/app/interfaces/receipt-normalizer';
 import { parseAmountCents } from '$lib/server/app/expense-form';
 import { resolveSplits } from '$lib/server/app/split-resolver';
 import { applyPairBalanceDeltas, expenseDeltas } from '$lib/server/app/pair-balance';
 
 export interface ScanInput {
 	groupId: string;
-	stream: ReadableStream<Uint8Array>;
+	bytes: Uint8Array;
 	sniffedMime: string;
 	filename?: string;
 	sizeBytes: number;
@@ -78,6 +79,7 @@ export class ScanDraftValidationError extends AppError {
 
 export interface ScanServiceDeps {
 	storageBackend: IReceiptStorageBackend;
+	normalizer: IReceiptNormalizer;
 	scanner: IReceiptScanner;
 	groupMemberRepo: IGroupMemberRepository;
 	uow: IUnitOfWork<ScanConfirmRepos>;
@@ -114,24 +116,37 @@ export function createScanService(deps: ScanServiceDeps) {
 
 		const originalFilename = sanitizeFilename(input.filename);
 
-		const { key } = await deps.storageBackend.put(input.stream, {
-			mime: input.sniffedMime,
-			filename: originalFilename ?? undefined
-		});
+		const { bytes: normalizedBytes, mime: normalizedMime } = await deps.normalizer.normalize(
+			input.bytes,
+			input.sniffedMime
+		);
+
+		const { key } = await deps.storageBackend.put(
+			new ReadableStream<Uint8Array>({
+				start(controller) {
+					controller.enqueue(normalizedBytes);
+					controller.close();
+				}
+			}),
+			{
+				mime: normalizedMime,
+				filename: originalFilename ?? undefined
+			}
+		);
 
 		// Put-first, no-persist: bytes are stored, then read back to feed the
 		// scanner. Nothing is rolled back — a failure or discarded draft leaves
-		// the bytes orphaned (gc'd later). Rasterization is the backend's
-		// concern, not the service's: PDFs flow straight to the backend untouched.
+		// the bytes orphaned (gc'd later). The stored artifact is already the
+		// normalized JPEG/PDF; the scanner receives the normalized mime.
 		const stored = await deps.storageBackend.getStream(key);
 
-		const scanResult = await deps.scanner.scan(stored, input.sniffedMime);
+		const scanResult = await deps.scanner.scan(stored, normalizedMime);
 		return {
 			scanResult,
 			storageKey: key,
 			storageMeta: {
-				mime: input.sniffedMime,
-				sizeBytes: input.sizeBytes,
+				mime: normalizedMime,
+				sizeBytes: normalizedBytes.length,
 				originalFilename
 			}
 		};

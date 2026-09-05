@@ -20,7 +20,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	try {
 		const result = await scanService.scan(locals.user!.id, {
 			groupId: params.id,
-			stream: new Blob([bytes]).stream(),
+			bytes,
 			sniffedMime,
 			filename: file.name,
 			sizeBytes: file.size

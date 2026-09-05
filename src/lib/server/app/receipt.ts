@@ -7,13 +7,14 @@ import type { IExpenseRepository } from '$lib/server/app/interfaces/repositories
 import type { IExpenseGroupRepository } from '$lib/server/app/interfaces/repositories/expense-group';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
 import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
+import type { IReceiptNormalizer } from '$lib/server/app/interfaces/receipt-normalizer';
 import type { ExpenseReceipt } from '$lib/server/domain/expense-receipt';
 
 export const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
 
 export interface ReceiptCreateInput {
 	expenseId: string;
-	stream: ReadableStream<Uint8Array>;
+	bytes: Uint8Array;
 	mime: string;
 	filename?: string;
 	sizeBytes: number;
@@ -50,6 +51,7 @@ export class ReceiptMimeNotAllowedError extends AppError {
 export interface ReceiptServiceDeps {
 	receiptRepo: IExpenseReceiptRepository;
 	storageBackend: IReceiptStorageBackend;
+	normalizer: IReceiptNormalizer;
 	expenseRepo: IExpenseRepository;
 	expenseGroupRepo: IExpenseGroupRepository;
 	groupMemberRepo: IGroupMemberRepository;
@@ -94,17 +96,30 @@ export function createReceiptService(deps: ReceiptServiceDeps) {
 
 		const originalFilename = sanitizeFilename(input.filename);
 
-		const { key } = await deps.storageBackend.put(input.stream, {
-			mime: input.mime,
-			filename: input.filename
-		});
+		const { bytes: normalizedBytes, mime: normalizedMime } = await deps.normalizer.normalize(
+			input.bytes,
+			input.mime
+		);
+
+		const { key } = await deps.storageBackend.put(
+			new ReadableStream<Uint8Array>({
+				start(controller) {
+					controller.enqueue(normalizedBytes);
+					controller.close();
+				}
+			}),
+			{
+				mime: normalizedMime,
+				filename: input.filename
+			}
+		);
 
 		try {
 			return await deps.receiptRepo.create({
 				expenseGroupId: expense.expenseGroupId,
 				storageKey: key,
-				mime: input.mime,
-				sizeBytes: input.sizeBytes,
+				mime: normalizedMime,
+				sizeBytes: normalizedBytes.length,
 				originalFilename,
 				uploadedByUserId: actorUserId
 			});
