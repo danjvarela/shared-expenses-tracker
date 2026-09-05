@@ -37,6 +37,11 @@
 
   env.GC_SECRET = config.secretspec.secrets.GC_SECRET or "";
 
+  # Match adapter-node's BODY_SIZE_LIMIT to MAX_RECEIPT_BYTES (10 MiB) plus
+  # multipart/form-data framing overhead, so receipt uploads aren't rejected
+  # with 413 before request.formData() runs. Default is 512K.
+  env.BODY_SIZE_LIMIT = "12M";
+
   profiles.development.module = {
     env.RECEIPT_STORAGE_BACKEND = "fs";
     env.RECEIPT_STORAGE_FS_DIR = "./uploads";
