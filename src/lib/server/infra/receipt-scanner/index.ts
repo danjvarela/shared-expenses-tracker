@@ -4,7 +4,6 @@ import {
 	type IReceiptScanner
 } from '$lib/server/app/interfaces/receipt-scanner';
 import type { IPdfProcessor } from '$lib/server/infra/pdf';
-import type { SpawnFn } from '$lib/server/infra/image-prep';
 import { createOcrReceiptScanner } from './ocr';
 
 export type {
@@ -30,7 +29,6 @@ export type ScannerConfig =
 export interface CreateScannerDeps {
 	pdfProcessor: IPdfProcessor;
 	fetch?: typeof fetch;
-	spawn?: SpawnFn;
 }
 
 const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
@@ -85,8 +83,7 @@ export function createReceiptScannerBackend(
 			ollamaModel: config.ollamaModel,
 			ollamaApiKey: config.ollamaApiKey,
 			pdfProcessor: deps.pdfProcessor,
-			fetch: deps.fetch,
-			spawn: deps.spawn
+			fetch: deps.fetch
 		});
 	}
 

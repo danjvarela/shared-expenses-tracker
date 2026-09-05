@@ -1,11 +1,9 @@
-import { spawn } from 'node:child_process';
 import { Readable } from 'node:stream';
 import {
 	ReceiptScannerError,
 	type IReceiptScanner,
 	type ScanResult
 } from '$lib/server/app/interfaces/receipt-scanner';
-import { prepareImage, type SpawnFn } from '$lib/server/infra/image-prep';
 import { ReceiptRasterizeError, type IPdfProcessor } from '$lib/server/infra/pdf';
 import { RESPONSE_FORMAT, STRUCTURING_RULES, extractJson, normalize } from './structuring';
 
@@ -69,7 +67,6 @@ export interface CreateOcrScannerOptions {
 	ollamaApiKey?: string;
 	pdfProcessor: IPdfProcessor;
 	fetch?: typeof fetch;
-	spawn?: SpawnFn;
 }
 
 export function createOcrReceiptScanner({
@@ -78,8 +75,7 @@ export function createOcrReceiptScanner({
 	ollamaModel,
 	ollamaApiKey,
 	pdfProcessor,
-	fetch = globalThis.fetch,
-	spawn: spawnFn = spawn
+	fetch = globalThis.fetch
 }: CreateOcrScannerOptions): IReceiptScanner {
 	const ollamaEndpoint = `${ollamaBaseUrl.replace(/\/$/, '')}/api/chat`;
 	const ollamaHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -91,18 +87,14 @@ export function createOcrReceiptScanner({
 		async scan(stream, mime): Promise<ScanResult> {
 			const input = await streamToBuffer(stream);
 
-			let payload: Buffer;
 			if (mime === PDF_MIME) {
 				const pageCount = await pdfProcessor.countPages(bufferToStream(input));
 				if (pageCount > 1) {
 					throw new ReceiptRasterizeError(MULTI_PAGE_MESSAGE);
 				}
-				payload = input;
-			} else {
-				payload = await prepareImage(input, spawnFn);
 			}
 
-			const base64Image = dataUri(mime, payload.toString('base64'));
+			const base64Image = dataUri(mime, input.toString('base64'));
 
 			const form = new FormData();
 			form.append('base64Image', base64Image);

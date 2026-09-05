@@ -1,6 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { EventEmitter } from 'node:events';
-import { Writable } from 'node:stream';
 import { createOcrReceiptScanner, type CreateOcrScannerOptions } from './ocr';
 import { RESPONSE_FORMAT } from './structuring';
 import { ReceiptScannerError } from '$lib/server/app/interfaces/receipt-scanner';
@@ -67,47 +65,6 @@ function makeStream(bytes: Uint8Array): ReadableStream<Uint8Array> {
 	});
 }
 
-class FakePipe extends EventEmitter {
-	push(chunk: string | Buffer | null) {
-		if (chunk === null) this.emit('end');
-		else this.emit('data', Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-	}
-}
-
-interface FakeProc extends EventEmitter {
-	stdin: Writable;
-	stdout: FakePipe;
-	stderr: FakePipe;
-}
-
-function makeProc(): FakeProc {
-	const proc = new EventEmitter() as FakeProc;
-	proc.stdin = new Writable({
-		write(_chunk, _enc, cb) {
-			cb();
-		}
-	});
-	proc.stdout = new FakePipe();
-	proc.stderr = new FakePipe();
-	return proc;
-}
-
-// The prepared image magick would emit on stdout. Distinct from any raw input
-// the test feeds in, so we can assert the sent bytes are the prepared output.
-const FAKE_JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 0xff, 0xd9]);
-
-function magickSpawn() {
-	return vi.fn(() => {
-		const proc = makeProc();
-		queueMicrotask(() => {
-			proc.stdout.push(FAKE_JPEG);
-			proc.stdout.push(null);
-			proc.emit('close', 0);
-		});
-		return proc;
-	});
-}
-
 function fakePdfProcessor(pageCount: number): IPdfProcessor & { countPagesCalls: number } {
 	const self: IPdfProcessor & { countPagesCalls: number } = {
 		countPagesCalls: 0,
@@ -153,7 +110,6 @@ describe('createOcrReceiptScanner', () => {
 			ollamaModel: 'llama3.2',
 			pdfProcessor: fakePdfProcessor(1),
 			fetch: fetchMock as unknown as typeof fetch,
-			spawn: magickSpawn() as never,
 			...overrides
 		});
 	}
@@ -237,32 +193,27 @@ describe('createOcrReceiptScanner', () => {
 		expect(stripPrefix(entries.get('base64Image')!).prefix).toBe('data:application/pdf;base64,');
 	});
 
-	it('prepares images through ImageMagick and sends the prepared bytes, not the raw input', async () => {
-		const spawnFn = magickSpawn();
+	it('sends the stored image bytes directly to OCR.space with no scanner-side image preparation', async () => {
 		routeBoth();
 
-		const scanner = makeScanner({ spawn: spawnFn as never });
+		const scanner = makeScanner();
 
 		const rawInput = new Uint8Array([10, 20, 30, 40, 50]);
 		await scanner.scan(makeStream(rawInput), 'image/png');
 
-		expect(spawnFn).toHaveBeenCalledTimes(1);
 		const entries = formEntries(fetchMock.mock.calls[0][1] as RequestInit);
 		const { base64 } = stripPrefix(entries.get('base64Image')!);
-		expect(base64).toBe(FAKE_JPEG.toString('base64'));
-		expect(base64).not.toBe(Buffer.from(rawInput).toString('base64'));
+		expect(base64).toBe(Buffer.from(rawInput).toString('base64'));
 	});
 
-	it('sends a PDF raw without preparing it through ImageMagick', async () => {
-		const spawnFn = magickSpawn();
+	it('sends a PDF directly to OCR.space with no scanner-side image preparation', async () => {
 		routeBoth();
 
-		const scanner = makeScanner({ spawn: spawnFn as never });
+		const scanner = makeScanner();
 
 		const rawPdf = Buffer.from('%PDF-1.4 raw');
 		await scanner.scan(makeStream(new Uint8Array(rawPdf)), 'application/pdf');
 
-		expect(spawnFn).not.toHaveBeenCalled();
 		const entries = formEntries(fetchMock.mock.calls[0][1] as RequestInit);
 		const { base64 } = stripPrefix(entries.get('base64Image')!);
 		expect(base64).toBe(rawPdf.toString('base64'));
