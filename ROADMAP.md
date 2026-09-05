@@ -51,6 +51,8 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 - [ ] Not started — Recurring expenses (auto-create on a schedule, e.g. monthly rent)
 - [ ] Not started — Export group data (CSV/PDF of expenses and balances)
 - [ ] Not started — Multi-group dashboard (cross-group total owed / owed-to-you)
+- [ ] Not started — Category management (CRUD for expense categories beyond the current fixed set)
+- [ ] Not started — Convert app to a PWA so it can be installed as an app (manifest + service worker + offline shell)
 
 ## Dev environment
 
