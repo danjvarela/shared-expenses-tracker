@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { scanService, scannerEnabled } from '$lib/server/container';
-import { sniffMime } from '$lib/server/app/scan';
+import { sniffMime } from '$lib/server/app/receipt-format';
 import { toHttpError } from '$lib/server/presentation/error-handling';
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
@@ -15,7 +15,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 	const bytes = new Uint8Array(await file.arrayBuffer());
 	const sniffedMime = sniffMime(bytes);
-	if (!sniffedMime) error(415, 'This file type is not supported. Use PDF, PNG, or JPEG.');
+	if (!sniffedMime) error(415, 'This file type is not supported');
 
 	try {
 		const result = await scanService.scan(locals.user!.id, {

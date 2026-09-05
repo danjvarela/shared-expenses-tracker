@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createScanService, sniffMime, PDF_MIME, PNG_MIME, JPEG_MIME } from './scan';
+import { createScanService } from './scan';
+import { PDF_MIME, PNG_MIME } from './receipt-format';
 import {
 	ReceiptNotAuthorizedError,
 	ReceiptTooLargeError,
@@ -321,35 +322,6 @@ function service(
 		receiptRepo
 	};
 }
-
-describe('sniffMime', () => {
-	it('detects a PDF by the %PDF- magic', () => {
-		expect(sniffMime(new Uint8Array(Buffer.from('%PDF-1.4 ...')))).toBe(PDF_MIME);
-	});
-
-	it('detects a PNG by its 8-byte signature', () => {
-		expect(sniffMime(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]))).toBe(
-			PNG_MIME
-		);
-	});
-
-	it('detects a JPEG by the FFD8FF magic', () => {
-		expect(sniffMime(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0]))).toBe(JPEG_MIME);
-	});
-
-	it('returns null for an unsupported type', () => {
-		expect(sniffMime(new Uint8Array(Buffer.from('GIF89a')))).toBeNull();
-		expect(sniffMime(new Uint8Array([0x42, 0x4d]))).toBeNull();
-	});
-
-	it('returns null for too few bytes', () => {
-		expect(sniffMime(new Uint8Array([0x89, 0x50]))).toBeNull();
-	});
-
-	it('ignores a spoofed Content-Type — a PNG body with no PNG magic is not PNG', () => {
-		expect(sniffMime(new Uint8Array(Buffer.from('not an image')))).toBeNull();
-	});
-});
 
 describe('createScanService.scan', () => {
 	it('scans an image directly: stores bytes, feeds the stored stream to the scanner', async () => {

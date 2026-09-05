@@ -5,6 +5,7 @@ import {
 	ReceiptTooLargeError,
 	MAX_RECEIPT_BYTES
 } from '$lib/server/app/receipt';
+import { ALLOWED_RECEIPT_MIMES } from '$lib/server/app/receipt-format';
 import { AppError } from '$lib/server/app/error';
 import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
@@ -20,32 +21,6 @@ import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-
 import { parseAmountCents } from '$lib/server/app/expense-form';
 import { resolveSplits } from '$lib/server/app/split-resolver';
 import { applyPairBalanceDeltas, expenseDeltas } from '$lib/server/app/pair-balance';
-
-export const PDF_MIME = 'application/pdf';
-export const PNG_MIME = 'image/png';
-export const JPEG_MIME = 'image/jpeg';
-
-export const ALLOWED_SCAN_MIMES = new Set<string>([PDF_MIME, PNG_MIME, JPEG_MIME]);
-
-export type SniffedMime = typeof PDF_MIME | typeof PNG_MIME | typeof JPEG_MIME;
-
-const PDF_MAGIC = Buffer.from('%PDF-', 'latin1');
-const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-const JPEG_MAGIC = Buffer.from([0xff, 0xd8, 0xff]);
-
-export function sniffMime(bytes: Uint8Array): SniffedMime | null {
-	const buf = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-	if (buf.length >= PDF_MAGIC.length && buf.subarray(0, PDF_MAGIC.length).equals(PDF_MAGIC)) {
-		return PDF_MIME;
-	}
-	if (buf.length >= PNG_MAGIC.length && buf.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)) {
-		return PNG_MIME;
-	}
-	if (buf.length >= JPEG_MAGIC.length && buf.subarray(0, JPEG_MAGIC.length).equals(JPEG_MAGIC)) {
-		return JPEG_MIME;
-	}
-	return null;
-}
 
 export interface ScanInput {
 	groupId: string;
@@ -135,7 +110,7 @@ export function createScanService(deps: ScanServiceDeps) {
 		if (!isMember) throw new ReceiptNotAuthorizedError();
 
 		if (input.sizeBytes > MAX_RECEIPT_BYTES) throw new ReceiptTooLargeError();
-		if (!ALLOWED_SCAN_MIMES.has(input.sniffedMime)) throw new ReceiptMimeNotAllowedError();
+		if (!ALLOWED_RECEIPT_MIMES.has(input.sniffedMime)) throw new ReceiptMimeNotAllowedError();
 
 		const originalFilename = sanitizeFilename(input.filename);
 

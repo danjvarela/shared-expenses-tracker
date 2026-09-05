@@ -14,9 +14,9 @@ import {
 	ReceiptTooLargeError,
 	ReceiptMimeNotAllowedError,
 	ReceiptNotFoundError,
-	MAX_RECEIPT_BYTES,
-	ALLOWED_RECEIPT_MIMES
+	MAX_RECEIPT_BYTES
 } from './receipt';
+import { ALLOWED_RECEIPT_MIMES } from './receipt-format';
 import { ExpenseGroupNotFoundError } from './expense';
 
 const alice = 'alice';

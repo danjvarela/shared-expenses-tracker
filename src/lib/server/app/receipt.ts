@@ -1,6 +1,7 @@
 import { basename } from 'node:path';
 import { AppError } from '$lib/server/app/error';
 import { ExpenseNotFoundError, ExpenseGroupNotFoundError } from '$lib/server/app/expense';
+import { ALLOWED_RECEIPT_MIMES } from '$lib/server/app/receipt-format';
 import type { IExpenseReceiptRepository } from '$lib/server/app/interfaces/repositories/expense-receipt';
 import type { IExpenseRepository } from '$lib/server/app/interfaces/repositories/expense';
 import type { IExpenseGroupRepository } from '$lib/server/app/interfaces/repositories/expense-group';
@@ -9,15 +10,6 @@ import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-
 import type { ExpenseReceipt } from '$lib/server/domain/expense-receipt';
 
 export const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
-
-export const ALLOWED_RECEIPT_MIMES = new Set<string>([
-	'image/jpeg',
-	'image/png',
-	'image/webp',
-	'image/heic',
-	'image/avif',
-	'application/pdf'
-]);
 
 export interface ReceiptCreateInput {
 	expenseId: string;
