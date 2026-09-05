@@ -247,13 +247,13 @@
 		<Card.Root>
 			<Card.Content class="flex flex-col gap-4">
 				<p class="text-sm text-muted-foreground">
-					Upload a receipt and review the scanned items before saving. PDF, PNG, or JPEG —
-					single-page only.
+					Upload a receipt and review the scanned items before saving. PDF, PNG, JPEG, WEBP,
+					HEIC, HEIF, or AVIF — single-page only.
 				</p>
 				<input
 					bind:this={fileInput}
 					type="file"
-					accept="application/pdf,image/png,image/jpeg"
+					accept="application/pdf,image/png,image/jpeg,image/webp,image/heic,image/heif,image/avif"
 					class="hidden"
 					onchange={onFileChosen}
 				/>
@@ -266,9 +266,6 @@
 						Upload receipt
 					{/if}
 				</Button>
-				<p class="text-xs text-muted-foreground">
-					HEIC isn't supported — most browsers convert it on pick.
-				</p>
 			</Card.Content>
 		</Card.Root>
 	{:else}
