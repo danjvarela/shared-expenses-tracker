@@ -5,7 +5,6 @@ import {
 } from '$lib/server/app/interfaces/receipt-scanner';
 import type { IPdfProcessor } from '$lib/server/infra/pdf';
 import type { SpawnFn } from '$lib/server/infra/image-prep';
-import { createOllamaReceiptScanner } from './ollama';
 import { createOcrReceiptScanner } from './ocr';
 
 export type {
@@ -20,7 +19,6 @@ export {
 
 export type ScannerConfig =
 	| { backend: 'off' }
-	| { backend: 'ollama'; baseUrl: string; model: string; apiKey?: string }
 	| {
 			backend: 'ocr';
 			ocrApiKey: string;
@@ -42,17 +40,6 @@ export function resolveScannerConfig(env: NodeJS.ProcessEnv): ScannerConfig {
 
 	if (!backend) {
 		return { backend: 'off' };
-	}
-
-	if (backend === 'ollama') {
-		const baseUrl = env.OLLAMA_BASE_URL ?? DEFAULT_OLLAMA_BASE_URL;
-		const model = env.OLLAMA_VISION_MODEL;
-		if (!model) {
-			console.error('Receipt scanner config missing', 'OLLAMA_VISION_MODEL is not set');
-			throw new ReceiptScannerConfigError();
-		}
-		const apiKey = env.OLLAMA_API_KEY || undefined;
-		return { backend: 'ollama', baseUrl, model, apiKey };
 	}
 
 	if (backend === 'ocr') {
@@ -89,15 +76,6 @@ export function createReceiptScannerBackend(
 		throw new Error(
 			'createReceiptScannerBackend: pdfProcessor is required when a backend is active'
 		);
-	}
-
-	if (config.backend === 'ollama') {
-		return createOllamaReceiptScanner({
-			baseUrl: config.baseUrl,
-			model: config.model,
-			apiKey: config.apiKey,
-			pdfProcessor: deps.pdfProcessor
-		});
 	}
 
 	if (config.backend === 'ocr') {

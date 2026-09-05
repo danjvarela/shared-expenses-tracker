@@ -24,9 +24,7 @@
   env.RECEIPT_SCANNER_BACKEND = "ocr";
   env.OLLAMA_API_KEY = config.secretspec.secrets.OLLAMA_API_KEY or "";
   env.OLLAMA_BASE_URL = "https://ollama.com";
-  env.OLLAMA_VISION_MODEL = "qwen3.5:397b-cloud";
   env.OLLAMA_TEXT_MODEL = "qwen3.5:397b-cloud";
-  env.RUN_SCANNER_INTEGRATION = "0";
 
   env.OCR_API_KEY = config.secretspec.secrets.OCR_API_KEY or "";
 
