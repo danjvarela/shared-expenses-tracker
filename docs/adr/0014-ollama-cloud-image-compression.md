@@ -15,3 +15,5 @@ Ollama Cloud (our configured `OLLAMA_BASE_URL`) rejects request bodies over ~20M
 - Compression affects only what is sent to Ollama; stored receipt bytes stay original.
 
 > Revised by ADR-0015 (second scanner backend added): the "shared `image-prepare` interface rejected — only one consumer" premise no longer holds — both backends now consume shared `infra/image-prep` and structuring modules, and `IPdfRasterizer` became `IPdfProcessor` (gains `countPages`) in `infra/pdf/`. The constants stance carries forward (OCR.space params are likewise constants in `ocr.ts`); `num_ctx: 8192` remains Ollama-vision-backend-only.
+>
+> Revised by ADR-0016 (normalize receipts at ingest): the core premise is reversed — stored receipt bytes are no longer original; they are transcoded to JPEG/PDF at ingest and the original is not retained. Scanner-side `prepareImage` for the cloud body limit is gone (the OCR backend sends stored bytes straight to OCR.space); the Ollama vision backend whose 20 MB limit motivated this ADR is removed. `image-prep` survives, but its consumer is now the ingest normalize step, not a scanner.
