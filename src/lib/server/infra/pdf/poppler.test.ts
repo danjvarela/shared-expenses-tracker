@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
+import { execSync } from 'node:child_process';
 import { Writable } from 'node:stream';
 import { writeFile } from 'node:fs/promises';
 import { createPopplerPdfProcessor } from './poppler';
-import { ReceiptRasterizeError } from './index';
+import { ReceiptPdfCompressError, ReceiptRasterizeError } from './index';
 
 class FakePipe extends EventEmitter {
 	push(chunk: string | Buffer | null) {
@@ -261,4 +262,125 @@ describe('createPopplerPdfProcessor.rasterizeFirstPage', () => {
 
 		expect(calls[1].args).toContain('300');
 	});
+});
+
+describe('createPopplerPdfProcessor.compress', () => {
+	// A "fixture" PDF: large enough that the compressed output is smaller.
+	const FIXTURE_PDF = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(8 * 1024, 0x41)]);
+	const COMPRESSED_PDF = Buffer.from('%PDF-1.4\ncompressed-body\n');
+
+	it('invokes gs with the pdfwrite / ebook args and pipes stdout through', async () => {
+		const calls: Array<{ cmd: string; args: string[] }> = [];
+		const spawnFn = vi.fn((cmd: string, args: string[]) => {
+			const proc = makeProc();
+			calls.push({ cmd, args });
+			queueMicrotask(() => {
+				proc.stdout.push(COMPRESSED_PDF);
+				proc.stdout.push(null);
+				proc.emit('close', 0);
+			});
+			return proc;
+		});
+
+		const processor = createPopplerPdfProcessor({ spawn: spawnFn as never });
+		const out = await processor.compress(makeStream(FIXTURE_PDF));
+
+		expect(calls.map((c) => c.cmd)).toEqual(['gs']);
+		expect(calls[0].args).toContain('-sDEVICE=pdfwrite');
+		expect(calls[0].args).toContain('-dPDFSETTINGS=/ebook');
+		expect(out.equals(COMPRESSED_PDF)).toBe(true);
+	});
+
+	it('rejects with ReceiptPdfCompressError when gs exits non-zero', async () => {
+		const spawnFn = vi.fn(() => {
+			const proc = makeProc();
+			queueMicrotask(() => {
+				proc.stderr.push('Error: corrupt\n');
+				proc.stderr.push(null);
+				proc.emit('close', 1);
+			});
+			return proc;
+		});
+
+		const processor = createPopplerPdfProcessor({ spawn: spawnFn as never });
+		await expect(processor.compress(makeStream(FIXTURE_PDF))).rejects.toBeInstanceOf(
+			ReceiptPdfCompressError
+		);
+	});
+
+	it('rejects when gs produces no output', async () => {
+		const spawnFn = vi.fn(() => {
+			const proc = makeProc();
+			queueMicrotask(() => {
+				proc.stdout.push(null);
+				proc.emit('close', 0);
+			});
+			return proc;
+		});
+
+		const processor = createPopplerPdfProcessor({ spawn: spawnFn as never });
+		await expect(processor.compress(makeStream(FIXTURE_PDF))).rejects.toBeInstanceOf(
+			ReceiptPdfCompressError
+		);
+	});
+
+	it('rejects when gs output is not a PDF', async () => {
+		const spawnFn = vi.fn(() => {
+			const proc = makeProc();
+			queueMicrotask(() => {
+				proc.stdout.push(Buffer.from('not a pdf'));
+				proc.stdout.push(null);
+				proc.emit('close', 0);
+			});
+			return proc;
+		});
+
+		const processor = createPopplerPdfProcessor({ spawn: spawnFn as never });
+		await expect(processor.compress(makeStream(FIXTURE_PDF))).rejects.toBeInstanceOf(
+			ReceiptPdfCompressError
+		);
+	});
+
+	it('rejects when the spawn itself fails (ENOENT)', async () => {
+		const spawnFn = vi.fn(() => {
+			const proc = makeProc();
+			queueMicrotask(() => proc.emit('error', new Error('spawn ENOENT')));
+			return proc;
+		});
+
+		const processor = createPopplerPdfProcessor({ spawn: spawnFn as never });
+		await expect(processor.compress(makeStream(FIXTURE_PDF))).rejects.toBeInstanceOf(
+			ReceiptPdfCompressError
+		);
+	});
+});
+
+const hasBin = (cmd: string) => {
+	try {
+		execSync(`command -v ${cmd}`, { stdio: 'ignore' });
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+describe('createPopplerPdfProcessor.compress (real ghostscript)', () => {
+	// Real gs shrinking a real PDF. The fixture is a high-DPI incompressible
+	// raster (random noise) wrapped in a PDF by magick, so /ebook's 150 DPI
+	// JPEG downsample has real room to shrink. Skips outside the devenv shell.
+	it.skipIf(!hasBin('gs') || !hasBin('magick'))(
+		'compresses a fixture PDF to a smaller valid PDF',
+		async () => {
+			const input = execSync('magick -size 2000x2000 xc: +noise Random pdf:-', {
+				maxBuffer: 64 * 1024 * 1024
+			});
+			expect(input.subarray(0, 5).toString()).toBe('%PDF-');
+
+			const processor = createPopplerPdfProcessor();
+			const out = await processor.compress(makeStream(input));
+
+			expect(out.subarray(0, 5).toString()).toBe('%PDF-');
+			expect(out.length).toBeLessThan(input.length);
+		}
+	);
 });

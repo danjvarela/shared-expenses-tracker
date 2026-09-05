@@ -3,7 +3,12 @@ import { randomUUID } from 'node:crypto';
 import { readFile, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ReceiptRasterizeError, type IPdfProcessor, type PdfFirstPage } from './index';
+import {
+	ReceiptPdfCompressError,
+	ReceiptRasterizeError,
+	type IPdfProcessor,
+	type PdfFirstPage
+} from './index';
 
 const CORRUPT_MESSAGE =
 	"Couldn't read this PDF — it may be corrupt or password-protected. Try an image instead.";
@@ -99,5 +104,43 @@ export function createPopplerPdfProcessor(opts: CreatePopplerProcessorOptions = 
 		return { image, pageCount };
 	}
 
-	return { countPages, rasterizeFirstPage };
+	function runGs(bytes: Buffer): Promise<Buffer> {
+		return new Promise((resolve, reject) => {
+			const proc = spawnFn(
+				'gs',
+				['-q', '-sDEVICE=pdfwrite', '-dPDFSETTINGS=/ebook', '-o', '-', '-'],
+				{ stdio: ['pipe', 'pipe', 'pipe'] }
+			);
+			const stdout: Buffer[] = [];
+			const stderr: Buffer[] = [];
+			proc.stdout.on('data', (chunk: Buffer) => stdout.push(chunk));
+			proc.stderr.on('data', (chunk: Buffer) => stderr.push(chunk));
+			proc.on('error', () => reject(new ReceiptPdfCompressError()));
+			proc.on('close', (code) => {
+				if (code !== 0) {
+					console.error(
+						'PDF compress failed',
+						`gs exited ${code}`,
+						Buffer.concat(stderr).toString().trim()
+					);
+					reject(new ReceiptPdfCompressError());
+					return;
+				}
+				const pdf = Buffer.concat(stdout);
+				if (pdf.length === 0 || pdf.subarray(0, 5).toString() !== '%PDF-') {
+					reject(new ReceiptPdfCompressError());
+					return;
+				}
+				resolve(pdf);
+			});
+			proc.stdin.end(bytes);
+		});
+	}
+
+	async function compress(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
+		const bytes = await streamToBuffer(stream);
+		return runGs(bytes);
+	}
+
+	return { countPages, rasterizeFirstPage, compress };
 }

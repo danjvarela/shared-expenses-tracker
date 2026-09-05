@@ -12,6 +12,9 @@ const stubPdfProcessor: IPdfProcessor = {
 	},
 	async rasterizeFirstPage() {
 		return { image: Buffer.alloc(0), pageCount: 1 };
+	},
+	async compress() {
+		return Buffer.alloc(0);
 	}
 };
 

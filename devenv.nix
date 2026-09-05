@@ -11,6 +11,7 @@
     pkgs.playwright-driver.browsers
     pkgs.imagemagick
     pkgs.poppler-utils
+    pkgs.ghostscript
     pkgs.cloudflared
   ];
 

@@ -3,9 +3,7 @@ import { EventEmitter } from 'node:events';
 import { Writable } from 'node:stream';
 import { createOcrReceiptScanner, type CreateOcrScannerOptions } from './ocr';
 import { RESPONSE_FORMAT } from './structuring';
-import {
-	ReceiptScannerError
-} from '$lib/server/app/interfaces/receipt-scanner';
+import { ReceiptScannerError } from '$lib/server/app/interfaces/receipt-scanner';
 import { ReceiptRasterizeError, type IPdfProcessor } from '$lib/server/infra/pdf';
 
 const OCR_ENDPOINT = 'https://api.ocr.space/parse/image';
@@ -40,10 +38,7 @@ interface OcrSpaceShape {
 	ParsedResults: { FileParseExitCode: number; ParsedText: string }[];
 }
 
-function ocrSpaceResponse(
-	parsedText: string,
-	overrides: Partial<OcrSpaceShape> = {}
-): Response {
+function ocrSpaceResponse(parsedText: string, overrides: Partial<OcrSpaceShape> = {}): Response {
 	const body: OcrSpaceShape = {
 		IsErroredOnProcessing: false,
 		OCRExitCode: 1,
@@ -122,6 +117,9 @@ function fakePdfProcessor(pageCount: number): IPdfProcessor & { countPagesCalls:
 		},
 		async rasterizeFirstPage() {
 			return { image: Buffer.alloc(0), pageCount };
+		},
+		async compress() {
+			return Buffer.alloc(0);
 		}
 	};
 	return self;
