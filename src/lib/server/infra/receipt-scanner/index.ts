@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/private';
+import { GoogleGenAI } from '@google/genai';
 import {
 	ReceiptScannerConfigError,
 	type IReceiptScanner
@@ -6,6 +7,9 @@ import {
 import { NOOP_LOGGER, type ILogger } from '$lib/server/app/interfaces/logger';
 import type { IPdfProcessor } from '$lib/server/infra/pdf';
 import { createOcrReceiptScanner } from './ocr';
+import { createOllamaReceiptStructurer } from './structurers/ollama';
+import { createGoogleReceiptStructurer } from './structurers/google';
+import type { IReceiptStructurer } from './structurer';
 
 export type {
 	IReceiptScanner,
@@ -17,14 +21,16 @@ export {
 	ReceiptScannerConfigError
 } from '$lib/server/app/interfaces/receipt-scanner';
 
+export type StructurerConfig =
+	| { kind: 'ollama'; baseUrl: string; model: string; apiKey?: string }
+	| { kind: 'google'; model: string; apiKey: string };
+
 export type ScannerConfig =
 	| { backend: 'off' }
 	| {
 			backend: 'ocr';
 			ocrApiKey: string;
-			ollamaBaseUrl: string;
-			ollamaModel: string;
-			ollamaApiKey?: string;
+			structurer: StructurerConfig;
 	  };
 
 export interface CreateScannerDeps {
@@ -48,17 +54,42 @@ export function resolveScannerConfig(env: NodeJS.ProcessEnv, logger: ILogger = N
 			logger.error('receipt scanner config missing', { name: 'OCR_API_KEY' });
 			throw new ReceiptScannerConfigError();
 		}
-		const ollamaModel = env.OLLAMA_TEXT_MODEL;
-		if (!ollamaModel) {
-			logger.error('receipt scanner config missing', { name: 'OLLAMA_TEXT_MODEL' });
-			throw new ReceiptScannerConfigError();
-		}
-		const ollamaBaseUrl = env.OLLAMA_BASE_URL ?? DEFAULT_OLLAMA_BASE_URL;
-		const ollamaApiKey = env.OLLAMA_API_KEY || undefined;
-		return { backend: 'ocr', ocrApiKey, ollamaBaseUrl, ollamaModel, ollamaApiKey };
+		return { backend: 'ocr', ocrApiKey, structurer: resolveStructurerConfig(env, logger) };
 	}
 
 	logger.error('unknown receipt scanner backend', { backend });
+	throw new ReceiptScannerConfigError();
+}
+
+function resolveStructurerConfig(env: NodeJS.ProcessEnv, logger: ILogger): StructurerConfig {
+	const structuringBackend = env.STRUCTURING_BACKEND ?? 'ollama';
+
+	if (structuringBackend === 'ollama') {
+		const model = env.OLLAMA_TEXT_MODEL;
+		if (!model) {
+			logger.error('receipt scanner config missing', { name: 'OLLAMA_TEXT_MODEL' });
+			throw new ReceiptScannerConfigError();
+		}
+		const baseUrl = env.OLLAMA_BASE_URL ?? DEFAULT_OLLAMA_BASE_URL;
+		const apiKey = env.OLLAMA_API_KEY || undefined;
+		return { kind: 'ollama', baseUrl, model, apiKey };
+	}
+
+	if (structuringBackend === 'google') {
+		const apiKey = env.GOOGLE_API_KEY;
+		if (!apiKey) {
+			logger.error('receipt scanner config missing', { name: 'GOOGLE_API_KEY' });
+			throw new ReceiptScannerConfigError();
+		}
+		const model = env.GEMINI_MODEL;
+		if (!model) {
+			logger.error('receipt scanner config missing', { name: 'GEMINI_MODEL' });
+			throw new ReceiptScannerConfigError();
+		}
+		return { kind: 'google', model, apiKey };
+	}
+
+	logger.error('unknown structuring backend', { structuringBackend });
 	throw new ReceiptScannerConfigError();
 }
 
@@ -82,9 +113,7 @@ export function createReceiptScannerBackend(
 	if (config.backend === 'ocr') {
 		return createOcrReceiptScanner({
 			ocrApiKey: config.ocrApiKey,
-			ollamaBaseUrl: config.ollamaBaseUrl,
-			ollamaModel: config.ollamaModel,
-			ollamaApiKey: config.ollamaApiKey,
+			structurer: createStructurer(config.structurer, deps, logger),
 			pdfProcessor: deps.pdfProcessor,
 			fetch: deps.fetch,
 			logger
@@ -92,4 +121,26 @@ export function createReceiptScannerBackend(
 	}
 
 	return null;
+}
+
+function createStructurer(
+	config: StructurerConfig,
+	deps: CreateScannerDeps,
+	logger: ILogger
+): IReceiptStructurer {
+	if (config.kind === 'ollama') {
+		return createOllamaReceiptStructurer({
+			baseUrl: config.baseUrl,
+			model: config.model,
+			apiKey: config.apiKey,
+			fetch: deps.fetch,
+			logger
+		});
+	}
+
+	return createGoogleReceiptStructurer({
+		client: new GoogleGenAI({ apiKey: config.apiKey }),
+		model: config.model,
+		logger
+	});
 }

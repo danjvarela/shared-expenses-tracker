@@ -29,6 +29,12 @@
 
   env.OCR_API_KEY = config.secretspec.secrets.OCR_API_KEY or "";
 
+  # Structuring stage defaults to ollama (above). To compare Google AI / Gemini,
+  # set STRUCTURING_BACKEND=google and provide the two values below (no defaults).
+  # env.STRUCTURING_BACKEND = "google";
+  # env.GOOGLE_API_KEY = config.secretspec.secrets.GOOGLE_API_KEY or "";
+  # env.GEMINI_MODEL = "gemini-2.0-flash";
+
   env.GC_SECRET = config.secretspec.secrets.GC_SECRET or "";
 
   profiles.development.module = {

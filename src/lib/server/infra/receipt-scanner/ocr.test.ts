@@ -1,24 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createOcrReceiptScanner, type CreateOcrScannerOptions } from './ocr';
-import { RESPONSE_FORMAT } from './structuring';
+import type { IReceiptStructurer } from './structurer';
+import type { ScanResult } from '$lib/server/app/interfaces/receipt-scanner';
 import { ReceiptScannerError } from '$lib/server/app/interfaces/receipt-scanner';
 import { ReceiptRasterizeError, type IPdfProcessor } from '$lib/server/infra/pdf';
 
 const OCR_ENDPOINT = 'https://api.ocr.space/parse/image';
-const OLLAMA_ENDPOINT = 'http://ollama:11434/api/chat';
 const PARSED_TEXT = 'FRESH MART\n2026-08-21\nMilk 3.49\nBread 2.10\nTotal 5.59';
 
-const STRUCTURED = {
-	merchant: 'Fresh Mart',
-	date: '2026-08-21',
-	total: '5.59',
-	lineItems: [
-		{ description: 'Milk', amount: '3.49' },
-		{ description: 'Bread', amount: '2.10' }
-	]
-};
-
-const EXPECTED_RESULT = {
+const STRUCTURED_RESULT: ScanResult = {
 	merchant: 'Fresh Mart',
 	date: '2026-08-21',
 	totalDecimal: '5.59',
@@ -44,13 +34,6 @@ function ocrSpaceResponse(parsedText: string, overrides: Partial<OcrSpaceShape> 
 		...overrides
 	};
 	return new Response(JSON.stringify(body), {
-		status: 200,
-		headers: { 'Content-Type': 'application/json' }
-	});
-}
-
-function ollamaResponse(content: unknown): Response {
-	return new Response(JSON.stringify({ message: { content } }), {
 		status: 200,
 		headers: { 'Content-Type': 'application/json' }
 	});
@@ -96,6 +79,18 @@ function stripPrefix(dataUri: string): { prefix: string; base64: string } {
 	return { prefix: dataUri.slice(0, comma + 1), base64: dataUri.slice(comma + 1) };
 }
 
+function stubStructurer(): IReceiptStructurer & { calls: string[] } {
+	const calls: string[] = [];
+	const self: IReceiptStructurer & { calls: string[] } = {
+		calls,
+		async structure(parsedText): Promise<ScanResult> {
+			calls.push(parsedText);
+			return STRUCTURED_RESULT;
+		}
+	};
+	return self;
+}
+
 describe('createOcrReceiptScanner', () => {
 	let fetchMock: ReturnType<typeof vi.fn>;
 
@@ -106,43 +101,35 @@ describe('createOcrReceiptScanner', () => {
 	function makeScanner(overrides: Partial<CreateOcrScannerOptions> = {}) {
 		return createOcrReceiptScanner({
 			ocrApiKey: 'ocr-key',
-			ollamaBaseUrl: 'http://ollama:11434',
-			ollamaModel: 'llama3.2',
+			structurer: stubStructurer(),
 			pdfProcessor: fakePdfProcessor(1),
 			fetch: fetchMock as unknown as typeof fetch,
 			...overrides
 		});
 	}
 
-	// Routes a mocked fetch to the canned OCR.space + Ollama responses.
-	function routeBoth(
-		ocr: Response = ocrSpaceResponse(PARSED_TEXT),
-		ollama: Response = ollamaResponse(JSON.stringify(STRUCTURED))
-	) {
+	function routeOcr(ocr: () => Response = () => ocrSpaceResponse(PARSED_TEXT)) {
 		fetchMock.mockImplementation(async (url: string | URL) => {
-			const target = String(url);
-			if (target === OCR_ENDPOINT) return ocr;
-			if (target === OLLAMA_ENDPOINT) return ollama;
+			if (String(url) === OCR_ENDPOINT) return ocr();
 			return new Response('', { status: 404 });
 		});
 	}
 
-	it('runs OCR.space text extraction then Ollama structuring and returns the composed ScanResult', async () => {
-		routeBoth();
-
-		const scanner = makeScanner();
+	it('runs OCR.space text extraction then delegates the parsed text to the structurer', async () => {
+		routeOcr();
+		const structurer = stubStructurer();
+		const scanner = makeScanner({ structurer });
 
 		const result = await scanner.scan(makeStream(new Uint8Array([1, 2, 3, 4])), 'image/png');
 
-		expect(result).toEqual(EXPECTED_RESULT);
-		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(result).toEqual(STRUCTURED_RESULT);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(fetchMock.mock.calls[0][0]).toBe(OCR_ENDPOINT);
-		expect(fetchMock.mock.calls[1][0]).toBe(OLLAMA_ENDPOINT);
+		expect(structurer.calls).toEqual([PARSED_TEXT]);
 	});
 
 	it('posts the image to OCR.space as a base64 data-URI FormData with the apikey header', async () => {
-		routeBoth();
-
+		routeOcr();
 		const scanner = makeScanner();
 
 		await scanner.scan(makeStream(new Uint8Array([1, 2, 3, 4])), 'image/png');
@@ -154,8 +141,7 @@ describe('createOcrReceiptScanner', () => {
 	});
 
 	it('sends all constant OCR.space params in the FormData', async () => {
-		routeBoth();
-
+		routeOcr();
 		const scanner = makeScanner();
 
 		await scanner.scan(makeStream(new Uint8Array([1, 2, 3, 4])), 'image/png');
@@ -171,13 +157,7 @@ describe('createOcrReceiptScanner', () => {
 	});
 
 	it('prefixes base64Image per mime for PNG, JPEG, and PDF', async () => {
-		fetchMock.mockImplementation(async (url: string | URL) => {
-			const target = String(url);
-			if (target === OCR_ENDPOINT) return ocrSpaceResponse(PARSED_TEXT);
-			if (target === OLLAMA_ENDPOINT) return ollamaResponse(JSON.stringify(STRUCTURED));
-			return new Response('', { status: 404 });
-		});
-
+		routeOcr();
 		const scanner = makeScanner();
 
 		await scanner.scan(makeStream(new Uint8Array([1])), 'image/png');
@@ -185,17 +165,16 @@ describe('createOcrReceiptScanner', () => {
 		expect(stripPrefix(entries.get('base64Image')!).prefix).toBe('data:image/png;base64,');
 
 		await scanner.scan(makeStream(new Uint8Array([1])), 'image/jpeg');
-		entries = formEntries(fetchMock.mock.calls[2][1] as RequestInit);
+		entries = formEntries(fetchMock.mock.calls[1][1] as RequestInit);
 		expect(stripPrefix(entries.get('base64Image')!).prefix).toBe('data:image/jpeg;base64,');
 
 		await scanner.scan(makeStream(new Uint8Array(Buffer.from('%PDF-1.4'))), 'application/pdf');
-		entries = formEntries(fetchMock.mock.calls[4][1] as RequestInit);
+		entries = formEntries(fetchMock.mock.calls[2][1] as RequestInit);
 		expect(stripPrefix(entries.get('base64Image')!).prefix).toBe('data:application/pdf;base64,');
 	});
 
 	it('sends the stored image bytes directly to OCR.space with no scanner-side image preparation', async () => {
-		routeBoth();
-
+		routeOcr();
 		const scanner = makeScanner();
 
 		const rawInput = new Uint8Array([10, 20, 30, 40, 50]);
@@ -207,8 +186,7 @@ describe('createOcrReceiptScanner', () => {
 	});
 
 	it('sends a PDF directly to OCR.space with no scanner-side image preparation', async () => {
-		routeBoth();
-
+		routeOcr();
 		const scanner = makeScanner();
 
 		const rawPdf = Buffer.from('%PDF-1.4 raw');
@@ -220,7 +198,7 @@ describe('createOcrReceiptScanner', () => {
 	});
 
 	it('rejects a multi-page PDF with ReceiptRasterizeError before calling OCR.space', async () => {
-		routeBoth();
+		routeOcr();
 		const pdfProcessor = fakePdfProcessor(2);
 		const scanner = makeScanner({ pdfProcessor });
 
@@ -230,37 +208,6 @@ describe('createOcrReceiptScanner', () => {
 
 		expect(pdfProcessor.countPagesCalls).toBe(1);
 		expect(fetchMock).not.toHaveBeenCalled();
-	});
-
-	it('posts the structuring prompt + ParsedText to Ollama with the text model and schema format (no num_ctx, no images)', async () => {
-		routeBoth();
-
-		const scanner = makeScanner({ ollamaModel: 'llama3.2' });
-
-		await scanner.scan(makeStream(new Uint8Array([1])), 'image/png');
-
-		const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
-		expect(url).toBe(OLLAMA_ENDPOINT);
-		const body = JSON.parse(init.body as string);
-		expect(body.model).toBe('llama3.2');
-		expect(body.stream).toBe(false);
-		expect(body.format).toEqual(RESPONSE_FORMAT);
-		expect(body.options).toBeUndefined();
-		expect(body.images).toBeUndefined();
-		expect(body.messages).toHaveLength(1);
-		expect(body.messages[0].role).toBe('user');
-		expect(body.messages[0].content).toContain('OCR-extracted text');
-		expect(body.messages[0].content).toContain(PARSED_TEXT);
-	});
-
-	it('sends a Bearer auth header to Ollama when ollamaApiKey is set', async () => {
-		routeBoth();
-		const scanner = makeScanner({ ollamaApiKey: 'ollama-secret' });
-
-		await scanner.scan(makeStream(new Uint8Array([1])), 'image/png');
-
-		const headers = new Headers((fetchMock.mock.calls[1][1] as RequestInit).headers);
-		expect(headers.get('Authorization')).toBe('Bearer ollama-secret');
 	});
 
 	it('throws ReceiptScannerError when the OCR.space request rejects', async () => {
@@ -283,12 +230,11 @@ describe('createOcrReceiptScanner', () => {
 	});
 
 	it('throws ReceiptScannerError when OCR.space reports IsErroredOnProcessing', async () => {
-		routeBoth(
+		routeOcr(() =>
 			ocrSpaceResponse('', {
 				IsErroredOnProcessing: true,
 				ErrorMessage: ['rate limited']
-			}),
-			ollamaResponse(JSON.stringify(STRUCTURED))
+			})
 		);
 		const scanner = makeScanner();
 
@@ -299,7 +245,7 @@ describe('createOcrReceiptScanner', () => {
 	});
 
 	it('throws ReceiptScannerError when OCRExitCode is not 1', async () => {
-		routeBoth(ocrSpaceResponse('', { OCRExitCode: 2 }));
+		routeOcr(() => ocrSpaceResponse('', { OCRExitCode: 2 }));
 		const scanner = makeScanner();
 
 		await expect(scanner.scan(makeStream(new Uint8Array([1])), 'image/png')).rejects.toBeInstanceOf(
@@ -309,7 +255,7 @@ describe('createOcrReceiptScanner', () => {
 	});
 
 	it('throws ReceiptScannerError when FileParseExitCode is not 1', async () => {
-		routeBoth(
+		routeOcr(() =>
 			ocrSpaceResponse('', {
 				ParsedResults: [{ FileParseExitCode: 0, ParsedText: '' }]
 			})
@@ -323,51 +269,12 @@ describe('createOcrReceiptScanner', () => {
 	});
 
 	it('throws ReceiptScannerError when ParsedText is empty/whitespace', async () => {
-		routeBoth(ocrSpaceResponse('   \n  '));
+		routeOcr(() => ocrSpaceResponse('   \n  '));
 		const scanner = makeScanner();
 
 		await expect(scanner.scan(makeStream(new Uint8Array([1])), 'image/png')).rejects.toBeInstanceOf(
 			ReceiptScannerError
 		);
 		expect(fetchMock).toHaveBeenCalledTimes(1);
-	});
-
-	it('throws ReceiptScannerError when the Ollama structuring request rejects', async () => {
-		fetchMock.mockImplementation(async (url: string | URL) => {
-			if (String(url) === OCR_ENDPOINT) return ocrSpaceResponse(PARSED_TEXT);
-			throw new Error('ECONNREFUSED');
-		});
-		const scanner = makeScanner();
-
-		await expect(scanner.scan(makeStream(new Uint8Array([1])), 'image/png')).rejects.toBeInstanceOf(
-			ReceiptScannerError
-		);
-	});
-
-	it('throws ReceiptScannerError on a non-ok Ollama structuring response', async () => {
-		routeBoth(ocrSpaceResponse(PARSED_TEXT), new Response('boom', { status: 500 }));
-		const scanner = makeScanner();
-
-		await expect(scanner.scan(makeStream(new Uint8Array([1])), 'image/png')).rejects.toBeInstanceOf(
-			ReceiptScannerError
-		);
-	});
-
-	it('throws ReceiptScannerError when Ollama returns no message content', async () => {
-		routeBoth(ocrSpaceResponse(PARSED_TEXT), ollamaResponse(undefined));
-		const scanner = makeScanner();
-
-		await expect(scanner.scan(makeStream(new Uint8Array([1])), 'image/png')).rejects.toBeInstanceOf(
-			ReceiptScannerError
-		);
-	});
-
-	it('throws ReceiptScannerError when Ollama returns malformed JSON', async () => {
-		routeBoth(ocrSpaceResponse(PARSED_TEXT), ollamaResponse('not json'));
-		const scanner = makeScanner();
-
-		await expect(scanner.scan(makeStream(new Uint8Array([1])), 'image/png')).rejects.toBeInstanceOf(
-			ReceiptScannerError
-		);
 	});
 });
