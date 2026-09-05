@@ -29,6 +29,8 @@ import type {
 	ExpenseGroupCreateInput
 } from '$lib/server/app/interfaces/repositories/expense-group';
 import type { IExpenseReceiptRepository } from '$lib/server/app/interfaces/repositories/expense-receipt';
+import type { ILogger } from '$lib/server/app/interfaces/logger';
+import { createRecordingLogger } from '$lib/server/infra/logger/testing';
 import type { ExpenseGroup } from '$lib/server/domain/expense-group';
 import type { ExpenseReceipt } from '$lib/server/domain/expense-receipt';
 import type { ScanConfirmRepos } from './scan';
@@ -310,6 +312,7 @@ function service(
 		normalizer?: ReturnType<typeof fakeNormalizer>;
 		confirmRepos?: ScanConfirmRepos;
 		members?: Array<{ userId: string; displayName: string; defaultSplitPercent: number | null }>;
+		logger?: ILogger;
 	} = {}
 ) {
 	const storage = opts.storage ?? fakeStorageBackend();
@@ -331,7 +334,8 @@ function service(
 		normalizer,
 		scanner,
 		groupMemberRepo: fakeGroupMemberRepo(opts.member ?? true, opts.members ?? []),
-		uow: fakeUnitOfWork(confirmRepos)
+		uow: fakeUnitOfWork(confirmRepos),
+		logger: opts.logger
 	});
 	return {
 		svc,
@@ -512,6 +516,42 @@ describe('createScanService.scan', () => {
 		expect(stored.equals(jpeg)).toBe(true);
 		expect(stored.equals(original)).toBe(false);
 	});
+
+	it('emits the scan step sequence on the logger, correlated by scanId, with no receipt contents/usernames/filenames', async () => {
+		const logger = createRecordingLogger();
+		const { svc } = service({ logger });
+		const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+
+		await svc.scan(alice, {
+			groupId,
+			bytes: png,
+			sniffedMime: PNG_MIME,
+			filename: 'r.png',
+			sizeBytes: png.length
+		});
+
+		expect(logger.entries.map((e) => e.message)).toEqual([
+			'receipt scan started',
+			'receipt accepted',
+			'normalize starting',
+			'normalize done',
+			'receipt stored',
+			'receipt read-back',
+			'scan starting',
+			'scan done',
+			'receipt scan complete'
+		]);
+
+		const forbidden = ['description', 'merchant', 'filename', 'originalFilename', 'displayName', 'email'];
+		for (const entry of logger.entries) {
+			for (const key of forbidden) {
+				expect(entry.fields).not.toHaveProperty(key);
+			}
+			expect(entry.fields).toHaveProperty('scanId');
+			expect(entry.fields).toHaveProperty('groupId', groupId);
+			expect(entry.fields).toHaveProperty('actorUserId', alice);
+		}
+	});
 });
 
 describe('createScanService.confirmDraft', () => {
@@ -687,5 +727,35 @@ describe('createScanService.confirmDraft', () => {
 		await svc.confirmDraft(alice, input([line({ categoryId: 'none' }), line({ categoryId: '' })]));
 
 		expect(expenseRepo.created.map((e) => e.categoryId)).toEqual([null, null]);
+	});
+
+	it('emits the confirm step sequence on the logger with no receipt contents/usernames', async () => {
+		const logger = createRecordingLogger();
+		const { svc } = service({ members, logger });
+
+		await svc.confirmDraft(alice, input([line(), line({ description: 'Bread' })]));
+
+		expect(logger.entries.map((e) => e.message)).toEqual([
+			'draft confirm started',
+			'expense group created',
+			'expense created',
+			'expense created',
+			'receipt linked',
+			'draft confirm complete'
+		]);
+
+		const forbidden = ['description', 'merchant', 'filename', 'originalFilename', 'displayName', 'email'];
+		for (const entry of logger.entries) {
+			for (const key of forbidden) {
+				expect(entry.fields).not.toHaveProperty(key);
+			}
+			expect(entry.fields).toHaveProperty('groupId', groupId);
+			expect(entry.fields).toHaveProperty('actorUserId', alice);
+			expect(entry.fields).toHaveProperty('paidByUserId', alice);
+		}
+		expect(logger.entries.find((e) => e.message === 'expense created')?.fields).toHaveProperty(
+			'amountCents',
+			1000
+		);
 	});
 });

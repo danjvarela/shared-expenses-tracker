@@ -4,6 +4,7 @@ import {
 	type IReceiptScanner,
 	type ScanResult
 } from '$lib/server/app/interfaces/receipt-scanner';
+import { NOOP_LOGGER, type ILogger } from '$lib/server/app/interfaces/logger';
 import { ReceiptRasterizeError, type IPdfProcessor } from '$lib/server/infra/pdf';
 import { RESPONSE_FORMAT, STRUCTURING_RULES, extractJson, normalize } from './structuring';
 
@@ -67,6 +68,7 @@ export interface CreateOcrScannerOptions {
 	ollamaApiKey?: string;
 	pdfProcessor: IPdfProcessor;
 	fetch?: typeof fetch;
+	logger?: ILogger;
 }
 
 export function createOcrReceiptScanner({
@@ -75,8 +77,10 @@ export function createOcrReceiptScanner({
 	ollamaModel,
 	ollamaApiKey,
 	pdfProcessor,
-	fetch = globalThis.fetch
+	fetch = globalThis.fetch,
+	logger = NOOP_LOGGER
 }: CreateOcrScannerOptions): IReceiptScanner {
+	const log = logger.child({ component: 'scanner.ocr' });
 	const ollamaEndpoint = `${ollamaBaseUrl.replace(/\/$/, '')}/api/chat`;
 	const ollamaHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
 	if (ollamaApiKey) {
@@ -105,6 +109,8 @@ export function createOcrReceiptScanner({
 			form.append('scale', 'true');
 			form.append('detectOrientation', 'true');
 
+			log.info('ocr.space request', { sizeBytes: input.length });
+			const ocrT0 = Date.now();
 			let ocrResponse: Response;
 			try {
 				ocrResponse = await fetch(OCR_ENDPOINT, {
@@ -113,12 +119,12 @@ export function createOcrReceiptScanner({
 					body: form
 				});
 			} catch (err) {
-				console.error('OCR.space request failed', String(err));
+				log.error('ocr.space request failed', { err });
 				throw new ReceiptScannerError(`Scanner request failed: ${String(err)}`);
 			}
 
 			if (!ocrResponse.ok) {
-				console.error('OCR.space request failed', ocrResponse.status);
+				log.error('ocr.space request failed', { status: ocrResponse.status });
 				throw new ReceiptScannerError(`Scanner request failed: HTTP ${ocrResponse.status}`);
 			}
 
@@ -129,11 +135,9 @@ export function createOcrReceiptScanner({
 				ocrBody.OCRExitCode !== 1 ||
 				firstResult?.FileParseExitCode !== 1
 			) {
-				console.error('OCR.space parse failed', {
+				log.error('ocr.space parse failed', {
 					OCRExitCode: ocrBody.OCRExitCode,
-					FileParseExitCode: firstResult?.FileParseExitCode,
-					ErrorMessage: ocrBody.ErrorMessage,
-					ErrorDetails: ocrBody.ErrorDetails
+					FileParseExitCode: firstResult?.FileParseExitCode
 				});
 				throw new ReceiptScannerError(UNREADABLE_MESSAGE);
 			}
@@ -142,7 +146,13 @@ export function createOcrReceiptScanner({
 			if (!parsedText) {
 				throw new ReceiptScannerError(UNREADABLE_MESSAGE);
 			}
+			log.info('ocr.space response', {
+				parsedTextChars: parsedText.length,
+				durationMs: Date.now() - ocrT0
+			});
 
+			log.info('ollama structuring request', { model: ollamaModel });
+			const ollamaT0 = Date.now();
 			let ollamaResponse: Response;
 			try {
 				ollamaResponse = await fetch(ollamaEndpoint, {
@@ -156,12 +166,12 @@ export function createOcrReceiptScanner({
 					})
 				});
 			} catch (err) {
-				console.error('Ollama structuring request failed', String(err));
+				log.error('ollama structuring request failed', { err });
 				throw new ReceiptScannerError(`Scanner request failed: ${String(err)}`);
 			}
 
 			if (!ollamaResponse.ok) {
-				console.error('Ollama structuring request failed', ollamaResponse.status);
+				log.error('ollama structuring request failed', { status: ollamaResponse.status });
 				throw new ReceiptScannerError(`Scanner request failed: HTTP ${ollamaResponse.status}`);
 			}
 
@@ -170,12 +180,13 @@ export function createOcrReceiptScanner({
 			if (typeof content !== 'string') {
 				throw new ReceiptScannerError('Scanner returned an unexpected response');
 			}
+			log.info('ollama structuring response', { durationMs: Date.now() - ollamaT0 });
 
 			let structured: unknown;
 			try {
 				structured = JSON.parse(extractJson(content));
 			} catch {
-				console.error('Ollama structuring returned non-JSON content', content.slice(0, 500));
+				log.error('ollama structuring returned non-JSON content');
 				throw new ReceiptScannerError('Scanner returned malformed JSON');
 			}
 

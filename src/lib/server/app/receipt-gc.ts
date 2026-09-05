@@ -1,5 +1,6 @@
 import type { IExpenseReceiptRepository } from '$lib/server/app/interfaces/repositories/expense-receipt';
 import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
+import { NOOP_LOGGER, type ILogger } from '$lib/server/app/interfaces/logger';
 
 export const RECEIPT_GC_GRACE_PERIOD_MS = 24 * 60 * 60 * 1000;
 
@@ -7,6 +8,7 @@ export interface ReceiptGcDeps {
 	receiptRepo: IExpenseReceiptRepository;
 	storageBackend: IReceiptStorageBackend;
 	now?: () => Date;
+	logger?: ILogger;
 }
 
 export interface ReceiptGcOptions {
@@ -23,6 +25,7 @@ export interface ReceiptGcResult {
 
 export function createReceiptGcService(deps: ReceiptGcDeps) {
 	const now = deps.now ?? (() => new Date());
+	const logger = deps.logger ?? NOOP_LOGGER;
 
 	async function reconcileOrphanedReceipts(options: ReceiptGcOptions): Promise<ReceiptGcResult> {
 		const dryRun = options.dryRun;
@@ -47,7 +50,7 @@ export function createReceiptGcService(deps: ReceiptGcDeps) {
 					await deps.storageBackend.delete(key);
 					deletedKeys.push(key);
 				} catch (err) {
-					console.error('Failed to delete orphaned receipt bytes', { key, err });
+					logger.error('failed to delete orphaned receipt bytes', { key, err });
 				}
 			}
 		}

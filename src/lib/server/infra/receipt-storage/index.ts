@@ -3,11 +3,13 @@ import {
 	ReceiptStorageConfigError,
 	type IReceiptStorageBackend
 } from '$lib/server/app/interfaces/receipt-storage';
+import { NOOP_LOGGER, type ILogger } from '$lib/server/app/interfaces/logger';
 import { createFileSystemReceiptStorageBackend, resolveFsDir } from './fs';
 
 export type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
 
-export function createReceiptStorageBackend(): IReceiptStorageBackend {
+export function createReceiptStorageBackend(opts: { logger?: ILogger } = {}): IReceiptStorageBackend {
+	const logger = opts.logger ?? NOOP_LOGGER;
 	const backend = env.RECEIPT_STORAGE_BACKEND ?? 'fs';
 
 	if (backend === 'fs') {
@@ -15,6 +17,6 @@ export function createReceiptStorageBackend(): IReceiptStorageBackend {
 		return createFileSystemReceiptStorageBackend(dir);
 	}
 
-	console.error('Unknown receipt storage backend', backend);
+	logger.error('unknown receipt storage backend', { backend });
 	throw new ReceiptStorageConfigError();
 }

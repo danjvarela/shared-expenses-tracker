@@ -5,6 +5,7 @@ import type { IPairBalanceRepository } from './interfaces/repositories/pair-bala
 import type { IGroupRepository } from './interfaces/repositories/group';
 import type { INotificationRepository } from './interfaces/repositories/notification';
 import type { IUnitOfWork } from './interfaces/unit-of-work';
+import { NOOP_LOGGER, type ILogger } from './interfaces/logger';
 
 export interface RemoveMemberRepos {
 	pairBalanceRepo: IPairBalanceRepository;
@@ -50,7 +51,9 @@ function displayNameOf(
 export function createRemoveMemberService(deps: {
 	uow: IUnitOfWork<RemoveMemberRepos>;
 	notificationRepo: INotificationRepository;
+	logger?: ILogger;
 }) {
+	const logger = deps.logger ?? NOOP_LOGGER;
 	async function notifyMemberRemoved(
 		groupId: string,
 		outcome: Extract<KickOutcome, { result: 'removed' }>
@@ -70,7 +73,7 @@ export function createRemoveMemberService(deps: {
 				)
 			);
 		} catch (err) {
-			console.error('Failed to create member-removed notifications', err);
+			logger.error('failed to create member-removed notifications', { err });
 		}
 	}
 

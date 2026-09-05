@@ -9,6 +9,7 @@ import {
 	type IPdfProcessor,
 	type PdfFirstPage
 } from './index';
+import { NOOP_LOGGER, type ILogger } from '$lib/server/app/interfaces/logger';
 
 const CORRUPT_MESSAGE =
 	"Couldn't read this PDF — it may be corrupt or password-protected. Try an image instead.";
@@ -18,6 +19,7 @@ export type SpawnFn = typeof spawn;
 export interface CreatePopplerProcessorOptions {
 	spawn?: SpawnFn;
 	dpi?: number;
+	logger?: ILogger;
 }
 
 async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
@@ -34,6 +36,7 @@ async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffe
 export function createPopplerPdfProcessor(opts: CreatePopplerProcessorOptions = {}): IPdfProcessor {
 	const spawnFn = opts.spawn ?? spawn;
 	const dpi = opts.dpi ?? 150;
+	const logger = opts.logger ?? NOOP_LOGGER;
 
 	function runPdfInfo(bytes: Buffer): Promise<number> {
 		return new Promise((resolve, reject) => {
@@ -112,17 +115,12 @@ export function createPopplerPdfProcessor(opts: CreatePopplerProcessorOptions = 
 				{ stdio: ['pipe', 'pipe', 'pipe'] }
 			);
 			const stdout: Buffer[] = [];
-			const stderr: Buffer[] = [];
 			proc.stdout.on('data', (chunk: Buffer) => stdout.push(chunk));
-			proc.stderr.on('data', (chunk: Buffer) => stderr.push(chunk));
+			proc.stderr.on('data', () => {});
 			proc.on('error', () => reject(new ReceiptPdfCompressError()));
 			proc.on('close', (code) => {
 				if (code !== 0) {
-					console.error(
-						'PDF compress failed',
-						`gs exited ${code}`,
-						Buffer.concat(stderr).toString().trim()
-					);
+					logger.error('pdf compress failed', { reason: `gs exited ${code}` });
 					reject(new ReceiptPdfCompressError());
 					return;
 				}

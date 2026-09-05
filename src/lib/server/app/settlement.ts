@@ -4,6 +4,7 @@ import type { IPairBalanceRepository } from '$lib/server/app/interfaces/reposito
 import type { IGroupRepository } from '$lib/server/app/interfaces/repositories/group';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
 import type { INotificationRepository } from '$lib/server/app/interfaces/repositories/notification';
+import { NOOP_LOGGER, type ILogger } from '$lib/server/app/interfaces/logger';
 import { applyPairBalanceDeltas, settlementDelta } from '$lib/server/app/pair-balance';
 import type { Settlement } from '$lib/server/domain/settlement';
 import { formatAmountCents } from '$lib/currency';
@@ -25,7 +26,9 @@ export function createSettlementService(deps: {
 	groupRepo: IGroupRepository;
 	groupMemberRepo: IGroupMemberRepository;
 	notificationRepo: INotificationRepository;
+	logger?: ILogger;
 }) {
+	const logger = deps.logger ?? NOOP_LOGGER;
 	async function notifySettlementCreated(settlement: Settlement) {
 		try {
 			const [group, members] = await Promise.all([
@@ -48,7 +51,7 @@ export function createSettlementService(deps: {
 				message
 			});
 		} catch (err) {
-			console.error('Failed to create settlement-created notification', err);
+			logger.error('failed to create settlement-created notification', { err });
 		}
 	}
 

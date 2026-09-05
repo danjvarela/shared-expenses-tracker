@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { ReceiptScannerError } from '$lib/server/app/interfaces/receipt-scanner';
+import { NOOP_LOGGER, type ILogger } from '$lib/server/app/interfaces/logger';
 
 // Cap the request size before sending to a scanner backend: a poppler-rasterized
 // PDF at 150 DPI PNG blows past typical request-body limits once base64-encoded,
@@ -11,7 +12,11 @@ const PREPARE_FAILED_MESSAGE = 'Scanner could not read this image';
 
 export type SpawnFn = typeof spawn;
 
-export function prepareImage(input: Buffer, spawnFn: SpawnFn): Promise<Buffer> {
+export function prepareImage(
+	input: Buffer,
+	spawnFn: SpawnFn,
+	logger: ILogger = NOOP_LOGGER
+): Promise<Buffer> {
 	return new Promise((resolve, reject) => {
 		const proc = spawnFn(
 			'magick',
@@ -26,16 +31,11 @@ export function prepareImage(input: Buffer, spawnFn: SpawnFn): Promise<Buffer> {
 			{ stdio: ['pipe', 'pipe', 'pipe'] }
 		);
 		const stdout: Buffer[] = [];
-		const stderr: Buffer[] = [];
 		proc.stdout.on('data', (chunk: Buffer) => stdout.push(chunk));
-		proc.stderr.on('data', (chunk: Buffer) => stderr.push(chunk));
+		proc.stderr.on('data', () => {});
 
 		function fail(reason: string): void {
-			console.error(
-				'Receipt image prepare failed',
-				reason,
-				Buffer.concat(stderr).toString().trim()
-			);
+			logger.error('receipt image prepare failed', { reason });
 			reject(new ReceiptScannerError(PREPARE_FAILED_MESSAGE));
 		}
 

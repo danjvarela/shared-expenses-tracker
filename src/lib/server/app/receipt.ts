@@ -8,6 +8,7 @@ import type { IExpenseGroupRepository } from '$lib/server/app/interfaces/reposit
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
 import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
 import type { IReceiptNormalizer } from '$lib/server/app/interfaces/receipt-normalizer';
+import { NOOP_LOGGER, type ILogger } from '$lib/server/app/interfaces/logger';
 import type { ExpenseReceipt } from '$lib/server/domain/expense-receipt';
 
 export const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
@@ -55,6 +56,7 @@ export interface ReceiptServiceDeps {
 	expenseRepo: IExpenseRepository;
 	expenseGroupRepo: IExpenseGroupRepository;
 	groupMemberRepo: IGroupMemberRepository;
+	logger?: ILogger;
 }
 
 function sanitizeFilename(filename: string | undefined): string | null {
@@ -65,6 +67,7 @@ function sanitizeFilename(filename: string | undefined): string | null {
 }
 
 export function createReceiptService(deps: ReceiptServiceDeps) {
+	const logger = deps.logger ?? NOOP_LOGGER;
 	async function assertMemberForExpense(actorUserId: string, expenseId: string) {
 		const expense = await deps.expenseRepo.getWithSplits(expenseId);
 		if (!expense) throw new ExpenseNotFoundError();
@@ -125,7 +128,7 @@ export function createReceiptService(deps: ReceiptServiceDeps) {
 			});
 		} catch (err) {
 			await deps.storageBackend.delete(key).catch((deleteErr) => {
-				console.error('Failed to roll back receipt bytes after repo failure', deleteErr);
+				logger.error('failed to roll back receipt bytes after repo failure', { err: deleteErr });
 			});
 			throw err;
 		}
@@ -160,7 +163,7 @@ export function createReceiptService(deps: ReceiptServiceDeps) {
 
 		await deps.receiptRepo.delete(receiptId);
 		await deps.storageBackend.delete(receipt.storageKey).catch((err) => {
-			console.error('Failed to delete receipt bytes after row delete', err);
+			logger.error('failed to delete receipt bytes after row delete', { err });
 		});
 	}
 

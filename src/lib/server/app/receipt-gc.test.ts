@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import type { IExpenseReceiptRepository } from '$lib/server/app/interfaces/repositories/expense-receipt';
 import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
+import { createRecordingLogger } from '$lib/server/infra/logger/testing';
 import { createReceiptGcService, RECEIPT_GC_GRACE_PERIOD_MS } from './receipt-gc';
 
 const GRACE_MS = RECEIPT_GC_GRACE_PERIOD_MS;
@@ -151,19 +152,22 @@ describe('createReceiptGcService.reconcileOrphanedReceipts', () => {
 			keyAt('orphan-c', GRACE_MS + 60_000, now)
 		]);
 		storage.failOn.add('orphan-b');
-		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const logger = createRecordingLogger();
 		const svc = createReceiptGcService({
 			receiptRepo: fakeReceiptRepo([]),
 			storageBackend: storage,
-			now: () => now
+			now: () => now,
+			logger
 		});
 
 		const result = await svc.reconcileOrphanedReceipts({ dryRun: false });
 
 		expect(result.deletedKeys).toEqual(['orphan-a', 'orphan-c']);
 		expect(storage.deletedKeys).toEqual(['orphan-a', 'orphan-c']);
-		expect(consoleSpy).toHaveBeenCalled();
-		consoleSpy.mockRestore();
+		const failed = logger.entries.filter((e) => e.message === 'failed to delete orphaned receipt bytes');
+		expect(failed).toHaveLength(1);
+		expect(failed[0].level).toBe('error');
+		expect(failed[0].fields).toHaveProperty('key', 'orphan-b');
 	});
 
 	it('reports empty results when the storage backend has no keys', async () => {

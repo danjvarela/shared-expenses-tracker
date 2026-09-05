@@ -10,6 +10,7 @@ import type { IPairBalanceRepository } from '$lib/server/app/interfaces/reposito
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
 import type { IGroupRepository } from '$lib/server/app/interfaces/repositories/group';
 import type { INotificationRepository } from '$lib/server/app/interfaces/repositories/notification';
+import { NOOP_LOGGER, type ILogger } from '$lib/server/app/interfaces/logger';
 import { applyPairBalanceDeltas, expenseDeltas } from '$lib/server/app/pair-balance';
 import { formatAmountCents } from '$lib/currency';
 
@@ -65,7 +66,9 @@ export function createExpenseService(deps: {
 	groupRepo: IGroupRepository;
 	groupMemberRepo: IGroupMemberRepository;
 	notificationRepo: INotificationRepository;
+	logger?: ILogger;
 }) {
+	const logger = deps.logger ?? NOOP_LOGGER;
 	async function getGroupExpenses(groupId: string): Promise<Array<ExpenseWithDetails>> {
 		return await deps.expenseRepo.getAllForGroupWithDetails(groupId);
 	}
@@ -98,7 +101,7 @@ export function createExpenseService(deps: {
 					)
 			);
 		} catch (err) {
-			console.error('Failed to create expense-created notifications', err);
+			logger.error('failed to create expense-created notifications', { err });
 		}
 	}
 

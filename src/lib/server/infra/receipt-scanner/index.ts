@@ -3,6 +3,7 @@ import {
 	ReceiptScannerConfigError,
 	type IReceiptScanner
 } from '$lib/server/app/interfaces/receipt-scanner';
+import { NOOP_LOGGER, type ILogger } from '$lib/server/app/interfaces/logger';
 import type { IPdfProcessor } from '$lib/server/infra/pdf';
 import { createOcrReceiptScanner } from './ocr';
 
@@ -29,11 +30,12 @@ export type ScannerConfig =
 export interface CreateScannerDeps {
 	pdfProcessor: IPdfProcessor;
 	fetch?: typeof fetch;
+	logger?: ILogger;
 }
 
 const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
 
-export function resolveScannerConfig(env: NodeJS.ProcessEnv): ScannerConfig {
+export function resolveScannerConfig(env: NodeJS.ProcessEnv, logger: ILogger = NOOP_LOGGER): ScannerConfig {
 	const backend = env.RECEIPT_SCANNER_BACKEND;
 
 	if (!backend) {
@@ -43,12 +45,12 @@ export function resolveScannerConfig(env: NodeJS.ProcessEnv): ScannerConfig {
 	if (backend === 'ocr') {
 		const ocrApiKey = env.OCR_API_KEY;
 		if (!ocrApiKey) {
-			console.error('Receipt scanner config missing', 'OCR_API_KEY is not set');
+			logger.error('receipt scanner config missing', { name: 'OCR_API_KEY' });
 			throw new ReceiptScannerConfigError();
 		}
 		const ollamaModel = env.OLLAMA_TEXT_MODEL;
 		if (!ollamaModel) {
-			console.error('Receipt scanner config missing', 'OLLAMA_TEXT_MODEL is not set');
+			logger.error('receipt scanner config missing', { name: 'OLLAMA_TEXT_MODEL' });
 			throw new ReceiptScannerConfigError();
 		}
 		const ollamaBaseUrl = env.OLLAMA_BASE_URL ?? DEFAULT_OLLAMA_BASE_URL;
@@ -56,7 +58,7 @@ export function resolveScannerConfig(env: NodeJS.ProcessEnv): ScannerConfig {
 		return { backend: 'ocr', ocrApiKey, ollamaBaseUrl, ollamaModel, ollamaApiKey };
 	}
 
-	console.error('Unknown receipt scanner backend', backend);
+	logger.error('unknown receipt scanner backend', { backend });
 	throw new ReceiptScannerConfigError();
 }
 
@@ -64,7 +66,8 @@ export function createReceiptScannerBackend(
 	envOverride?: NodeJS.ProcessEnv,
 	deps?: CreateScannerDeps
 ): IReceiptScanner | null {
-	const config = resolveScannerConfig(envOverride ?? env);
+	const logger = deps?.logger ?? NOOP_LOGGER;
+	const config = resolveScannerConfig(envOverride ?? env, logger);
 
 	if (config.backend === 'off') {
 		return null;
@@ -83,7 +86,8 @@ export function createReceiptScannerBackend(
 			ollamaModel: config.ollamaModel,
 			ollamaApiKey: config.ollamaApiKey,
 			pdfProcessor: deps.pdfProcessor,
-			fetch: deps.fetch
+			fetch: deps.fetch,
+			logger
 		});
 	}
 

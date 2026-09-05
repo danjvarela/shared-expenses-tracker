@@ -32,7 +32,15 @@ import { createReceiptGcService } from '$lib/server/app/receipt-gc';
 import { createScanService, type ScanConfirmRepos } from '$lib/server/app/scan';
 import type { IOAuthProvider } from '$lib/server/app/interfaces/oauth-provider';
 import { createRemoveMemberService, type RemoveMemberRepos } from './app/remove-member';
+import { createLogger } from '$lib/server/infra/logger';
+import type { LogLevel } from '$lib/server/app/interfaces/logger';
 import { env } from '$env/dynamic/private';
+
+function resolveLogLevel(raw: string | undefined): LogLevel {
+	return raw === 'debug' || raw === 'info' || raw === 'warn' || raw === 'error' ? raw : 'info';
+}
+
+const logger = createLogger({ level: resolveLogLevel(env.LOG_LEVEL) });
 
 const userRepo = createUserRepository(db);
 const identityRepo = createIdentityRepository(db);
@@ -46,13 +54,19 @@ const groupMemberRepo = createGroupMemberRepository(db);
 const categoryRepo = createCategoryRepository(db);
 const notificationRepo = createNotificationRepository(db);
 const receiptRepo = createExpenseReceiptRepository(db);
-const receiptStorageBackend = createReceiptStorageBackend();
-const pdfProcessor = createPopplerPdfProcessor();
-const receiptNormalizer = createReceiptNormalizer({ pdfProcessor });
-const receiptScannerBackend = createReceiptScannerBackend(undefined, { pdfProcessor });
+const receiptStorageBackend = createReceiptStorageBackend({ logger: logger.child({ component: 'receipt-storage' }) });
+const pdfProcessor = createPopplerPdfProcessor({ logger: logger.child({ component: 'pdf' }) });
+const receiptNormalizer = createReceiptNormalizer({
+	pdfProcessor,
+	logger: logger.child({ component: 'normalizer' })
+});
+const receiptScannerBackend = createReceiptScannerBackend(undefined, {
+	pdfProcessor,
+	logger: logger.child({ component: 'scanner' })
+});
 export const scannerEnabled = receiptScannerBackend !== null;
 
-const googleOAuthProvider = createGoogleOAuthProvider();
+const googleOAuthProvider = createGoogleOAuthProvider({ logger: logger.child({ component: 'oauth' }) });
 const oauthProviders: Record<string, IOAuthProvider> = {
 	[googleOAuthProvider.provider]: googleOAuthProvider
 };
@@ -113,14 +127,16 @@ export const expenseService = createExpenseService({
 	expenseRepo,
 	groupRepo,
 	groupMemberRepo,
-	notificationRepo
+	notificationRepo,
+	logger: logger.child({ component: 'expense' })
 });
 
 export const settlementService = createSettlementService({
 	uow: settlementUnitOfWork,
 	groupRepo,
 	groupMemberRepo,
-	notificationRepo
+	notificationRepo,
+	logger: logger.child({ component: 'settlement' })
 });
 
 export const groupMemberService = createGroupMemberService({
@@ -133,7 +149,8 @@ export const groupInviteService = createGroupInviteService({ uow: inviteUnitOfWo
 
 export const removeMemberService = createRemoveMemberService({
 	uow: removeMemberUnitOfWork,
-	notificationRepo
+	notificationRepo,
+	logger: logger.child({ component: 'remove-member' })
 });
 
 export const groupService = createGroupService({
@@ -150,7 +167,8 @@ export const receiptService = createReceiptService({
 	normalizer: receiptNormalizer,
 	expenseRepo,
 	expenseGroupRepo,
-	groupMemberRepo
+	groupMemberRepo,
+	logger: logger.child({ component: 'receipt' })
 });
 
 export const scanService =
@@ -160,18 +178,20 @@ export const scanService =
 				normalizer: receiptNormalizer,
 				scanner: receiptScannerBackend,
 				groupMemberRepo,
-				uow: scanConfirmUnitOfWork
+				uow: scanConfirmUnitOfWork,
+				logger: logger.child({ component: 'scan' })
 			})
 		: null;
 
 export const receiptGcService = createReceiptGcService({
 	receiptRepo,
-	storageBackend: receiptStorageBackend
+	storageBackend: receiptStorageBackend,
+	logger: logger.child({ component: 'receipt-gc' })
 });
 
 const gcSecret = env.GC_SECRET;
 if (!gcSecret) {
-	console.error('GC_SECRET is not set');
+	logger.error('GC_SECRET is not set');
 	throw new Error('GC_SECRET is not set');
 }
 const resolvedGcSecret: string = gcSecret;
