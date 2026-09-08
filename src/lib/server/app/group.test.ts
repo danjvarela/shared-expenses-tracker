@@ -104,6 +104,12 @@ function fakeCategoryRepo(
 		async getAllForGroup() {
 			return [];
 		},
+		async findByOwnerAndName() {
+			return null;
+		},
+		async create(input) {
+			return { id: 'cat-new', name: input.name, icon: input.icon, createdAt: new Date() };
+		},
 		async addToGroup(groupId, categoryId) {
 			addedToGroup.push({ groupId, categoryId });
 		},

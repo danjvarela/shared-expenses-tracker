@@ -3,7 +3,8 @@ import {
 	groupService,
 	groupMemberService,
 	groupInviteService,
-	removeMemberService
+	removeMemberService,
+	categoryService
 } from '$lib/server/container';
 import { toActionResult } from '$lib/server/presentation/error-handling';
 import { CURRENCIES } from '$lib/currency';
@@ -18,8 +19,9 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 
 	const members = await groupMemberService.getGroupMembersWithStatus(params.id);
 	const hasOutstandingBalance = await groupService.hasOutstandingBalance(params.id);
+	const categories = await categoryService.getForGroup(params.id);
 
-	return { group, members, hasOutstandingBalance };
+	return { group, members, hasOutstandingBalance, categories };
 };
 
 export const actions: Actions = {
@@ -95,6 +97,28 @@ export const actions: Actions = {
 		}
 
 		return { invite: { status: result.status, email: email.trim() } };
+	},
+
+	addCategory: async ({ request, params }) => {
+		const formData = await request.formData();
+		const name = formData.get('name');
+		const icon = formData.get('icon');
+
+		if (typeof name !== 'string' || name.trim() === '') {
+			return fail(400, { source: 'addCategory', message: 'Enter a category name' });
+		}
+		if (typeof icon !== 'string' || icon.trim() === '') {
+			return fail(400, { source: 'addCategory', message: 'Enter an icon' });
+		}
+
+		try {
+			await categoryService.addCustomCategory(params.id, name.trim(), icon.trim());
+		} catch (err) {
+			const actionResult = toActionResult(err);
+			return fail(actionResult.status, { source: 'addCategory', ...actionResult.data });
+		}
+
+		return { source: 'addCategory', success: true };
 	},
 
 	delete: async ({ params }) => {

@@ -23,6 +23,7 @@ import { createGroupBalanceService } from '$lib/server/app/group-balance';
 import { createUserBalanceService } from '$lib/server/app/user-balance';
 import { createExpenseService, type ExpenseRepos } from '$lib/server/app/expense';
 import { createGroupService, type GroupRepos } from '$lib/server/app/group';
+import { createCategoryService, type CategoryRepos } from '$lib/server/app/category';
 import { createSettlementService, type SettlementRepos } from '$lib/server/app/settlement';
 import { createGroupMemberService } from '$lib/server/app/group-member';
 import { createGroupInviteService, type InviteRepos } from '$lib/server/app/group-invite';
@@ -85,6 +86,10 @@ const settlementUnitOfWork = createUnitOfWork<SettlementRepos>((tx) => ({
 const groupUnitOfWork = createUnitOfWork<GroupRepos>((tx) => ({
 	groupRepo: createGroupRepository(tx),
 	groupMemberRepo: createGroupMemberRepository(tx),
+	categoryRepo: createCategoryRepository(tx)
+}));
+
+const categoryUnitOfWork = createUnitOfWork<CategoryRepos>((tx) => ({
 	categoryRepo: createCategoryRepository(tx)
 }));
 
@@ -159,6 +164,8 @@ export const groupService = createGroupService({
 	groupRepo,
 	pairBalanceRepo
 });
+
+export const categoryService = createCategoryService({ uow: categoryUnitOfWork, categoryRepo });
 
 export const notificationService = createNotificationService({ notificationRepo });
 

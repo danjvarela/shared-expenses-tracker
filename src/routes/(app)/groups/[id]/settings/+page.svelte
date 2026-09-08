@@ -22,6 +22,10 @@
 	};
 	const inviteForm = $derived(form as InviteForm | null);
 
+	type CategoryForm = { source?: string; message?: string };
+	const categoryForm = $derived(form as CategoryForm | null);
+	let categoryAdded = $state(false);
+
 	let avatarIcon: string | null = $state(untrack(() => data.group.avatarIcon));
 	let currencyCode = $state(untrack(() => data.group.currencyCode));
 
@@ -149,6 +153,59 @@
 				{/if}
 
 				<Button type="submit">Send invite</Button>
+			</form>
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root class="mt-4">
+		<Card.Header>
+			<Card.Title>Categories</Card.Title>
+			<Card.Description>
+				Add a custom category for this group's expenses. Anyone in the group can add one.
+			</Card.Description>
+		</Card.Header>
+		<Card.Content>
+			{#if data.categories.length > 0}
+				<ul class="mb-4 flex flex-wrap gap-2">
+					{#each data.categories as category (category.id)}
+						<Badge variant="secondary">{category.icon} {category.name}</Badge>
+					{/each}
+				</ul>
+			{/if}
+			<form
+				method="POST"
+				action="?/addCategory"
+				class="flex flex-col gap-4"
+				use:enhance={() => {
+					categoryAdded = false;
+					return async ({ result, update }) => {
+						await update();
+						categoryAdded = result.type === 'success';
+					};
+				}}
+			>
+				<Field.Field>
+					<Field.FieldLabel for="categoryName">Name</Field.FieldLabel>
+					<Input id="categoryName" name="name" required placeholder="Groceries" />
+				</Field.Field>
+
+				<Field.Field>
+					<Field.FieldLabel for="categoryIcon">Icon</Field.FieldLabel>
+					<Input id="categoryIcon" name="icon" required placeholder="🛒" />
+				</Field.Field>
+
+				{#if categoryForm?.source === 'addCategory' && categoryForm?.message}
+					<Field.FieldError>{categoryForm.message}</Field.FieldError>
+				{/if}
+
+				{#if categoryAdded}
+					<Alert.Root>
+						<CircleCheck class="size-4" />
+						<Alert.Title>Category added</Alert.Title>
+					</Alert.Root>
+				{/if}
+
+				<Button type="submit">Add category</Button>
 			</form>
 		</Card.Content>
 	</Card.Root>

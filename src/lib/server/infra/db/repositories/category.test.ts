@@ -89,6 +89,44 @@ describe('createCategoryRepository', () => {
 		});
 	});
 
+	describe('create', () => {
+		it('creates a category owned by the given group', async () => {
+			const db = makeDb();
+			await createTables(db);
+			await insertGroup(db, 'group-1');
+			const repo = createCategoryRepository(db);
+
+			const created = await repo.create({ name: 'Groceries', icon: '🛒', ownerGroupId: 'group-1' });
+
+			expect(created).toMatchObject({ name: 'Groceries', icon: '🛒', ownerGroupId: 'group-1' });
+			expect(await repo.findByOwnerAndName('group-1', 'Groceries')).toMatchObject({
+				id: created.id
+			});
+		});
+	});
+
+	describe('findByOwnerAndName', () => {
+		it('returns null when no category with that name exists for the owner group', async () => {
+			const db = makeDb();
+			await createTables(db);
+			await insertGroup(db, 'group-1');
+			const repo = createCategoryRepository(db);
+
+			expect(await repo.findByOwnerAndName('group-1', 'Groceries')).toBeNull();
+		});
+
+		it('does not match a category owned by a different group', async () => {
+			const db = makeDb();
+			await createTables(db);
+			await insertGroup(db, 'group-1');
+			await insertGroup(db, 'group-2');
+			await insertCategory(db, { id: 'cat-1', name: 'Groceries', ownerGroupId: 'group-1' });
+			const repo = createCategoryRepository(db);
+
+			expect(await repo.findByOwnerAndName('group-2', 'Groceries')).toBeNull();
+		});
+	});
+
 	describe('addToGroup', () => {
 		it('creates a group_category row linking the group and category', async () => {
 			const db = makeDb();

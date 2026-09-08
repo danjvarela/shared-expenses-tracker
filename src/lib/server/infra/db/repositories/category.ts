@@ -28,6 +28,24 @@ const getAllForGroup =
 		return rows.map((row) => row.category);
 	};
 
+const findByOwnerAndName =
+	(db: Database): ICategoryRepository['findByOwnerAndName'] =>
+	async (ownerGroupId, name) => {
+		const rows = await db
+			.select()
+			.from(category)
+			.where(and(eq(category.ownerGroupId, ownerGroupId), eq(category.name, name)));
+
+		return rows[0] ?? null;
+	};
+
+const create =
+	(db: Database): ICategoryRepository['create'] =>
+	async (input) => {
+		const [row] = await db.insert(category).values(input).returning();
+		return row;
+	};
+
 const addToGroup =
 	(db: Database): ICategoryRepository['addToGroup'] =>
 	async (groupId, categoryId) => {
@@ -47,6 +65,8 @@ export function createCategoryRepository(db: Database): ICategoryRepository {
 		getAll: getAll(db),
 		getDefaults: getDefaults(db),
 		getAllForGroup: getAllForGroup(db),
+		findByOwnerAndName: findByOwnerAndName(db),
+		create: create(db),
 		addToGroup: addToGroup(db),
 		removeFromGroup: removeFromGroup(db)
 	};
