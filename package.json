@@ -61,6 +61,7 @@
 		"@google/genai": "^2.21.0",
 		"@libsql/client": "^0.17.3",
 		"drizzle-orm": "^0.45.2",
+		"emoji-picker-element": "^1.29.1",
 		"mode-watcher": "^1.1.0",
 		"zod": "^4.4.3"
 	}

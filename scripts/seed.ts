@@ -51,6 +51,13 @@ async function main() {
 		.values([{ name: 'Apartment 4B' }, { name: 'Trip to Osaka' }, { name: 'Condo 12' }])
 		.returning();
 
+	const defaultCategories = [food, rent, transport, utilities, fun];
+	await db.insert(schema.groupCategory).values(
+		[apartment, tripToOsaka, condo].flatMap((group) =>
+			defaultCategories.map((category) => ({ groupId: group.id, categoryId: category.id }))
+		)
+	);
+
 	await db.insert(schema.groupMember).values([
 		{ groupId: apartment.id, userId: alice.id },
 		{ groupId: apartment.id, userId: bob.id },

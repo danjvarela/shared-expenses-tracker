@@ -10,6 +10,7 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import IconPicker from '$lib/components/icon-picker.svelte';
+	import EmojiPicker from '$lib/components/emoji-picker.svelte';
 	import { ArrowLeft, CircleCheck, Pencil, X } from '@lucide/svelte';
 	import { CURRENCIES } from '$lib/currency';
 	import { untrack } from 'svelte';
@@ -26,11 +27,14 @@
 	type CategoryForm = { source?: string; message?: string };
 	const categoryForm = $derived(form as CategoryForm | null);
 	let categoryAdded = $state(false);
+	let newCategoryIcon = $state('');
 	let editCategoryDialogOpen = $state(false);
 	let editingCategory: { id: string; name: string; icon: string } | null = $state(null);
+	let editCategoryIcon = $state('');
 
 	function openEditCategory(category: { id: string; name: string; icon: string }) {
 		editingCategory = category;
+		editCategoryIcon = category.icon;
 		editCategoryDialogOpen = true;
 	}
 
@@ -226,6 +230,7 @@
 					return async ({ result, update }) => {
 						await update();
 						categoryAdded = result.type === 'success';
+						if (categoryAdded) newCategoryIcon = '';
 					};
 				}}
 			>
@@ -236,7 +241,7 @@
 
 				<Field.Field>
 					<Field.FieldLabel for="categoryIcon">Icon</Field.FieldLabel>
-					<Input id="categoryIcon" name="icon" required placeholder="🛒" />
+					<EmojiPicker id="categoryIcon" name="icon" bind:value={newCategoryIcon} />
 				</Field.Field>
 
 				{#if categoryForm?.source === 'addCategory' && categoryForm?.message}
@@ -280,7 +285,7 @@
 
 					<Field.Field>
 						<Field.FieldLabel for="editCategoryIcon">Icon</Field.FieldLabel>
-						<Input id="editCategoryIcon" name="icon" required value={editingCategory.icon} />
+						<EmojiPicker id="editCategoryIcon" name="icon" bind:value={editCategoryIcon} />
 					</Field.Field>
 
 					{#if categoryForm?.source === 'editCategory' && categoryForm?.message}
