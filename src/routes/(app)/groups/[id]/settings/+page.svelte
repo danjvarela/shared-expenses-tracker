@@ -9,7 +9,7 @@
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import IconPicker from '$lib/components/icon-picker.svelte';
-	import { ArrowLeft, CircleCheck } from '@lucide/svelte';
+	import { ArrowLeft, CircleCheck, X } from '@lucide/svelte';
 	import { CURRENCIES } from '$lib/currency';
 	import { untrack } from 'svelte';
 	import { enhance } from '$app/forms';
@@ -168,9 +168,34 @@
 			{#if data.categories.length > 0}
 				<ul class="mb-4 flex flex-wrap gap-2">
 					{#each data.categories as category (category.id)}
-						<Badge variant="secondary">{category.icon} {category.name}</Badge>
+						<Badge variant="secondary" class="gap-1 pr-1">
+							{category.icon} {category.name}
+							<form
+								method="POST"
+								action="?/removeCategory"
+								use:enhance={() => {
+									return async ({ update }) => {
+										await update({ reset: false });
+									};
+								}}
+							>
+								<input type="hidden" name="categoryId" value={category.id} />
+								<Button
+									type="submit"
+									variant="ghost"
+									size="icon"
+									class="size-4 hover:text-destructive"
+									aria-label={`Remove ${category.name}`}
+								>
+									<X class="size-3" />
+								</Button>
+							</form>
+						</Badge>
 					{/each}
 				</ul>
+				{#if categoryForm?.source === 'removeCategory' && categoryForm?.message}
+					<Field.FieldError class="mb-4">{categoryForm.message}</Field.FieldError>
+				{/if}
 			{/if}
 			<form
 				method="POST"

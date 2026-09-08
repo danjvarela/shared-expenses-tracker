@@ -121,6 +121,24 @@ export const actions: Actions = {
 		return { source: 'addCategory', success: true };
 	},
 
+	removeCategory: async ({ request, params }) => {
+		const formData = await request.formData();
+		const categoryId = formData.get('categoryId');
+
+		if (typeof categoryId !== 'string' || categoryId.trim() === '') {
+			return fail(400, { source: 'removeCategory', message: 'Invalid category' });
+		}
+
+		try {
+			await categoryService.removeCategory(params.id, categoryId);
+		} catch (err) {
+			const actionResult = toActionResult(err);
+			return fail(actionResult.status, { source: 'removeCategory', ...actionResult.data });
+		}
+
+		return { source: 'removeCategory', success: true };
+	},
+
 	delete: async ({ params }) => {
 		try {
 			await groupService.deleteGroup(params.id);

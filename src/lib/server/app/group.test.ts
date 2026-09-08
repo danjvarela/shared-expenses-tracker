@@ -104,16 +104,26 @@ function fakeCategoryRepo(
 		async getAllForGroup() {
 			return [];
 		},
+		async findById() {
+			return null;
+		},
 		async findByOwnerAndName() {
 			return null;
 		},
 		async create(input) {
-			return { id: 'cat-new', name: input.name, icon: input.icon, createdAt: new Date() };
+			return {
+				id: 'cat-new',
+				name: input.name,
+				icon: input.icon,
+				ownerGroupId: input.ownerGroupId,
+				createdAt: new Date()
+			};
 		},
 		async addToGroup(groupId, categoryId) {
 			addedToGroup.push({ groupId, categoryId });
 		},
-		async removeFromGroup() {}
+		async removeFromGroup() {},
+		async delete() {}
 	};
 }
 
@@ -158,8 +168,8 @@ describe('createGroupService', () => {
 		const groupRepo = fakeGroupRepo();
 		const groupMemberRepo = fakeGroupMemberRepo();
 		const defaults: Array<Category> = [
-			{ id: 'cat-1', name: 'Rent', icon: '🏠', createdAt: new Date() },
-			{ id: 'cat-2', name: 'Food', icon: '🍔', createdAt: new Date() }
+			{ id: 'cat-1', name: 'Rent', icon: '🏠', ownerGroupId: null, createdAt: new Date() },
+			{ id: 'cat-2', name: 'Food', icon: '🍔', ownerGroupId: null, createdAt: new Date() }
 		];
 		const categoryRepo = fakeCategoryRepo(defaults);
 		const uow = fakeUow({ groupRepo, groupMemberRepo, categoryRepo });

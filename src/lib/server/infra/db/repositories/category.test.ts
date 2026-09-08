@@ -127,6 +127,40 @@ describe('createCategoryRepository', () => {
 		});
 	});
 
+	describe('findById', () => {
+		it('returns the category by id', async () => {
+			const db = makeDb();
+			await createTables(db);
+			await insertGroup(db, 'group-1');
+			await insertCategory(db, { id: 'cat-1', name: 'Groceries', ownerGroupId: 'group-1' });
+			const repo = createCategoryRepository(db);
+
+			expect(await repo.findById('cat-1')).toMatchObject({ id: 'cat-1', name: 'Groceries' });
+		});
+
+		it('returns null when no category has that id', async () => {
+			const db = makeDb();
+			await createTables(db);
+			const repo = createCategoryRepository(db);
+
+			expect(await repo.findById('missing')).toBeNull();
+		});
+	});
+
+	describe('delete', () => {
+		it('hard-deletes the category row', async () => {
+			const db = makeDb();
+			await createTables(db);
+			await insertGroup(db, 'group-1');
+			await insertCategory(db, { id: 'cat-1', name: 'Groceries', ownerGroupId: 'group-1' });
+			const repo = createCategoryRepository(db);
+
+			await repo.delete('cat-1');
+
+			expect(await repo.findById('cat-1')).toBeNull();
+		});
+	});
+
 	describe('addToGroup', () => {
 		it('creates a group_category row linking the group and category', async () => {
 			const db = makeDb();

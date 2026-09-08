@@ -28,6 +28,13 @@ const getAllForGroup =
 		return rows.map((row) => row.category);
 	};
 
+const findById =
+	(db: Database): ICategoryRepository['findById'] =>
+	async (categoryId) => {
+		const rows = await db.select().from(category).where(eq(category.id, categoryId));
+		return rows[0] ?? null;
+	};
+
 const findByOwnerAndName =
 	(db: Database): ICategoryRepository['findByOwnerAndName'] =>
 	async (ownerGroupId, name) => {
@@ -60,14 +67,22 @@ const removeFromGroup =
 			.where(and(eq(groupCategory.groupId, groupId), eq(groupCategory.categoryId, categoryId)));
 	};
 
+const deleteCategory =
+	(db: Database): ICategoryRepository['delete'] =>
+	async (categoryId) => {
+		await db.delete(category).where(eq(category.id, categoryId));
+	};
+
 export function createCategoryRepository(db: Database): ICategoryRepository {
 	return {
 		getAll: getAll(db),
 		getDefaults: getDefaults(db),
 		getAllForGroup: getAllForGroup(db),
+		findById: findById(db),
 		findByOwnerAndName: findByOwnerAndName(db),
 		create: create(db),
 		addToGroup: addToGroup(db),
-		removeFromGroup: removeFromGroup(db)
+		removeFromGroup: removeFromGroup(db),
+		delete: deleteCategory(db)
 	};
 }

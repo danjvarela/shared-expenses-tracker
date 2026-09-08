@@ -40,7 +40,20 @@ export function createCategoryService(deps: {
 		return deps.categoryRepo.getAllForGroup(groupId);
 	}
 
-	return { addCustomCategory, getForGroup };
+	async function removeCategory(groupId: string, categoryId: string): Promise<void> {
+		return deps.uow.run(async ({ categoryRepo }) => {
+			const category = await categoryRepo.findById(categoryId);
+			if (!category) return;
+
+			if (category.ownerGroupId === null) {
+				await categoryRepo.removeFromGroup(groupId, categoryId);
+			} else if (category.ownerGroupId === groupId) {
+				await categoryRepo.delete(categoryId);
+			}
+		});
+	}
+
+	return { addCustomCategory, getForGroup, removeCategory };
 }
 
 export type CategoryService = ReturnType<typeof createCategoryService>;

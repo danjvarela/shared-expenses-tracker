@@ -7,34 +7,54 @@ import { createCategoryService, DuplicateCategoryNameError, type CategoryRepos }
 function fakeCategoryRepo(existing: Array<Category> = []): ICategoryRepository & {
 	created: Array<{ name: string; icon: string; ownerGroupId: string }>;
 	addedToGroup: Array<{ groupId: string; categoryId: string }>;
+	removedFromGroup: Array<{ groupId: string; categoryId: string }>;
+	deleted: Array<string>;
 } {
 	const created: Array<{ name: string; icon: string; ownerGroupId: string }> = [];
 	const addedToGroup: Array<{ groupId: string; categoryId: string }> = [];
+	const removedFromGroup: Array<{ groupId: string; categoryId: string }> = [];
+	const deleted: Array<string> = [];
 	let nextId = 1;
 	return {
 		created,
 		addedToGroup,
+		removedFromGroup,
+		deleted,
 		async getAll() {
 			return existing;
 		},
 		async getDefaults() {
-			return existing.filter((c) => c.name === undefined);
+			return existing.filter((c) => c.ownerGroupId === null);
 		},
 		async getAllForGroup() {
 			return [];
+		},
+		async findById(categoryId) {
+			return existing.find((c) => c.id === categoryId) ?? null;
 		},
 		async findByOwnerAndName(ownerGroupId, name) {
 			return existing.find((c) => c.name === name) ?? null;
 		},
 		async create(input) {
 			created.push(input);
-			const row = { id: `cat-${nextId++}`, name: input.name, icon: input.icon, createdAt: new Date() };
+			const row = {
+				id: `cat-${nextId++}`,
+				name: input.name,
+				icon: input.icon,
+				ownerGroupId: input.ownerGroupId,
+				createdAt: new Date()
+			};
 			return row;
 		},
 		async addToGroup(groupId, categoryId) {
 			addedToGroup.push({ groupId, categoryId });
 		},
-		async removeFromGroup() {}
+		async removeFromGroup(groupId, categoryId) {
+			removedFromGroup.push({ groupId, categoryId });
+		},
+		async delete(categoryId) {
+			deleted.push(categoryId);
+		}
 	};
 }
 
@@ -63,7 +83,7 @@ describe('createCategoryService', () => {
 
 	it('rejects a duplicate name within the same owner group', async () => {
 		const categoryRepo = fakeCategoryRepo([
-			{ id: 'cat-existing', name: 'Groceries', icon: '🛒', createdAt: new Date() }
+			{ id: 'cat-existing', name: 'Groceries', icon: '🛒', ownerGroupId: 'group-1', createdAt: new Date() }
 		]);
 		const uow = fakeUow({ categoryRepo });
 		const service = createCategoryService({ uow, categoryRepo });
@@ -91,7 +111,7 @@ describe('createCategoryService', () => {
 			...fakeCategoryRepo(),
 			async getAllForGroup(groupId) {
 				return groupId === 'group-1'
-					? [{ id: 'cat-1', name: 'Rent', icon: '🏠', createdAt: new Date() }]
+					? [{ id: 'cat-1', name: 'Rent', icon: '🏠', ownerGroupId: null, createdAt: new Date() }]
 					: [];
 			}
 		};
@@ -99,5 +119,57 @@ describe('createCategoryService', () => {
 		const service = createCategoryService({ uow, categoryRepo });
 
 		expect(await service.getForGroup('group-1')).toMatchObject([{ id: 'cat-1' }]);
+	});
+
+	describe('removeCategory', () => {
+		it('unlinks a default category from the group without deleting it', async () => {
+			const categoryRepo = fakeCategoryRepo([
+				{ id: 'cat-1', name: 'Rent', icon: '🏠', ownerGroupId: null, createdAt: new Date() }
+			]);
+			const uow = fakeUow({ categoryRepo });
+			const service = createCategoryService({ uow, categoryRepo });
+
+			await service.removeCategory('group-1', 'cat-1');
+
+			expect(categoryRepo.removedFromGroup).toEqual([{ groupId: 'group-1', categoryId: 'cat-1' }]);
+			expect(categoryRepo.deleted).toEqual([]);
+		});
+
+		it('hard-deletes a custom category owned by the group', async () => {
+			const categoryRepo = fakeCategoryRepo([
+				{ id: 'cat-1', name: 'Groceries', icon: '🛒', ownerGroupId: 'group-1', createdAt: new Date() }
+			]);
+			const uow = fakeUow({ categoryRepo });
+			const service = createCategoryService({ uow, categoryRepo });
+
+			await service.removeCategory('group-1', 'cat-1');
+
+			expect(categoryRepo.deleted).toEqual(['cat-1']);
+			expect(categoryRepo.removedFromGroup).toEqual([]);
+		});
+
+		it('does not delete a custom category owned by a different group', async () => {
+			const categoryRepo = fakeCategoryRepo([
+				{ id: 'cat-1', name: 'Groceries', icon: '🛒', ownerGroupId: 'group-2', createdAt: new Date() }
+			]);
+			const uow = fakeUow({ categoryRepo });
+			const service = createCategoryService({ uow, categoryRepo });
+
+			await service.removeCategory('group-1', 'cat-1');
+
+			expect(categoryRepo.deleted).toEqual([]);
+			expect(categoryRepo.removedFromGroup).toEqual([]);
+		});
+
+		it('does nothing when the category does not exist', async () => {
+			const categoryRepo = fakeCategoryRepo();
+			const uow = fakeUow({ categoryRepo });
+			const service = createCategoryService({ uow, categoryRepo });
+
+			await service.removeCategory('group-1', 'missing');
+
+			expect(categoryRepo.deleted).toEqual([]);
+			expect(categoryRepo.removedFromGroup).toEqual([]);
+		});
 	});
 });
