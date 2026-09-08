@@ -47,6 +47,21 @@ async function insertCategory(
 }
 
 describe('createCategoryRepository', () => {
+	describe('getDefaults', () => {
+		it('returns only categories with no owner group', async () => {
+			const db = makeDb();
+			await createTables(db);
+			await insertGroup(db, 'group-1');
+			await insertCategory(db, { id: 'cat-1', name: 'Food' });
+			await insertCategory(db, { id: 'cat-2', name: 'Custom', ownerGroupId: 'group-1' });
+			const repo = createCategoryRepository(db);
+
+			const categories = await repo.getDefaults();
+
+			expect(categories.map((c) => c.id)).toEqual(['cat-1']);
+		});
+	});
+
 	describe('getAllForGroup', () => {
 		it('returns only categories linked to the group via group_category', async () => {
 			const db = makeDb();

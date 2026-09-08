@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import type { IGroupRepository } from '$lib/server/app/interfaces/repositories/group';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
 import type { IPairBalanceRepository } from '$lib/server/app/interfaces/repositories/pair-balance';
+import type { ICategoryRepository } from '$lib/server/app/interfaces/repositories/category';
+import type { Category } from '$lib/server/domain/category';
 import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
 import { createGroupService, type GroupRepos } from './group';
 
@@ -87,6 +89,28 @@ function fakeGroupMemberRepo(): IGroupMemberRepository & { created: Array<unknow
 	};
 }
 
+function fakeCategoryRepo(
+	defaults: Array<Category> = []
+): ICategoryRepository & { addedToGroup: Array<{ groupId: string; categoryId: string }> } {
+	const addedToGroup: Array<{ groupId: string; categoryId: string }> = [];
+	return {
+		addedToGroup,
+		async getAll() {
+			return defaults;
+		},
+		async getDefaults() {
+			return defaults;
+		},
+		async getAllForGroup() {
+			return [];
+		},
+		async addToGroup(groupId, categoryId) {
+			addedToGroup.push({ groupId, categoryId });
+		},
+		async removeFromGroup() {}
+	};
+}
+
 function fakeUow(repos: GroupRepos): IUnitOfWork<GroupRepos> {
 	return {
 		async run(fn) {
@@ -99,7 +123,8 @@ describe('createGroupService', () => {
 	it('creates a group and adds the creator as its sole member', async () => {
 		const groupRepo = fakeGroupRepo();
 		const groupMemberRepo = fakeGroupMemberRepo();
-		const uow = fakeUow({ groupRepo, groupMemberRepo });
+		const categoryRepo = fakeCategoryRepo();
+		const uow = fakeUow({ groupRepo, groupMemberRepo, categoryRepo });
 		const pairBalanceRepo = fakePairBalanceRepo();
 		const service = createGroupService({ uow, groupRepo, pairBalanceRepo });
 
@@ -123,10 +148,36 @@ describe('createGroupService', () => {
 		expect(groupMemberRepo.created).toEqual([{ groupId: 'group-1', userId }]);
 	});
 
+	it('links the new group to every default category', async () => {
+		const groupRepo = fakeGroupRepo();
+		const groupMemberRepo = fakeGroupMemberRepo();
+		const defaults: Array<Category> = [
+			{ id: 'cat-1', name: 'Rent', icon: '🏠', createdAt: new Date() },
+			{ id: 'cat-2', name: 'Food', icon: '🍔', createdAt: new Date() }
+		];
+		const categoryRepo = fakeCategoryRepo(defaults);
+		const uow = fakeUow({ groupRepo, groupMemberRepo, categoryRepo });
+		const pairBalanceRepo = fakePairBalanceRepo();
+		const service = createGroupService({ uow, groupRepo, pairBalanceRepo });
+
+		const created = await service.createGroup({
+			name: 'Trip',
+			currencyCode: 'PHP',
+			avatarIcon: null,
+			creatorUserId: userId
+		});
+
+		expect(categoryRepo.addedToGroup).toEqual([
+			{ groupId: created.id, categoryId: 'cat-1' },
+			{ groupId: created.id, categoryId: 'cat-2' }
+		]);
+	});
+
 	it('defaults currencyCode to PHP when not provided', async () => {
 		const groupRepo = fakeGroupRepo();
 		const groupMemberRepo = fakeGroupMemberRepo();
-		const uow = fakeUow({ groupRepo, groupMemberRepo });
+		const categoryRepo = fakeCategoryRepo();
+		const uow = fakeUow({ groupRepo, groupMemberRepo, categoryRepo });
 		const pairBalanceRepo = fakePairBalanceRepo();
 		const service = createGroupService({ uow, groupRepo, pairBalanceRepo });
 
@@ -143,7 +194,8 @@ describe('createGroupService', () => {
 	it('updates a group', async () => {
 		const groupRepo = fakeGroupRepo();
 		const groupMemberRepo = fakeGroupMemberRepo();
-		const uow = fakeUow({ groupRepo, groupMemberRepo });
+		const categoryRepo = fakeCategoryRepo();
+		const uow = fakeUow({ groupRepo, groupMemberRepo, categoryRepo });
 		const pairBalanceRepo = fakePairBalanceRepo();
 		const service = createGroupService({ uow, groupRepo, pairBalanceRepo });
 
@@ -174,8 +226,9 @@ describe('createGroupService', () => {
 	it('deletes a group with no outstanding balances', async () => {
 		const groupRepo = fakeGroupRepo();
 		const groupMemberRepo = fakeGroupMemberRepo();
+		const categoryRepo = fakeCategoryRepo();
 		const pairBalanceRepo = fakePairBalanceRepo([]);
-		const uow = fakeUow({ groupRepo, groupMemberRepo });
+		const uow = fakeUow({ groupRepo, groupMemberRepo, categoryRepo });
 		const service = createGroupService({ uow, groupRepo, pairBalanceRepo });
 
 		await service.deleteGroup('group-1');
@@ -189,7 +242,8 @@ describe('createGroupService', () => {
 		const pairBalanceRepo = fakePairBalanceRepo([
 			{ groupId: 'group-1', fromUserId: 'alice', toUserId: 'bob', amountCents: 500 }
 		]);
-		const uow = fakeUow({ groupRepo, groupMemberRepo });
+		const categoryRepo = fakeCategoryRepo();
+		const uow = fakeUow({ groupRepo, groupMemberRepo, categoryRepo });
 		const service = createGroupService({ uow, groupRepo, pairBalanceRepo });
 
 		await expect(service.deleteGroup('group-1')).rejects.toThrow();

@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import type { ICategoryRepository } from '$lib/server/app/interfaces/repositories/category';
 import type { Database } from '$lib/server/infra/db/types';
 import { category } from '$lib/server/infra/db/schema/category';
@@ -8,6 +8,12 @@ const getAll =
 	(db: Database): ICategoryRepository['getAll'] =>
 	async () => {
 		return await db.select().from(category);
+	};
+
+const getDefaults =
+	(db: Database): ICategoryRepository['getDefaults'] =>
+	async () => {
+		return await db.select().from(category).where(isNull(category.ownerGroupId));
 	};
 
 const getAllForGroup =
@@ -39,6 +45,7 @@ const removeFromGroup =
 export function createCategoryRepository(db: Database): ICategoryRepository {
 	return {
 		getAll: getAll(db),
+		getDefaults: getDefaults(db),
 		getAllForGroup: getAllForGroup(db),
 		addToGroup: addToGroup(db),
 		removeFromGroup: removeFromGroup(db)

@@ -3,6 +3,7 @@ import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
 import type { IGroupRepository } from '$lib/server/app/interfaces/repositories/group';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
 import type { IPairBalanceRepository } from '$lib/server/app/interfaces/repositories/pair-balance';
+import type { ICategoryRepository } from '$lib/server/app/interfaces/repositories/category';
 import type { Group } from '$lib/server/domain/group';
 import { DEFAULT_CURRENCY_CODE } from '$lib/currency';
 
@@ -23,6 +24,7 @@ export interface GroupUpdateInput {
 export interface GroupRepos {
 	groupRepo: IGroupRepository;
 	groupMemberRepo: IGroupMemberRepository;
+	categoryRepo: ICategoryRepository;
 }
 
 export class GroupHasOutstandingBalanceError extends AppError {
@@ -37,7 +39,7 @@ export function createGroupService(deps: {
 	pairBalanceRepo: IPairBalanceRepository;
 }) {
 	async function createGroup(input: GroupInput): Promise<Group> {
-		return deps.uow.run(async ({ groupRepo, groupMemberRepo }) => {
+		return deps.uow.run(async ({ groupRepo, groupMemberRepo, categoryRepo }) => {
 			const created = await groupRepo.create({
 				name: input.name,
 				currencyCode: input.currencyCode ?? DEFAULT_CURRENCY_CODE,
@@ -45,6 +47,11 @@ export function createGroupService(deps: {
 			});
 
 			await groupMemberRepo.create(created.id, input.creatorUserId);
+
+			const defaultCategories = await categoryRepo.getDefaults();
+			for (const defaultCategory of defaultCategories) {
+				await categoryRepo.addToGroup(created.id, defaultCategory.id);
+			}
 
 			return created;
 		});

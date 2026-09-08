@@ -84,7 +84,8 @@ const settlementUnitOfWork = createUnitOfWork<SettlementRepos>((tx) => ({
 
 const groupUnitOfWork = createUnitOfWork<GroupRepos>((tx) => ({
 	groupRepo: createGroupRepository(tx),
-	groupMemberRepo: createGroupMemberRepository(tx)
+	groupMemberRepo: createGroupMemberRepository(tx),
+	categoryRepo: createCategoryRepository(tx)
 }));
 
 const inviteUnitOfWork = createUnitOfWork<InviteRepos>((tx) => ({
