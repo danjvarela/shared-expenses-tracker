@@ -21,6 +21,7 @@ async function main() {
 	await db.delete(schema.settlement);
 	await db.delete(schema.expense);
 	await db.delete(schema.groupMember);
+	await db.delete(schema.groupCategory);
 	await db.delete(schema.category);
 	await db.delete(schema.group);
 	await db.delete(schema.user);

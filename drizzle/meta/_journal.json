@@ -71,6 +71,13 @@
       "when": 1787245242955,
       "tag": "0009_expense_group",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1788879910015,
+      "tag": "0010_moaning_flatman",
+      "breakpoints": true
     }
   ]
 }
