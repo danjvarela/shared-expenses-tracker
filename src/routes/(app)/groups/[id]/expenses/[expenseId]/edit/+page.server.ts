@@ -18,7 +18,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 	}
 
 	const members = await groupMemberService.getGroupMembers(params.id);
-	const categories = await categoryRepo.getAll();
+	const categories = await categoryRepo.getAllForGroup(params.id);
 
 	return { group, members, categories, expense };
 };

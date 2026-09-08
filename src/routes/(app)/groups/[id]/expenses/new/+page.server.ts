@@ -7,7 +7,7 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 	const { group } = await parent();
 
 	const members = await groupMemberService.getGroupMembers(params.id);
-	const categories = await categoryRepo.getAll();
+	const categories = await categoryRepo.getAllForGroup(params.id);
 
 	return { group, members, categories, user: locals.user };
 };

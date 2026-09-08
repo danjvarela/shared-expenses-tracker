@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ params, parent, locals }) => {
 		error(404, 'Expense not found');
 	}
 
-	const categories = await categoryRepo.getAll();
+	const categories = await categoryRepo.getAllForGroup(params.id);
 	const receipts = await receiptService.getReceiptsForExpense(locals.user!.id, params.expenseId);
 
 	return { group, categories, expense, receipts };

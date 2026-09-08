@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 
 	const [groupExpenses, categories, members] = await Promise.all([
 		expenseService.getGroupExpenses(params.id),
-		categoryRepo.getAll(),
+		categoryRepo.getAllForGroup(params.id),
 		groupMemberService.getGroupMembers(params.id)
 	]);
 	const debts = await groupBalanceService.getDebtsForUserInGroup(locals.user!.id, params.id);
