@@ -147,6 +147,21 @@ describe('createCategoryRepository', () => {
 		});
 	});
 
+	describe('update', () => {
+		it('updates the name and icon of the category', async () => {
+			const db = makeDb();
+			await createTables(db);
+			await insertGroup(db, 'group-1');
+			await insertCategory(db, { id: 'cat-1', name: 'Groceries', ownerGroupId: 'group-1' });
+			const repo = createCategoryRepository(db);
+
+			const updated = await repo.update('cat-1', { name: 'Food', icon: '🍔' });
+
+			expect(updated).toMatchObject({ id: 'cat-1', name: 'Food', icon: '🍔' });
+			expect(await repo.findById('cat-1')).toMatchObject({ name: 'Food', icon: '🍔' });
+		});
+	});
+
 	describe('delete', () => {
 		it('hard-deletes the category row', async () => {
 			const db = makeDb();

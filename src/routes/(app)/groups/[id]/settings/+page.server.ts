@@ -121,6 +121,32 @@ export const actions: Actions = {
 		return { source: 'addCategory', success: true };
 	},
 
+	editCategory: async ({ request, params }) => {
+		const formData = await request.formData();
+		const categoryId = formData.get('categoryId');
+		const name = formData.get('name');
+		const icon = formData.get('icon');
+
+		if (typeof categoryId !== 'string' || categoryId.trim() === '') {
+			return fail(400, { source: 'editCategory', message: 'Invalid category' });
+		}
+		if (typeof name !== 'string' || name.trim() === '') {
+			return fail(400, { source: 'editCategory', message: 'Enter a category name' });
+		}
+		if (typeof icon !== 'string' || icon.trim() === '') {
+			return fail(400, { source: 'editCategory', message: 'Enter an icon' });
+		}
+
+		try {
+			await categoryService.editCategory(params.id, categoryId, name.trim(), icon.trim());
+		} catch (err) {
+			const actionResult = toActionResult(err);
+			return fail(actionResult.status, { source: 'editCategory', ...actionResult.data });
+		}
+
+		return { source: 'editCategory', success: true };
+	},
+
 	removeCategory: async ({ request, params }) => {
 		const formData = await request.formData();
 		const categoryId = formData.get('categoryId');

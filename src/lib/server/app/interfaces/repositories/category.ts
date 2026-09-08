@@ -13,6 +13,8 @@ export interface ICategoryRepository {
 
 	create(input: { name: string; icon: string; ownerGroupId: string }): Promise<Category>;
 
+	update(categoryId: string, input: { name: string; icon: string }): Promise<Category>;
+
 	addToGroup(groupId: string, categoryId: string): Promise<void>;
 
 	removeFromGroup(groupId: string, categoryId: string): Promise<void>;

@@ -123,7 +123,10 @@ function fakeCategoryRepo(
 			addedToGroup.push({ groupId, categoryId });
 		},
 		async removeFromGroup() {},
-		async delete() {}
+		async delete() {},
+		async update() {
+			throw new Error('not implemented');
+		}
 	};
 }
 

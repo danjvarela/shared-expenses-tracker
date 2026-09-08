@@ -8,8 +8,9 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
+	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import IconPicker from '$lib/components/icon-picker.svelte';
-	import { ArrowLeft, CircleCheck, X } from '@lucide/svelte';
+	import { ArrowLeft, CircleCheck, Pencil, X } from '@lucide/svelte';
 	import { CURRENCIES } from '$lib/currency';
 	import { untrack } from 'svelte';
 	import { enhance } from '$app/forms';
@@ -25,6 +26,13 @@
 	type CategoryForm = { source?: string; message?: string };
 	const categoryForm = $derived(form as CategoryForm | null);
 	let categoryAdded = $state(false);
+	let editCategoryDialogOpen = $state(false);
+	let editingCategory: { id: string; name: string; icon: string } | null = $state(null);
+
+	function openEditCategory(category: { id: string; name: string; icon: string }) {
+		editingCategory = category;
+		editCategoryDialogOpen = true;
+	}
 
 	let avatarIcon: string | null = $state(untrack(() => data.group.avatarIcon));
 	let currencyCode = $state(untrack(() => data.group.currencyCode));
@@ -170,6 +178,18 @@
 					{#each data.categories as category (category.id)}
 						<Badge variant="secondary" class="gap-1 pr-1">
 							{category.icon} {category.name}
+							{#if category.ownerGroupId === data.group.id}
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon"
+									class="size-4"
+									aria-label={`Edit ${category.name}`}
+									onclick={() => openEditCategory(category)}
+								>
+									<Pencil class="size-3" />
+								</Button>
+							{/if}
 							<form
 								method="POST"
 								action="?/removeCategory"
@@ -234,6 +254,46 @@
 			</form>
 		</Card.Content>
 	</Card.Root>
+
+	<Dialog.Root bind:open={editCategoryDialogOpen}>
+		<Dialog.Content>
+			<Dialog.Header>
+				<Dialog.Title>Edit category</Dialog.Title>
+			</Dialog.Header>
+			{#if editingCategory}
+				<form
+					method="POST"
+					action="?/editCategory"
+					class="flex flex-col gap-4"
+					use:enhance={() => {
+						return async ({ result, update }) => {
+							await update({ reset: false });
+							if (result.type === 'success') editCategoryDialogOpen = false;
+						};
+					}}
+				>
+					<input type="hidden" name="categoryId" value={editingCategory.id} />
+					<Field.Field>
+						<Field.FieldLabel for="editCategoryName">Name</Field.FieldLabel>
+						<Input id="editCategoryName" name="name" required value={editingCategory.name} />
+					</Field.Field>
+
+					<Field.Field>
+						<Field.FieldLabel for="editCategoryIcon">Icon</Field.FieldLabel>
+						<Input id="editCategoryIcon" name="icon" required value={editingCategory.icon} />
+					</Field.Field>
+
+					{#if categoryForm?.source === 'editCategory' && categoryForm?.message}
+						<Field.FieldError>{categoryForm.message}</Field.FieldError>
+					{/if}
+
+					<Dialog.Footer>
+						<Button type="submit">Save</Button>
+					</Dialog.Footer>
+				</form>
+			{/if}
+		</Dialog.Content>
+	</Dialog.Root>
 
 	<Card.Root class="mt-4">
 		<Card.Header>

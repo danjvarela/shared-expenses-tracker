@@ -53,6 +53,17 @@ const create =
 		return row;
 	};
 
+const update =
+	(db: Database): ICategoryRepository['update'] =>
+	async (categoryId, input) => {
+		const [row] = await db
+			.update(category)
+			.set({ name: input.name, icon: input.icon })
+			.where(eq(category.id, categoryId))
+			.returning();
+		return row;
+	};
+
 const addToGroup =
 	(db: Database): ICategoryRepository['addToGroup'] =>
 	async (groupId, categoryId) => {
@@ -81,6 +92,7 @@ export function createCategoryRepository(db: Database): ICategoryRepository {
 		findById: findById(db),
 		findByOwnerAndName: findByOwnerAndName(db),
 		create: create(db),
+		update: update(db),
 		addToGroup: addToGroup(db),
 		removeFromGroup: removeFromGroup(db),
 		delete: deleteCategory(db)

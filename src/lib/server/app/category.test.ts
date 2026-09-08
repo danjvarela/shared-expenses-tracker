@@ -2,24 +2,32 @@ import { describe, it, expect } from 'vitest';
 import type { ICategoryRepository } from '$lib/server/app/interfaces/repositories/category';
 import type { Category } from '$lib/server/domain/category';
 import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
-import { createCategoryService, DuplicateCategoryNameError, type CategoryRepos } from './category';
+import {
+	createCategoryService,
+	DuplicateCategoryNameError,
+	CategoryNotEditableError,
+	type CategoryRepos
+} from './category';
 
 function fakeCategoryRepo(existing: Array<Category> = []): ICategoryRepository & {
 	created: Array<{ name: string; icon: string; ownerGroupId: string }>;
 	addedToGroup: Array<{ groupId: string; categoryId: string }>;
 	removedFromGroup: Array<{ groupId: string; categoryId: string }>;
 	deleted: Array<string>;
+	updated: Array<{ categoryId: string; name: string; icon: string }>;
 } {
 	const created: Array<{ name: string; icon: string; ownerGroupId: string }> = [];
 	const addedToGroup: Array<{ groupId: string; categoryId: string }> = [];
 	const removedFromGroup: Array<{ groupId: string; categoryId: string }> = [];
 	const deleted: Array<string> = [];
+	const updated: Array<{ categoryId: string; name: string; icon: string }> = [];
 	let nextId = 1;
 	return {
 		created,
 		addedToGroup,
 		removedFromGroup,
 		deleted,
+		updated,
 		async getAll() {
 			return existing;
 		},
@@ -54,6 +62,11 @@ function fakeCategoryRepo(existing: Array<Category> = []): ICategoryRepository &
 		},
 		async delete(categoryId) {
 			deleted.push(categoryId);
+		},
+		async update(categoryId, input) {
+			updated.push({ categoryId, ...input });
+			const found = existing.find((c) => c.id === categoryId)!;
+			return { ...found, name: input.name, icon: input.icon };
 		}
 	};
 }
@@ -170,6 +183,73 @@ describe('createCategoryService', () => {
 
 			expect(categoryRepo.deleted).toEqual([]);
 			expect(categoryRepo.removedFromGroup).toEqual([]);
+		});
+	});
+
+	describe('editCategory', () => {
+		it('updates name and icon of a category owned by the group', async () => {
+			const categoryRepo = fakeCategoryRepo([
+				{ id: 'cat-1', name: 'Groceries', icon: '🛒', ownerGroupId: 'group-1', createdAt: new Date() }
+			]);
+			const uow = fakeUow({ categoryRepo });
+			const service = createCategoryService({ uow, categoryRepo });
+
+			const updated = await service.editCategory('group-1', 'cat-1', 'Food', '🍔');
+
+			expect(updated).toMatchObject({ name: 'Food', icon: '🍔' });
+			expect(categoryRepo.updated).toEqual([{ categoryId: 'cat-1', name: 'Food', icon: '🍔' }]);
+		});
+
+		it('rejects editing a default category', async () => {
+			const categoryRepo = fakeCategoryRepo([
+				{ id: 'cat-1', name: 'Rent', icon: '🏠', ownerGroupId: null, createdAt: new Date() }
+			]);
+			const uow = fakeUow({ categoryRepo });
+			const service = createCategoryService({ uow, categoryRepo });
+
+			await expect(service.editCategory('group-1', 'cat-1', 'Housing', '🏠')).rejects.toThrow(
+				CategoryNotEditableError
+			);
+			expect(categoryRepo.updated).toEqual([]);
+		});
+
+		it('rejects editing a custom category owned by a different group', async () => {
+			const categoryRepo = fakeCategoryRepo([
+				{ id: 'cat-1', name: 'Groceries', icon: '🛒', ownerGroupId: 'group-2', createdAt: new Date() }
+			]);
+			const uow = fakeUow({ categoryRepo });
+			const service = createCategoryService({ uow, categoryRepo });
+
+			await expect(service.editCategory('group-1', 'cat-1', 'Food', '🍔')).rejects.toThrow(
+				CategoryNotEditableError
+			);
+			expect(categoryRepo.updated).toEqual([]);
+		});
+
+		it('rejects a duplicate name within the same owner group', async () => {
+			const categoryRepo = fakeCategoryRepo([
+				{ id: 'cat-1', name: 'Groceries', icon: '🛒', ownerGroupId: 'group-1', createdAt: new Date() },
+				{ id: 'cat-2', name: 'Food', icon: '🍔', ownerGroupId: 'group-1', createdAt: new Date() }
+			]);
+			const uow = fakeUow({ categoryRepo });
+			const service = createCategoryService({ uow, categoryRepo });
+
+			await expect(service.editCategory('group-1', 'cat-1', 'Food', '🛒')).rejects.toThrow(
+				DuplicateCategoryNameError
+			);
+			expect(categoryRepo.updated).toEqual([]);
+		});
+
+		it('allows editing a category to its own current name', async () => {
+			const categoryRepo = fakeCategoryRepo([
+				{ id: 'cat-1', name: 'Groceries', icon: '🛒', ownerGroupId: 'group-1', createdAt: new Date() }
+			]);
+			const uow = fakeUow({ categoryRepo });
+			const service = createCategoryService({ uow, categoryRepo });
+
+			await service.editCategory('group-1', 'cat-1', 'Groceries', '🛍️');
+
+			expect(categoryRepo.updated).toEqual([{ categoryId: 'cat-1', name: 'Groceries', icon: '🛍️' }]);
 		});
 	});
 });

@@ -13,6 +13,12 @@ export class DuplicateCategoryNameError extends AppError {
 	}
 }
 
+export class CategoryNotEditableError extends AppError {
+	constructor() {
+		super('This category cannot be edited', 403);
+	}
+}
+
 export function createCategoryService(deps: {
 	uow: IUnitOfWork<CategoryRepos>;
 	categoryRepo: ICategoryRepository;
@@ -53,7 +59,27 @@ export function createCategoryService(deps: {
 		});
 	}
 
-	return { addCustomCategory, getForGroup, removeCategory };
+	async function editCategory(
+		groupId: string,
+		categoryId: string,
+		name: string,
+		icon: string
+	): Promise<Category> {
+		const trimmedName = name.trim();
+		const trimmedIcon = icon.trim();
+
+		return deps.uow.run(async ({ categoryRepo }) => {
+			const category = await categoryRepo.findById(categoryId);
+			if (!category || category.ownerGroupId !== groupId) throw new CategoryNotEditableError();
+
+			const existing = await categoryRepo.findByOwnerAndName(groupId, trimmedName);
+			if (existing && existing.id !== categoryId) throw new DuplicateCategoryNameError();
+
+			return categoryRepo.update(categoryId, { name: trimmedName, icon: trimmedIcon });
+		});
+	}
+
+	return { addCustomCategory, getForGroup, removeCategory, editCategory };
 }
 
 export type CategoryService = ReturnType<typeof createCategoryService>;
