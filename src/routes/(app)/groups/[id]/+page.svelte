@@ -3,6 +3,7 @@
 	import * as Empty from '$lib/components/ui/empty/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
+	import * as ScrollArea from '$lib/components/ui/scroll-area/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
@@ -282,12 +283,12 @@
 	}
 </script>
 
-<div class="container mx-auto max-w-xl p-4">
-	<Button variant="ghost" href={resolve('/')} class="mb-2 -ml-2">
+<div class="container mx-auto flex h-[calc(100dvh-4rem)] max-w-xl flex-col p-4">
+	<Button variant="ghost" href={resolve('/')} class="mb-2 -ml-2 shrink-0 w-fit">
 		<ArrowLeft class="size-4" />
 		Back
 	</Button>
-	<div class="mb-4 flex items-center justify-between">
+	<div class="mb-4 flex shrink-0 items-center justify-between">
 		<h1 class="text-2xl font-semibold">{data.group.name}</h1>
 		<div class="flex gap-2">
 			<Button variant="outline" size="icon" href="{data.group.id}/settings" aria-label="Settings">
@@ -326,7 +327,7 @@
 	</div>
 
 	{#if data.hasOutstandingDebt}
-		<Alert.Root class="mb-4">
+		<Alert.Root class="mb-4 shrink-0">
 			<Alert.Title>You have pending balances</Alert.Title>
 			<Alert.Action class="top-1/2 -translate-y-1/2">
 				<Button size="sm" href="{data.group.id}/settle">Settle up</Button>
@@ -335,7 +336,7 @@
 	{/if}
 
 	{#if data.groupExpenses.length}
-		<div class="mb-4 flex flex-col gap-2">
+		<div class="mb-4 flex shrink-0 flex-col gap-2">
 			<div class="flex items-center gap-2">
 				<div class="relative flex-1">
 					<Search
@@ -476,6 +477,7 @@
 				</div>
 			{/if}
 		</div>
+		<ScrollArea.Root class="min-h-0 flex-1">
 		{#if hasNoMatches}
 			<Empty.Root>
 				<Empty.Header>
@@ -578,8 +580,9 @@
 				{/if}
 			</div>
 		{/if}
+		</ScrollArea.Root>
 	{:else}
-		<Empty.Root>
+		<Empty.Root class="flex flex-1 items-center justify-center">
 			<Empty.Header>
 				<Empty.Title>No expenses yet</Empty.Title>
 				<Empty.Description>
