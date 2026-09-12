@@ -234,15 +234,10 @@
 					};
 				}}
 			>
-				<Field.Field>
-					<Field.FieldLabel for="categoryName">Name</Field.FieldLabel>
-					<Input id="categoryName" name="name" required placeholder="Groceries" />
-				</Field.Field>
-
-				<Field.Field>
-					<Field.FieldLabel for="categoryIcon">Icon</Field.FieldLabel>
-					<EmojiPicker id="categoryIcon" name="icon" bind:value={newCategoryIcon} />
-				</Field.Field>
+				<div class="flex items-center gap-2">
+					<EmojiPicker name="icon" bind:value={newCategoryIcon} />
+					<Input name="name" required placeholder="Groceries" class="flex-1" />
+				</div>
 
 				{#if categoryForm?.source === 'addCategory' && categoryForm?.message}
 					<Field.FieldError>{categoryForm.message}</Field.FieldError>
@@ -278,15 +273,10 @@
 					}}
 				>
 					<input type="hidden" name="categoryId" value={editingCategory.id} />
-					<Field.Field>
-						<Field.FieldLabel for="editCategoryName">Name</Field.FieldLabel>
-						<Input id="editCategoryName" name="name" required value={editingCategory.name} />
-					</Field.Field>
-
-					<Field.Field>
-						<Field.FieldLabel for="editCategoryIcon">Icon</Field.FieldLabel>
-						<EmojiPicker id="editCategoryIcon" name="icon" bind:value={editCategoryIcon} />
-					</Field.Field>
+					<div class="flex items-center gap-2">
+						<EmojiPicker name="icon" bind:value={editCategoryIcon} />
+						<Input name="name" required value={editingCategory.name} class="flex-1" />
+					</div>
 
 					{#if categoryForm?.source === 'editCategory' && categoryForm?.message}
 						<Field.FieldError>{categoryForm.message}</Field.FieldError>
