@@ -148,6 +148,7 @@ describe('createGroupBalanceService', () => {
 			groupAvatarIcon: null,
 			counterpartyId: bob,
 			counterpartyName: 'Bob',
+			counterpartyAvatarStorageKey: null,
 			amountCents: 500
 		};
 		const otherGroupDebt: UserDebt = { ...debt, groupId: 'group-2' };

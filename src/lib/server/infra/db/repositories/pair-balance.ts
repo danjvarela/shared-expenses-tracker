@@ -94,6 +94,7 @@ const getDebtsForUser =
 				groupAvatarIcon: group.avatarIcon,
 				counterpartyId: pairBalance.toUserId,
 				counterpartyName: user.displayName,
+				counterpartyAvatarStorageKey: user.avatarStorageKey,
 				amountCents: pairBalance.amountCents
 			})
 			.from(pairBalance)
@@ -113,6 +114,7 @@ const getDebtsForUserInGroup =
 				groupAvatarIcon: group.avatarIcon,
 				counterpartyId: pairBalance.toUserId,
 				counterpartyName: user.displayName,
+				counterpartyAvatarStorageKey: user.avatarStorageKey,
 				amountCents: pairBalance.amountCents
 			})
 			.from(pairBalance)

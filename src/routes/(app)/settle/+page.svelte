@@ -16,6 +16,7 @@
 	}
 	import { resolve } from '$app/paths';
 	import { formatAmountCents } from '$lib/currency';
+	import { getInitials, avatarUrlFor } from '$lib/avatar';
 	import { enhance } from '$app/forms';
 	import { toast } from 'svelte-sonner';
 
@@ -27,15 +28,6 @@
 
 	function debtKey(debt: (typeof data.debts)[number]) {
 		return `${debt.groupId}:${debt.counterpartyId}`;
-	}
-
-	function getInitials(displayName: string) {
-		return displayName
-			.split(' ')
-			.map((part) => part[0])
-			.join('')
-			.slice(0, 2)
-			.toUpperCase();
 	}
 
 	function openDialog(debt: (typeof data.debts)[number]) {
@@ -60,6 +52,12 @@
 					<Card.Header>
 						<div class="flex items-center gap-3">
 							<Avatar.Root>
+								{#if debt.counterpartyAvatarStorageKey}
+									<Avatar.Image
+										src={avatarUrlFor(debt.counterpartyId)}
+										alt={debt.counterpartyName}
+									/>
+								{/if}
 								<Avatar.Fallback>{getInitials(debt.counterpartyName)}</Avatar.Fallback>
 							</Avatar.Root>
 							<div>

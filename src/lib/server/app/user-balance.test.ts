@@ -63,6 +63,7 @@ describe('createUserBalanceService.getUserDebts', () => {
 				groupAvatarIcon: null,
 				counterpartyId: 'bob',
 				counterpartyName: 'Bob',
+				counterpartyAvatarStorageKey: null,
 				amountCents: 500
 			},
 			{
@@ -72,6 +73,7 @@ describe('createUserBalanceService.getUserDebts', () => {
 				groupAvatarIcon: 'Home',
 				counterpartyId: 'carol',
 				counterpartyName: 'Carol',
+				counterpartyAvatarStorageKey: null,
 				amountCents: 1500
 			}
 		];

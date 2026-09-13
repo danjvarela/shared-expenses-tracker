@@ -7,6 +7,7 @@ export interface UserDebt {
 	groupAvatarIcon: string | null;
 	counterpartyId: string;
 	counterpartyName: string;
+	counterpartyAvatarStorageKey: string | null;
 	amountCents: number;
 }
 
