@@ -2,6 +2,7 @@ export interface GroupMemberWithUser {
 	userId: string;
 	displayName: string;
 	defaultSplitPercent: number | null;
+	avatarStorageKey: string | null;
 }
 
 export interface IGroupMemberRepository {

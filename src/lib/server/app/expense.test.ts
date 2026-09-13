@@ -344,8 +344,8 @@ describe('createExpenseService', () => {
 			expenseRepo,
 			groupRepo: fakeGroupRepo('USD'),
 			groupMemberRepo: fakeGroupMemberRepo([
-				{ userId: alice, displayName: 'Alice', defaultSplitPercent: null },
-				{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
+				{ userId: alice, displayName: 'Alice', defaultSplitPercent: null, avatarStorageKey: null },
+				{ userId: bob, displayName: 'Bob', defaultSplitPercent: null, avatarStorageKey: null }
 			]),
 			notificationRepo
 		});
@@ -452,8 +452,8 @@ describe('createExpenseService', () => {
 
 	describe('updateExpense with a former-member split', () => {
 		const currentMembers: Array<GroupMemberWithUser> = [
-			{ userId: alice, displayName: 'Alice', defaultSplitPercent: null },
-			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
+			{ userId: alice, displayName: 'Alice', defaultSplitPercent: null, avatarStorageKey: null },
+			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null, avatarStorageKey: null }
 		];
 
 		function seedWithFormerMember(): ExpenseWithSplits {

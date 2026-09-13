@@ -21,11 +21,16 @@ function fakeUserRepo(seed: Array<User> = []): IUserRepository & {
 			const target = normalizeEmail(email);
 			return Array.from(rows.values()).find((row) => row.email === target) ?? null;
 		},
+		async getById(id) {
+			return rows.get(id) ?? null;
+		},
 		async create(input) {
 			const row: User = {
 				id: `user-${nextId++}`,
 				displayName: input.displayName,
-				email: normalizeEmail(input.email)
+				email: normalizeEmail(input.email),
+				avatarStorageKey: null,
+				avatarMime: null
 			};
 			rows.set(row.id, row);
 			return row;
@@ -34,7 +39,8 @@ function fakeUserRepo(seed: Array<User> = []): IUserRepository & {
 			updatedDisplayNames.push({ userId, displayName });
 			const row = rows.get(userId);
 			if (row) row.displayName = displayName;
-		}
+		},
+		async updateAvatar() {}
 	};
 }
 
@@ -137,7 +143,9 @@ describe('createAuthService', () => {
 		const existingUser: User = {
 			id: 'user-existing',
 			displayName: 'Alice',
-			email: googleProfile.email
+			email: googleProfile.email,
+			avatarStorageKey: null,
+			avatarMime: null
 		};
 		const service = createAuthService({
 			userRepo: fakeUserRepo([existingUser]),
@@ -160,7 +168,9 @@ describe('createAuthService', () => {
 		const existingUser: User = {
 			id: 'user-invited',
 			displayName: googleProfile.email,
-			email: googleProfile.email
+			email: googleProfile.email,
+			avatarStorageKey: null,
+			avatarMime: null
 		};
 		const userRepo = fakeUserRepo([existingUser]);
 		const service = createAuthService({
@@ -189,7 +199,9 @@ describe('createAuthService', () => {
 		const existingUser: User = {
 			id: 'user-existing',
 			displayName: googleProfile.name,
-			email: googleProfile.email
+			email: googleProfile.email,
+			avatarStorageKey: null,
+			avatarMime: null
 		};
 		const userRepo = fakeUserRepo([existingUser]);
 		const service = createAuthService({
@@ -253,7 +265,13 @@ describe('createAuthService', () => {
 	});
 
 	it('rejects a session past its expiry and deletes it', async () => {
-		const user: User = { id: 'user-1', displayName: 'Alice', email: googleProfile.email };
+		const user: User = {
+			id: 'user-1',
+			displayName: 'Alice',
+			email: googleProfile.email,
+			avatarStorageKey: null,
+			avatarMime: null
+		};
 		const users = new Map([[user.id, user]]);
 		const sessionRepo = fakeSessionRepo(users);
 		const service = createAuthService({

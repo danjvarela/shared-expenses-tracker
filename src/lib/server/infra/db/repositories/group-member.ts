@@ -11,7 +11,8 @@ const getAllForGroupWithUser =
 			.select({
 				userId: groupMember.userId,
 				displayName: user.displayName,
-				defaultSplitPercent: groupMember.defaultSplitPercent
+				defaultSplitPercent: groupMember.defaultSplitPercent,
+				avatarStorageKey: user.avatarStorageKey
 			})
 			.from(groupMember)
 			.innerJoin(user, eq(user.id, groupMember.userId))

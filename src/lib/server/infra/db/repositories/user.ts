@@ -15,12 +15,19 @@ const findByEmail =
 		return rows[0] ?? null;
 	};
 
+const getById =
+	(db: Database): IUserRepository['getById'] =>
+	async (userId) => {
+		const rows = await db.select().from(user).where(eq(user.id, userId));
+		return rows[0] ?? null;
+	};
+
 const create =
 	(db: Database): IUserRepository['create'] =>
 	async (input) => {
 		const normalizedEmail = normalizeEmail(input.email);
 
-    // when creating from invite, displayName is email so we normalize it first
+		// when creating from invite, displayName is email so we normalize it first
 		const resolvedDisplayName = input.fromInvite
 			? normalizeEmail(input.displayName)
 			: input.displayName;
@@ -38,10 +45,21 @@ const updateDisplayName =
 		await db.update(user).set({ displayName }).where(eq(user.id, userId));
 	};
 
+const updateAvatar =
+	(db: Database): IUserRepository['updateAvatar'] =>
+	async (userId, avatar) => {
+		await db
+			.update(user)
+			.set({ avatarStorageKey: avatar.avatarStorageKey, avatarMime: avatar.avatarMime })
+			.where(eq(user.id, userId));
+	};
+
 export function createUserRepository(db: Database): IUserRepository {
 	return {
 		findByEmail: findByEmail(db),
+		getById: getById(db),
 		create: create(db),
-		updateDisplayName: updateDisplayName(db)
+		updateDisplayName: updateDisplayName(db),
+		updateAvatar: updateAvatar(db)
 	};
 }

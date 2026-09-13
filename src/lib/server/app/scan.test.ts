@@ -17,7 +17,10 @@ import type {
 	IReceiptNormalizer,
 	NormalizedReceipt
 } from '$lib/server/app/interfaces/receipt-normalizer';
-import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
+import type {
+	IGroupMemberRepository,
+	GroupMemberWithUser
+} from '$lib/server/app/interfaces/repositories/group-member';
 import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
 import type {
 	IExpenseRepository,
@@ -109,7 +112,7 @@ function fakeScanner(canned: ScanResult): IReceiptScanner & {
 
 function fakeGroupMemberRepo(
 	member: boolean,
-	members: Array<{ userId: string; displayName: string; defaultSplitPercent: number | null }> = []
+	members: Array<GroupMemberWithUser> = []
 ): IGroupMemberRepository {
 	return {
 		async getAllForGroupWithUser() {
@@ -311,7 +314,7 @@ function service(
 		storage?: ReturnType<typeof fakeStorageBackend>;
 		normalizer?: ReturnType<typeof fakeNormalizer>;
 		confirmRepos?: ScanConfirmRepos;
-		members?: Array<{ userId: string; displayName: string; defaultSplitPercent: number | null }>;
+		members?: Array<GroupMemberWithUser>;
 		logger?: ILogger;
 	} = {}
 ) {
@@ -542,7 +545,14 @@ describe('createScanService.scan', () => {
 			'receipt scan complete'
 		]);
 
-		const forbidden = ['description', 'merchant', 'filename', 'originalFilename', 'displayName', 'email'];
+		const forbidden = [
+			'description',
+			'merchant',
+			'filename',
+			'originalFilename',
+			'displayName',
+			'email'
+		];
 		for (const entry of logger.entries) {
 			for (const key of forbidden) {
 				expect(entry.fields).not.toHaveProperty(key);
@@ -561,8 +571,8 @@ describe('createScanService.confirmDraft', () => {
 	const storageKey = 'stored-key';
 
 	const members = [
-		{ userId: alice, displayName: 'Alice', defaultSplitPercent: 50 },
-		{ userId: bob, displayName: 'Bob', defaultSplitPercent: 50 }
+		{ userId: alice, displayName: 'Alice', defaultSplitPercent: 50, avatarStorageKey: null },
+		{ userId: bob, displayName: 'Bob', defaultSplitPercent: 50, avatarStorageKey: null }
 	];
 
 	function line(
@@ -709,8 +719,8 @@ describe('createScanService.confirmDraft', () => {
 
 	it('falls back to an equal split when no custom percents and no default split is configured', async () => {
 		const noDefaults = [
-			{ userId: alice, displayName: 'Alice', defaultSplitPercent: null },
-			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
+			{ userId: alice, displayName: 'Alice', defaultSplitPercent: null, avatarStorageKey: null },
+			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null, avatarStorageKey: null }
 		];
 		const { svc, expenseRepo } = service({ members: noDefaults });
 
@@ -744,7 +754,14 @@ describe('createScanService.confirmDraft', () => {
 			'draft confirm complete'
 		]);
 
-		const forbidden = ['description', 'merchant', 'filename', 'originalFilename', 'displayName', 'email'];
+		const forbidden = [
+			'description',
+			'merchant',
+			'filename',
+			'originalFilename',
+			'displayName',
+			'email'
+		];
 		for (const entry of logger.entries) {
 			for (const key of forbidden) {
 				expect(entry.fields).not.toHaveProperty(key);

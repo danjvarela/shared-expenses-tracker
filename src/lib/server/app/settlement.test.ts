@@ -121,8 +121,8 @@ function fakeGroupMemberRepo(): IGroupMemberRepository {
 	return {
 		async getAllForGroupWithUser() {
 			return [
-				{ userId: alice, displayName: 'Alice', defaultSplitPercent: null },
-				{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
+				{ userId: alice, displayName: 'Alice', defaultSplitPercent: null, avatarStorageKey: null },
+				{ userId: bob, displayName: 'Bob', defaultSplitPercent: null, avatarStorageKey: null }
 			];
 		},
 		async create() {},

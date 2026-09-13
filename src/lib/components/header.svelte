@@ -11,6 +11,9 @@
 
 	let { user, unreadCount }: { user: User; unreadCount: number } = $props();
 	let unreadBadge = $derived(unreadCount > 9 ? '9+' : String(unreadCount));
+	let avatarUrl = $derived(
+		user.avatarStorageKey ? resolve('/(app)/avatars/[userId]', { userId: user.id }) : null
+	);
 
 	async function logout() {
 		await fetch('/logout', { method: 'POST' });
@@ -65,6 +68,9 @@
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
 					<Avatar.Root>
+						{#if avatarUrl}
+							<Avatar.Image src={avatarUrl} alt={user.displayName} />
+						{/if}
 						<Avatar.Fallback>{getInitials(user.displayName)}</Avatar.Fallback>
 					</Avatar.Root>
 				</DropdownMenu.Trigger>

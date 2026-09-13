@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
+import type {
+	IGroupMemberRepository,
+	GroupMemberWithUser
+} from '$lib/server/app/interfaces/repositories/group-member';
 import type { IIdentityRepository } from '$lib/server/app/interfaces/repositories/identity';
 import type { IPairBalanceRepository } from '$lib/server/app/interfaces/repositories/pair-balance';
 import { createGroupMemberService } from './group-member';
@@ -48,7 +51,7 @@ function fakePairBalanceRepo(usersWithBalance: Set<string>): IPairBalanceReposit
 }
 
 function fakeGroupMemberRepo(
-	seed: Array<{ userId: string; displayName: string; defaultSplitPercent: number | null }>
+	seed: Array<GroupMemberWithUser>
 ): IGroupMemberRepository & { updates: Array<unknown> } {
 	const rows = new Map(seed.map((row) => [row.userId, row]));
 	const updates: Array<unknown> = [];
@@ -81,8 +84,8 @@ function fakeGroupMemberRepo(
 describe('createGroupMemberService', () => {
 	it('returns the members the repo reports for a group', async () => {
 		const groupMemberRepo = fakeGroupMemberRepo([
-			{ userId: alice, displayName: 'Alice', defaultSplitPercent: 60 },
-			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
+			{ userId: alice, displayName: 'Alice', defaultSplitPercent: 60, avatarStorageKey: null },
+			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null, avatarStorageKey: null }
 		]);
 		const service = createGroupMemberService({
 			groupMemberRepo,
@@ -91,15 +94,15 @@ describe('createGroupMemberService', () => {
 		});
 
 		expect(await service.getGroupMembers(groupId)).toEqual([
-			{ userId: alice, displayName: 'Alice', defaultSplitPercent: 60 },
-			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
+			{ userId: alice, displayName: 'Alice', defaultSplitPercent: 60, avatarStorageKey: null },
+			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null, avatarStorageKey: null }
 		]);
 	});
 
 	it('saves default split percentages that sum to 100', async () => {
 		const groupMemberRepo = fakeGroupMemberRepo([
-			{ userId: alice, displayName: 'Alice', defaultSplitPercent: null },
-			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
+			{ userId: alice, displayName: 'Alice', defaultSplitPercent: null, avatarStorageKey: null },
+			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null, avatarStorageKey: null }
 		]);
 		const service = createGroupMemberService({
 			groupMemberRepo,
@@ -125,8 +128,8 @@ describe('createGroupMemberService', () => {
 
 	it('allows resetting every member back to unset', async () => {
 		const groupMemberRepo = fakeGroupMemberRepo([
-			{ userId: alice, displayName: 'Alice', defaultSplitPercent: 60 },
-			{ userId: bob, displayName: 'Bob', defaultSplitPercent: 40 }
+			{ userId: alice, displayName: 'Alice', defaultSplitPercent: 60, avatarStorageKey: null },
+			{ userId: bob, displayName: 'Bob', defaultSplitPercent: 40, avatarStorageKey: null }
 		]);
 		const service = createGroupMemberService({
 			groupMemberRepo,
@@ -144,8 +147,8 @@ describe('createGroupMemberService', () => {
 
 	it('rejects a save where the set percentages do not sum to 100', async () => {
 		const groupMemberRepo = fakeGroupMemberRepo([
-			{ userId: alice, displayName: 'Alice', defaultSplitPercent: null },
-			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
+			{ userId: alice, displayName: 'Alice', defaultSplitPercent: null, avatarStorageKey: null },
+			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null, avatarStorageKey: null }
 		]);
 		const service = createGroupMemberService({
 			groupMemberRepo,
@@ -165,8 +168,8 @@ describe('createGroupMemberService', () => {
 
 	it('allows a newly-joined member to stay unset while others are set, as long as the set ones sum to 100', async () => {
 		const groupMemberRepo = fakeGroupMemberRepo([
-			{ userId: alice, displayName: 'Alice', defaultSplitPercent: null },
-			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null }
+			{ userId: alice, displayName: 'Alice', defaultSplitPercent: null, avatarStorageKey: null },
+			{ userId: bob, displayName: 'Bob', defaultSplitPercent: null, avatarStorageKey: null }
 		]);
 		const service = createGroupMemberService({
 			groupMemberRepo,
@@ -192,9 +195,19 @@ describe('createGroupMemberService', () => {
 
 	it('exposes per-member invited-pending and outstanding-balance flags', async () => {
 		const groupMemberRepo = fakeGroupMemberRepo([
-			{ userId: alice, displayName: 'Alice', defaultSplitPercent: 60 },
-			{ userId: bob, displayName: 'bob@example.com', defaultSplitPercent: 40 },
-			{ userId: 'cara', displayName: 'cara@example.com', defaultSplitPercent: null }
+			{ userId: alice, displayName: 'Alice', defaultSplitPercent: 60, avatarStorageKey: null },
+			{
+				userId: bob,
+				displayName: 'bob@example.com',
+				defaultSplitPercent: 40,
+				avatarStorageKey: null
+			},
+			{
+				userId: 'cara',
+				displayName: 'cara@example.com',
+				defaultSplitPercent: null,
+				avatarStorageKey: null
+			}
 		]);
 		const identities = new Set<string>([alice]);
 		const usersWithBalance = new Set<string>(['cara']);
@@ -209,6 +222,7 @@ describe('createGroupMemberService', () => {
 				userId: alice,
 				displayName: 'Alice',
 				defaultSplitPercent: 60,
+				avatarStorageKey: null,
 				invitedPending: false,
 				hasOutstandingBalance: false
 			},
@@ -216,6 +230,7 @@ describe('createGroupMemberService', () => {
 				userId: bob,
 				displayName: 'bob@example.com',
 				defaultSplitPercent: 40,
+				avatarStorageKey: null,
 				invitedPending: true,
 				hasOutstandingBalance: false
 			},
@@ -223,6 +238,7 @@ describe('createGroupMemberService', () => {
 				userId: 'cara',
 				displayName: 'cara@example.com',
 				defaultSplitPercent: null,
+				avatarStorageKey: null,
 				invitedPending: true,
 				hasOutstandingBalance: true
 			}

@@ -35,7 +35,8 @@ function fakeGroupMemberRepo(
 			return [...members].map((userId) => ({
 				userId,
 				displayName: displayNames.get(userId) ?? userId,
-				defaultSplitPercent: null
+				defaultSplitPercent: null,
+				avatarStorageKey: null
 			}));
 		},
 		async create() {},

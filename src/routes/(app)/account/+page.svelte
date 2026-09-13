@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { ArrowLeft, CircleCheck } from '@lucide/svelte';
+	import { ArrowLeft, CircleCheck, Trash2 } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Field from '$lib/components/ui/field/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
+	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { toast } from 'svelte-sonner';
 	import { enhance } from '$app/forms';
@@ -14,7 +15,28 @@
 	type UpdateProfileForm = { source?: string; message?: string; success?: boolean };
 	const updateProfileForm = $derived(form as UpdateProfileForm | null);
 
+	type UpdateAvatarForm = { source?: string; message?: string; success?: boolean };
+	const updateAvatarForm = $derived(
+		form?.source === 'updateAvatar' ? (form as UpdateAvatarForm) : null
+	);
+
+	type DeleteAvatarForm = { source?: string; message?: string; success?: boolean };
+	const deleteAvatarForm = $derived(
+		form?.source === 'deleteAvatar' ? (form as DeleteAvatarForm) : null
+	);
+
 	let saved = $state(false);
+
+	const avatarUrl = $derived(
+		data.avatarStorageKey ? resolve('/(app)/avatars/[userId]', { userId: data.userId }) : null
+	);
+
+	function getInitials(displayName: string): string {
+		const parts = displayName.trim().split(/\s+/).filter(Boolean);
+		if (parts.length === 0) return '?';
+		if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+		return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+	}
 </script>
 
 <div class="container mx-auto max-w-xl p-4">
@@ -68,6 +90,83 @@
 
 				<Button type="submit">Save</Button>
 			</form>
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root class="mt-4">
+		<Card.Header>
+			<Card.Title>Profile picture</Card.Title>
+			<Card.Description>
+				Shown next to your name across your groups. Images are resized and converted to webp.
+			</Card.Description>
+		</Card.Header>
+		<Card.Content>
+			<div class="flex flex-col gap-4">
+				<div class="flex items-center gap-4">
+					<Avatar.Root class="size-16">
+						{#if avatarUrl}
+							<Avatar.Image src={avatarUrl} alt={data.displayName} />
+						{/if}
+						<Avatar.Fallback>{getInitials(data.displayName)}</Avatar.Fallback>
+					</Avatar.Root>
+
+					{#if data.avatarStorageKey}
+						<form
+							method="POST"
+							action="?/deleteAvatar"
+							use:enhance={() => {
+								return async ({ result, update }) => {
+									await update({ reset: false });
+									if (result.type === 'success') toast.success('Profile picture removed');
+								};
+							}}
+						>
+							<Button type="submit" variant="ghost" size="sm" class="text-destructive">
+								<Trash2 class="size-4" />
+								Remove
+							</Button>
+						</form>
+					{/if}
+				</div>
+
+				<form
+					method="POST"
+					action="?/updateAvatar"
+					enctype="multipart/form-data"
+					class="flex flex-col gap-4"
+					use:enhance={() => {
+						return async ({ result, update }) => {
+							await update({ reset: false });
+							if (result.type === 'success') toast.success('Profile picture updated');
+						};
+					}}
+				>
+					<Field.Field>
+						<Field.FieldLabel for="avatarFile">Upload a picture</Field.FieldLabel>
+						<Input id="avatarFile" name="file" type="file" accept="image/*" required />
+					</Field.Field>
+
+					{#if updateAvatarForm?.message}
+						<Field.FieldError>{updateAvatarForm.message}</Field.FieldError>
+					{/if}
+
+					{#if updateAvatarForm?.success}
+						<Alert.Root>
+							<CircleCheck class="size-4" />
+							<Alert.Title>Profile picture updated</Alert.Title>
+						</Alert.Root>
+					{/if}
+
+					{#if deleteAvatarForm?.success}
+						<Alert.Root>
+							<CircleCheck class="size-4" />
+							<Alert.Title>Profile picture removed</Alert.Title>
+						</Alert.Root>
+					{/if}
+
+					<Button type="submit">Upload</Button>
+				</form>
+			</div>
 		</Card.Content>
 	</Card.Root>
 </div>

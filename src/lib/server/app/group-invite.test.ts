@@ -23,15 +23,25 @@ function fakeUserRepo(seed: Array<User> = []): IUserRepository & {
 			const target = normalizeEmail(email);
 			return Array.from(rows.values()).find((row) => row.email === target) ?? null;
 		},
+		async getById(id) {
+			return rows.get(id) ?? null;
+		},
 		async create(input) {
 			const email = normalizeEmail(input.email);
 			const displayName = input.fromInvite ? normalizeEmail(input.displayName) : input.displayName;
-			const row: User = { id: `user-${rows.size}`, displayName, email };
+			const row: User = {
+				id: `user-${rows.size}`,
+				displayName,
+				email,
+				avatarStorageKey: null,
+				avatarMime: null
+			};
 			rows.set(row.id, row);
 			created.push({ displayName, email });
 			return row;
 		},
-		async updateDisplayName() {}
+		async updateDisplayName() {},
+		async updateAvatar() {}
 	};
 }
 
@@ -85,7 +95,13 @@ describe('createGroupInviteService', () => {
 	});
 
 	it('adds an existing user as a member without creating a new user', async () => {
-		const existing: User = { id: 'user-dave', displayName: 'Dave', email: 'dave@example.com' };
+		const existing: User = {
+			id: 'user-dave',
+			displayName: 'Dave',
+			email: 'dave@example.com',
+			avatarStorageKey: null,
+			avatarMime: null
+		};
 		const userRepo = fakeUserRepo([existing]);
 		const groupMemberRepo = fakeGroupMemberRepo(new Set());
 		const service = createGroupInviteService({ uow: fakeUow({ userRepo, groupMemberRepo }) });
@@ -98,7 +114,13 @@ describe('createGroupInviteService', () => {
 	});
 
 	it('is a no-op and reports already-a-member when the user is already in the group', async () => {
-		const existing: User = { id: 'user-dave', displayName: 'Dave', email: 'dave@example.com' };
+		const existing: User = {
+			id: 'user-dave',
+			displayName: 'Dave',
+			email: 'dave@example.com',
+			avatarStorageKey: null,
+			avatarMime: null
+		};
 		const userRepo = fakeUserRepo([existing]);
 		const groupMemberRepo = fakeGroupMemberRepo(new Set(['user-dave']));
 		const service = createGroupInviteService({ uow: fakeUow({ userRepo, groupMemberRepo }) });
@@ -110,7 +132,13 @@ describe('createGroupInviteService', () => {
 	});
 
 	it('treats the inviter inviting themselves as already-a-member', async () => {
-		const inviter: User = { id: 'alice', displayName: 'Alice', email: 'alice@example.com' };
+		const inviter: User = {
+			id: 'alice',
+			displayName: 'Alice',
+			email: 'alice@example.com',
+			avatarStorageKey: null,
+			avatarMime: null
+		};
 		const userRepo = fakeUserRepo([inviter]);
 		const groupMemberRepo = fakeGroupMemberRepo(new Set(['alice']));
 		const service = createGroupInviteService({ uow: fakeUow({ userRepo, groupMemberRepo }) });

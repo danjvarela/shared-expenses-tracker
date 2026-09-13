@@ -181,7 +181,8 @@
 				<ul class="mb-4 flex flex-wrap gap-2">
 					{#each data.categories as category (category.id)}
 						<Badge variant="secondary" class="gap-1 pr-1">
-							{category.icon} {category.name}
+							{category.icon}
+							{category.name}
 							{#if category.ownerGroupId === data.group.id}
 								<Button
 									type="button"
@@ -309,6 +310,9 @@
 					<li class="flex items-center justify-between gap-3">
 						<div class="flex min-w-0 items-center gap-3">
 							<Avatar.Root>
+								{#if member.avatarStorageKey}
+									<Avatar.Image src="/avatars/{member.userId}" alt={member.displayName} />
+								{/if}
 								<Avatar.Fallback>{initials(member.displayName)}</Avatar.Fallback>
 							</Avatar.Root>
 							<span class="truncate font-medium">{member.displayName}</span>

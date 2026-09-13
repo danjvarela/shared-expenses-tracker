@@ -17,6 +17,7 @@ import { createFileStorageBackend } from '$lib/server/infra/file-storage';
 import { createReceiptScannerBackend } from '$lib/server/infra/receipt-scanner';
 import { createPopplerPdfProcessor } from '$lib/server/infra/pdf';
 import { createReceiptNormalizer } from '$lib/server/infra/receipt-normalizer';
+import { createAvatarNormalizer } from '$lib/server/infra/avatar-normalizer';
 
 import { createAuthService } from '$lib/server/app/auth';
 import { createGroupBalanceService } from '$lib/server/app/group-balance';
@@ -70,6 +71,9 @@ const pdfProcessor = createPopplerPdfProcessor({ logger: logger.child({ componen
 const receiptNormalizer = createReceiptNormalizer({
 	pdfProcessor,
 	logger: logger.child({ component: 'normalizer' })
+});
+const avatarNormalizer = createAvatarNormalizer({
+	logger: logger.child({ component: 'avatar-normalizer' })
 });
 const receiptScannerBackend = createReceiptScannerBackend(undefined, {
 	pdfProcessor,
@@ -181,7 +185,12 @@ export const categoryService = createCategoryService({ uow: categoryUnitOfWork, 
 
 export const notificationService = createNotificationService({ notificationRepo });
 
-export const userService = createUserService({ userRepo });
+export const userService = createUserService({
+	userRepo,
+	storageBackend: avatarStorageBackend,
+	normalizer: avatarNormalizer,
+	logger: logger.child({ component: 'user' })
+});
 
 export const receiptService = createReceiptService({
 	receiptRepo,
@@ -228,5 +237,6 @@ export {
 	notificationRepo,
 	receiptRepo,
 	receiptScannerBackend,
-	avatarStorageBackend
+	avatarStorageBackend,
+	userRepo
 };
