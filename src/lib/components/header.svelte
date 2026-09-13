@@ -7,26 +7,16 @@
 	import { toggleMode } from 'mode-watcher';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
+	import { getInitials, avatarUrlFor } from '$lib/avatar';
 	import type { User } from '$lib/server/domain/user';
 
 	let { user, unreadCount }: { user: User; unreadCount: number } = $props();
 	let unreadBadge = $derived(unreadCount > 9 ? '9+' : String(unreadCount));
-	let avatarUrl = $derived(
-		user.avatarStorageKey ? resolve('/(app)/avatars/[userId]', { userId: user.id }) : null
-	);
+	let avatarUrl = $derived(user.avatarStorageKey ? avatarUrlFor(user.id) : null);
 
 	async function logout() {
 		await fetch('/logout', { method: 'POST' });
 		goto(resolve('/login'));
-	}
-
-	function getInitials(displayName: string) {
-		return displayName
-			.split(' ')
-			.map((part) => part[0])
-			.join('')
-			.slice(0, 2)
-			.toUpperCase();
 	}
 </script>
 

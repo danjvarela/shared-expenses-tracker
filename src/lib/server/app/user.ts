@@ -19,13 +19,13 @@ export class InvalidDisplayNameError extends AppError {
 
 export class AvatarTooLargeError extends AppError {
 	constructor() {
-		super('Profile picture is too large', 413);
+		super('Avatar is too large', 413);
 	}
 }
 
 export class AvatarMimeNotAllowedError extends AppError {
 	constructor() {
-		super('Profile picture must be an image', 415);
+		super('Avatar must be an image', 415);
 	}
 }
 

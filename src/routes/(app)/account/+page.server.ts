@@ -47,7 +47,7 @@ export const actions: Actions = {
 		const sniffedMime = sniffMime(bytes);
 
 		if (!sniffedMime) {
-			return fail(415, { source: 'updateAvatar', message: 'Profile picture must be an image' });
+			return fail(415, { source: 'updateAvatar', message: 'Avatar must be an image' });
 		}
 
 		try {

@@ -66,9 +66,8 @@ export function createAvatarNormalizer({
 				return { bytes: new Uint8Array(webp), mime: WEBP_MIME };
 			} catch (err) {
 				if (err instanceof AvatarNormalizeError) throw err;
-				const wrapped = new AvatarNormalizeError();
-				wrapped.cause = err;
-				throw wrapped;
+				logger.error('avatar normalize failed', { err });
+				throw new AvatarNormalizeError();
 			}
 		}
 	};

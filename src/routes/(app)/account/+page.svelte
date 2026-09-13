@@ -10,6 +10,7 @@
 	import { toast } from 'svelte-sonner';
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
+	import { getInitials, avatarUrlFor } from '$lib/avatar';
 
 	const { data, form } = $props();
 
@@ -28,16 +29,7 @@
 
 	let saved = $state(false);
 
-	const avatarUrl = $derived(
-		data.avatarStorageKey ? resolve('/(app)/avatars/[userId]', { userId: data.userId }) : null
-	);
-
-	function getInitials(displayName: string): string {
-		const parts = displayName.trim().split(/\s+/).filter(Boolean);
-		if (parts.length === 0) return '?';
-		if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-		return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-	}
+	const avatarUrl = $derived(data.avatarStorageKey ? avatarUrlFor(data.userId) : null);
 </script>
 
 <div class="container mx-auto max-w-xl p-4">
@@ -96,7 +88,7 @@
 
 	<Card.Root class="mt-4">
 		<Card.Header>
-			<Card.Title>Profile picture</Card.Title>
+			<Card.Title>Avatar</Card.Title>
 			<Card.Description>
 				Shown next to your name across your groups. Images are resized and converted to webp.
 			</Card.Description>
@@ -118,7 +110,7 @@
 							use:enhance={() => {
 								return async ({ result, update }) => {
 									await update({ reset: false });
-									if (result.type === 'success') toast.success('Profile picture removed');
+									if (result.type === 'success') toast.success('Avatar removed');
 								};
 							}}
 						>
@@ -138,7 +130,7 @@
 					use:enhance={() => {
 						return async ({ result, update }) => {
 							await update({ reset: false });
-							if (result.type === 'success') toast.success('Profile picture updated');
+							if (result.type === 'success') toast.success('Avatar updated');
 						};
 					}}
 				>
@@ -154,14 +146,14 @@
 					{#if updateAvatarForm?.success}
 						<Alert.Root>
 							<CircleCheck class="size-4" />
-							<Alert.Title>Profile picture updated</Alert.Title>
+							<Alert.Title>Avatar updated</Alert.Title>
 						</Alert.Root>
 					{/if}
 
 					{#if deleteAvatarForm?.success}
 						<Alert.Root>
 							<CircleCheck class="size-4" />
-							<Alert.Title>Profile picture removed</Alert.Title>
+							<Alert.Title>Avatar removed</Alert.Title>
 						</Alert.Root>
 					{/if}
 
@@ -195,9 +187,9 @@
 						<AlertDialog.Header>
 							<AlertDialog.Title>Delete account?</AlertDialog.Title>
 							<AlertDialog.Description>
-								This is permanent and cannot be undone. Your email, profile picture, and login are
-								erased immediately. Shared expenses and balances you participated in are kept and
-								will show as "Deleted user" so group history and balance math stay intact.
+								This is permanent and cannot be undone. Your email, avatar, and login are erased
+								immediately. Shared expenses and balances you participated in are kept and will show
+								as "Deleted user" so group history and balance math stay intact.
 							</AlertDialog.Description>
 						</AlertDialog.Header>
 						<AlertDialog.Footer>

@@ -33,7 +33,8 @@ export function createFileSystemFileStorageBackend(dir: string): IFileStorageBac
 			await pipeline(nodeStream, createWriteStream(filePath));
 		} catch (err) {
 			await rm(filePath, { force: true }).catch(() => {});
-			throw new FileStorageError(`Failed to store file: ${String(err)}`);
+			console.error('file storage put failed', err);
+			throw new FileStorageError();
 		}
 		return { key };
 	};

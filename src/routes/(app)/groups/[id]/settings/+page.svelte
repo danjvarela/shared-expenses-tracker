@@ -13,6 +13,7 @@
 	import EmojiPicker from '$lib/components/emoji-picker.svelte';
 	import { ArrowLeft, CircleCheck, Pencil, X } from '@lucide/svelte';
 	import { CURRENCIES } from '$lib/currency';
+	import { getInitials, avatarUrlFor } from '$lib/avatar';
 	import { untrack } from 'svelte';
 	import { enhance } from '$app/forms';
 
@@ -53,13 +54,6 @@
 	function currencyLabel() {
 		const currency = CURRENCIES.find((c) => c.code === currencyCode);
 		return currency ? `${currency.code} — ${currency.name}` : currencyCode;
-	}
-
-	function initials(name: string): string {
-		const parts = name.trim().split(/\s+/).filter(Boolean);
-		if (parts.length === 0) return '?';
-		if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-		return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 	}
 </script>
 
@@ -311,9 +305,9 @@
 						<div class="flex min-w-0 items-center gap-3">
 							<Avatar.Root>
 								{#if member.avatarStorageKey}
-									<Avatar.Image src="/avatars/{member.userId}" alt={member.displayName} />
+									<Avatar.Image src={avatarUrlFor(member.userId)} alt={member.displayName} />
 								{/if}
-								<Avatar.Fallback>{initials(member.displayName)}</Avatar.Fallback>
+								<Avatar.Fallback>{getInitials(member.displayName)}</Avatar.Fallback>
 							</Avatar.Root>
 							<span class="truncate font-medium">{member.displayName}</span>
 							{#if member.userId === data.user.id}
