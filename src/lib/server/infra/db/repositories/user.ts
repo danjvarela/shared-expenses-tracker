@@ -1,7 +1,7 @@
 import type { IUserRepository } from '$lib/server/app/interfaces/repositories/user';
 import type { Database } from '$lib/server/infra/db/types';
 import { user } from '$lib/server/infra/db/schema/user';
-import { eq } from 'drizzle-orm';
+import { eq, isNotNull } from 'drizzle-orm';
 
 function normalizeEmail(email: string): string {
 	return email.trim().toLowerCase();
@@ -54,12 +54,25 @@ const updateAvatar =
 			.where(eq(user.id, userId));
 	};
 
+const getAllAvatarStorageKeys =
+	(db: Database): IUserRepository['getAllAvatarStorageKeys'] =>
+	async () => {
+		const rows = await db
+			.select({ storageKey: user.avatarStorageKey })
+			.from(user)
+			.where(isNotNull(user.avatarStorageKey));
+		return rows
+			.map((row) => row.storageKey)
+			.filter((key): key is string => key !== null);
+	};
+
 export function createUserRepository(db: Database): IUserRepository {
 	return {
 		findByEmail: findByEmail(db),
 		getById: getById(db),
 		create: create(db),
 		updateDisplayName: updateDisplayName(db),
-		updateAvatar: updateAvatar(db)
+		updateAvatar: updateAvatar(db),
+		getAllAvatarStorageKeys: getAllAvatarStorageKeys(db)
 	};
 }

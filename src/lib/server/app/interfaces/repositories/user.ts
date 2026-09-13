@@ -9,4 +9,5 @@ export interface IUserRepository {
 		userId: string,
 		avatar: { avatarStorageKey: string | null; avatarMime: string | null }
 	): Promise<void>;
+	getAllAvatarStorageKeys(): Promise<string[]>;
 }

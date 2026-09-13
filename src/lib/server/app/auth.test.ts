@@ -40,7 +40,10 @@ function fakeUserRepo(seed: Array<User> = []): IUserRepository & {
 			const row = rows.get(userId);
 			if (row) row.displayName = displayName;
 		},
-		async updateAvatar() {}
+		async updateAvatar() {},
+		async getAllAvatarStorageKeys() {
+			return [];
+		}
 	};
 }
 

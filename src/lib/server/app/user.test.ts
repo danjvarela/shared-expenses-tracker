@@ -48,7 +48,10 @@ function fakeUserRepo(): IUserRepository & {
 		async updateDisplayName(userId, displayName) {
 			updatedDisplayName.push({ userId, displayName });
 		},
-		async updateAvatar() {}
+		async updateAvatar() {},
+		async getAllAvatarStorageKeys() {
+			return [];
+		}
 	};
 }
 

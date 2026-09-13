@@ -41,7 +41,10 @@ function fakeUserRepo(seed: Array<User> = []): IUserRepository & {
 			return row;
 		},
 		async updateDisplayName() {},
-		async updateAvatar() {}
+		async updateAvatar() {},
+		async getAllAvatarStorageKeys() {
+			return [];
+		}
 	};
 }
 

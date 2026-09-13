@@ -32,6 +32,7 @@ import { createNotificationService } from '$lib/server/app/notification';
 import { createUserService } from '$lib/server/app/user';
 import { createReceiptService } from '$lib/server/app/receipt';
 import { createReceiptGcService } from '$lib/server/app/receipt-gc';
+import { createAvatarGcService } from '$lib/server/app/avatar-gc';
 import { createScanService, type ScanConfirmRepos } from '$lib/server/app/scan';
 import type { IOAuthProvider } from '$lib/server/app/interfaces/oauth-provider';
 import { createRemoveMemberService, type RemoveMemberRepos } from './app/remove-member';
@@ -218,6 +219,12 @@ export const receiptGcService = createReceiptGcService({
 	receiptRepo,
 	storageBackend: receiptStorageBackend,
 	logger: logger.child({ component: 'receipt-gc' })
+});
+
+export const avatarGcService = createAvatarGcService({
+	userRepo,
+	storageBackend: avatarStorageBackend,
+	logger: logger.child({ component: 'avatar-gc' })
 });
 
 const gcSecret = env.GC_SECRET;

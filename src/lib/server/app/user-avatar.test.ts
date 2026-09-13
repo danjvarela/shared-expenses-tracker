@@ -49,6 +49,9 @@ function fakeUserRepo(seed: Partial<User> = {}): IUserRepository & {
 			avatarUpdates.push({ userId, ...avatar });
 			current.avatarStorageKey = avatar.avatarStorageKey;
 			current.avatarMime = avatar.avatarMime;
+		},
+		async getAllAvatarStorageKeys() {
+			return [];
 		}
 	};
 }
