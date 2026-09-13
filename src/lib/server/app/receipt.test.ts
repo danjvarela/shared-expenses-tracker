@@ -96,7 +96,10 @@ function fakeGroupMemberRepo(member: boolean): IGroupMemberRepository {
 		async countByGroup() {
 			return 0;
 		},
-		async remove() {}
+		async remove() {},
+		async getGroupIdsForUser() {
+			return [];
+		}
 	};
 }
 

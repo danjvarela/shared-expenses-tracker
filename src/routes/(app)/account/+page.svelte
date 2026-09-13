@@ -4,6 +4,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Field from '$lib/components/ui/field/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { toast } from 'svelte-sonner';
@@ -166,6 +167,52 @@
 
 					<Button type="submit">Upload</Button>
 				</form>
+			</div>
+		</Card.Content>
+	</Card.Root>
+
+	<Card.Root class="mt-4 border-destructive">
+		<Card.Header>
+			<Card.Title>Danger zone</Card.Title>
+			<Card.Description>Irreversible and destructive actions.</Card.Description>
+		</Card.Header>
+		<Card.Content>
+			<div class="flex items-center justify-between gap-4">
+				<div class="text-sm">
+					<p class="font-medium">Delete account</p>
+					<p class="text-muted-foreground">
+						Erases your email and profile. Shared expense history and balances are kept and will
+						show as "Deleted user".
+					</p>
+				</div>
+				<AlertDialog.Root>
+					<AlertDialog.Trigger>
+						{#snippet child({ props })}
+							<Button {...props} variant="destructive">Delete account</Button>
+						{/snippet}
+					</AlertDialog.Trigger>
+					<AlertDialog.Content>
+						<AlertDialog.Header>
+							<AlertDialog.Title>Delete account?</AlertDialog.Title>
+							<AlertDialog.Description>
+								This is permanent and cannot be undone. Your email, profile picture, and login are
+								erased immediately. Shared expenses and balances you participated in are kept and
+								will show as "Deleted user" so group history and balance math stay intact.
+							</AlertDialog.Description>
+						</AlertDialog.Header>
+						<AlertDialog.Footer>
+							<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+							<form method="POST" action="?/deleteAccount" use:enhance>
+								<AlertDialog.Action
+									type="submit"
+									class="text-destructive-foreground bg-destructive hover:bg-destructive/90"
+								>
+									Delete account
+								</AlertDialog.Action>
+							</form>
+						</AlertDialog.Footer>
+					</AlertDialog.Content>
+				</AlertDialog.Root>
 			</div>
 		</Card.Content>
 	</Card.Root>

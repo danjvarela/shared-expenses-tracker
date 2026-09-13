@@ -61,9 +61,22 @@ const getAllAvatarStorageKeys =
 			.select({ storageKey: user.avatarStorageKey })
 			.from(user)
 			.where(isNotNull(user.avatarStorageKey));
-		return rows
-			.map((row) => row.storageKey)
-			.filter((key): key is string => key !== null);
+		return rows.map((row) => row.storageKey).filter((key): key is string => key !== null);
+	};
+
+const anonymize =
+	(db: Database): IUserRepository['anonymize'] =>
+	async (userId) => {
+		await db
+			.update(user)
+			.set({
+				email: null,
+				displayName: 'Deleted user',
+				deletedAt: new Date(),
+				avatarStorageKey: null,
+				avatarMime: null
+			})
+			.where(eq(user.id, userId));
 	};
 
 export function createUserRepository(db: Database): IUserRepository {
@@ -73,6 +86,7 @@ export function createUserRepository(db: Database): IUserRepository {
 		create: create(db),
 		updateDisplayName: updateDisplayName(db),
 		updateAvatar: updateAvatar(db),
-		getAllAvatarStorageKeys: getAllAvatarStorageKeys(db)
+		getAllAvatarStorageKeys: getAllAvatarStorageKeys(db),
+		anonymize: anonymize(db)
 	};
 }

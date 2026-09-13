@@ -35,11 +35,18 @@ const deleteSession =
 		await db.delete(session).where(eq(session.id, id));
 	};
 
+const deleteAllForUser =
+	(db: Database): ISessionRepository['deleteAllForUser'] =>
+	async (userId) => {
+		await db.delete(session).where(eq(session.userId, userId));
+	};
+
 export function createSessionRepository(db: Database): ISessionRepository {
 	return {
 		create: create(db),
 		findWithUser: findWithUser(db),
 		updateExpiresAt: updateExpiresAt(db),
-		delete: deleteSession(db)
+		delete: deleteSession(db),
+		deleteAllForUser: deleteAllForUser(db)
 	};
 }

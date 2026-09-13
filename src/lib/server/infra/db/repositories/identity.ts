@@ -31,10 +31,17 @@ const hasIdentityForUser =
 		return row !== undefined;
 	};
 
+const deleteAllForUser =
+	(db: Database): IIdentityRepository['deleteAllForUser'] =>
+	async (userId) => {
+		await db.delete(identity).where(eq(identity.userId, userId));
+	};
+
 export function createIdentityRepository(db: Database): IIdentityRepository {
 	return {
 		findByProviderSubject: findByProviderSubject(db),
 		create: create(db),
-		hasIdentityForUser: hasIdentityForUser(db)
+		hasIdentityForUser: hasIdentityForUser(db),
+		deleteAllForUser: deleteAllForUser(db)
 	};
 }

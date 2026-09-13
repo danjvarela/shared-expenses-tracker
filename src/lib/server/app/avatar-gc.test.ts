@@ -48,7 +48,8 @@ function fakeUserRepo(dbKeys: string[]): IUserRepository {
 		async updateAvatar() {},
 		async getAllAvatarStorageKeys() {
 			return dbKeys;
-		}
+		},
+		async anonymize() {}
 	};
 }
 

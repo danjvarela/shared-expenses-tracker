@@ -6,4 +6,5 @@ export interface ISessionRepository {
 	findWithUser(id: string): Promise<{ session: Session; user: User } | null>;
 	updateExpiresAt(id: string, expiresAt: Date): Promise<void>;
 	delete(id: string): Promise<void>;
+	deleteAllForUser(userId: string): Promise<void>;
 }

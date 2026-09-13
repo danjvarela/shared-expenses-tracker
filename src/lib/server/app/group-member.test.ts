@@ -21,7 +21,8 @@ function fakeIdentityRepo(identities: Set<string>): IIdentityRepository {
 		},
 		async hasIdentityForUser(userId) {
 			return identities.has(userId);
-		}
+		},
+		async deleteAllForUser() {}
 	};
 }
 
@@ -77,6 +78,9 @@ function fakeGroupMemberRepo(
 		},
 		async remove(_groupId, userId) {
 			rows.delete(userId);
+		},
+		async getGroupIdsForUser() {
+			return [];
 		}
 	};
 }

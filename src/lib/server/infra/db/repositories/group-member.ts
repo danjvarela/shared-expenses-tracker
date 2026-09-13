@@ -71,6 +71,16 @@ const remove =
 			.where(and(eq(groupMember.groupId, groupId), eq(groupMember.userId, userId)));
 	};
 
+const getGroupIdsForUser =
+	(db: Database): IGroupMemberRepository['getGroupIdsForUser'] =>
+	async (userId) => {
+		const rows = await db
+			.select({ groupId: groupMember.groupId })
+			.from(groupMember)
+			.where(eq(groupMember.userId, userId));
+		return rows.map((row) => row.groupId);
+	};
+
 export function createGroupMemberRepository(db: Database): IGroupMemberRepository {
 	return {
 		getAllForGroupWithUser: getAllForGroupWithUser(db),
@@ -78,6 +88,7 @@ export function createGroupMemberRepository(db: Database): IGroupMemberRepositor
 		updateDefaultSplitPercents: updateDefaultSplitPercents(db),
 		isMember: isMember(db),
 		countByGroup: countByGroup(db),
-		remove: remove(db)
+		remove: remove(db),
+		getGroupIdsForUser: getGroupIdsForUser(db)
 	};
 }

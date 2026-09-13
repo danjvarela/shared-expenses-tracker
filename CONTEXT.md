@@ -7,6 +7,10 @@ Splitwise-style shared expense tracker. Users split Expenses within a Group and 
 **User**:
 A person who can belong to Groups. Created either by invite (added to a Group by email, before ever logging in) or by first Google login. `displayName` and `email` are seeded from the Google profile on first login and are user-editable after.
 
+**Deleted user**:
+A `User` who has taken the "Delete account" action. The row is kept (not hard-deleted) so shared history and balance math stay intact — `Expense`, `ExpenseSplit`, `Settlement`, and `PairBalance` rows still reference the `userId` and render as "Deleted user" (the anonymized `displayName`). PII is erased: `email` is nulled and `displayName` is set to the literal "Deleted user". `Identity` and `Session` rows are hard-deleted, so the user is logged out everywhere and a subsequent Google login with the same identity creates a fresh `User`. `GroupMember` rows are removed where other members remain and left intact where the user is the sole member (so ADR-0011's last-member auto-delete does not destroy the group's shared history). See ADR-0021.
+_Avoid_: Account deletion
+
 **User avatar**:
 An uploaded image for a User, normalized on ingest and stored via the pluggable file-storage backend (the same domain-neutral adapter as receipts, wired as a separate instance with its own storage subdir), and referenced by an opaque `storageKey`. Served to authenticated users. See ADR-0022.
 _Avoid_: profile picture, profile image

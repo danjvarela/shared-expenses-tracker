@@ -20,4 +20,6 @@ export interface IGroupMemberRepository {
 	countByGroup(groupId: string): Promise<number>;
 
 	remove(groupId: string, userId: string): Promise<void>;
+
+	getGroupIdsForUser(userId: string): Promise<string[]>;
 }

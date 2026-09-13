@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import type { IUserRepository } from '$lib/server/app/interfaces/repositories/user';
 import type { IFileStorageBackend } from '$lib/server/app/interfaces/file-storage';
 import type { IAvatarNormalizer } from '$lib/server/app/interfaces/avatar-normalizer';
+import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
+import type { AnonymizeRepos } from './user';
 import { createUserService, InvalidDisplayNameError } from './user';
 
 function noopStorage(): IFileStorageBackend {
@@ -30,6 +32,14 @@ function noopNormalizer(): IAvatarNormalizer {
 	};
 }
 
+function noopUow(): IUnitOfWork<AnonymizeRepos> {
+	return {
+		async run() {
+			throw new Error('not implemented');
+		}
+	};
+}
+
 function fakeUserRepo(): IUserRepository & {
 	updatedDisplayName: Array<{ userId: string; displayName: string }>;
 } {
@@ -51,7 +61,8 @@ function fakeUserRepo(): IUserRepository & {
 		async updateAvatar() {},
 		async getAllAvatarStorageKeys() {
 			return [];
-		}
+		},
+		async anonymize() {}
 	};
 }
 
@@ -61,6 +72,7 @@ describe('createUserService', () => {
 			const userRepo = fakeUserRepo();
 			const service = createUserService({
 				userRepo,
+				uow: noopUow(),
 				storageBackend: noopStorage(),
 				normalizer: noopNormalizer()
 			});
@@ -74,6 +86,7 @@ describe('createUserService', () => {
 			const userRepo = fakeUserRepo();
 			const service = createUserService({
 				userRepo,
+				uow: noopUow(),
 				storageBackend: noopStorage(),
 				normalizer: noopNormalizer()
 			});
@@ -87,6 +100,7 @@ describe('createUserService', () => {
 			const userRepo = fakeUserRepo();
 			const service = createUserService({
 				userRepo,
+				uow: noopUow(),
 				storageBackend: noopStorage(),
 				normalizer: noopNormalizer()
 			});
@@ -101,6 +115,7 @@ describe('createUserService', () => {
 			const userRepo = fakeUserRepo();
 			const service = createUserService({
 				userRepo,
+				uow: noopUow(),
 				storageBackend: noopStorage(),
 				normalizer: noopNormalizer()
 			});
@@ -118,6 +133,7 @@ describe('createUserService', () => {
 			const userRepo = fakeUserRepo();
 			const service = createUserService({
 				userRepo,
+				uow: noopUow(),
 				storageBackend: noopStorage(),
 				normalizer: noopNormalizer()
 			});
@@ -132,6 +148,7 @@ describe('createUserService', () => {
 			const userRepo = fakeUserRepo();
 			const service = createUserService({
 				userRepo,
+				uow: noopUow(),
 				storageBackend: noopStorage(),
 				normalizer: noopNormalizer()
 			});

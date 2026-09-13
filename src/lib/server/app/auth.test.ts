@@ -30,7 +30,8 @@ function fakeUserRepo(seed: Array<User> = []): IUserRepository & {
 				displayName: input.displayName,
 				email: normalizeEmail(input.email),
 				avatarStorageKey: null,
-				avatarMime: null
+				avatarMime: null,
+				deletedAt: null
 			};
 			rows.set(row.id, row);
 			return row;
@@ -43,7 +44,8 @@ function fakeUserRepo(seed: Array<User> = []): IUserRepository & {
 		async updateAvatar() {},
 		async getAllAvatarStorageKeys() {
 			return [];
-		}
+		},
+		async anonymize() {}
 	};
 }
 
@@ -64,7 +66,8 @@ function fakeIdentityRepo(): IIdentityRepository {
 		},
 		async hasIdentityForUser(userId) {
 			return rows.some((row) => row.userId === userId);
-		}
+		},
+		async deleteAllForUser() {}
 	};
 }
 
@@ -90,7 +93,8 @@ function fakeSessionRepo(users: Map<string, User>): ISessionRepository {
 		},
 		async delete(id) {
 			rows.delete(id);
-		}
+		},
+		async deleteAllForUser() {}
 	};
 }
 
@@ -148,7 +152,8 @@ describe('createAuthService', () => {
 			displayName: 'Alice',
 			email: googleProfile.email,
 			avatarStorageKey: null,
-			avatarMime: null
+			avatarMime: null,
+			deletedAt: null
 		};
 		const service = createAuthService({
 			userRepo: fakeUserRepo([existingUser]),
@@ -173,7 +178,8 @@ describe('createAuthService', () => {
 			displayName: googleProfile.email,
 			email: googleProfile.email,
 			avatarStorageKey: null,
-			avatarMime: null
+			avatarMime: null,
+			deletedAt: null
 		};
 		const userRepo = fakeUserRepo([existingUser]);
 		const service = createAuthService({
@@ -204,7 +210,8 @@ describe('createAuthService', () => {
 			displayName: googleProfile.name,
 			email: googleProfile.email,
 			avatarStorageKey: null,
-			avatarMime: null
+			avatarMime: null,
+			deletedAt: null
 		};
 		const userRepo = fakeUserRepo([existingUser]);
 		const service = createAuthService({
@@ -273,7 +280,8 @@ describe('createAuthService', () => {
 			displayName: 'Alice',
 			email: googleProfile.email,
 			avatarStorageKey: null,
-			avatarMime: null
+			avatarMime: null,
+			deletedAt: null
 		};
 		const users = new Map([[user.id, user]]);
 		const sessionRepo = fakeSessionRepo(users);

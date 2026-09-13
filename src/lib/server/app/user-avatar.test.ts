@@ -5,8 +5,14 @@ import type {
 	IAvatarNormalizer,
 	NormalizedAvatar
 } from '$lib/server/app/interfaces/avatar-normalizer';
+import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
 import type { User } from '$lib/server/domain/user';
-import { createUserService, AvatarTooLargeError, AvatarMimeNotAllowedError } from './user';
+import {
+	createUserService,
+	AvatarTooLargeError,
+	AvatarMimeNotAllowedError,
+	type AnonymizeRepos
+} from './user';
 import { JPEG_MIME, PDF_MIME, PNG_MIME, WEBP_MIME } from './receipt-format';
 import { MAX_AVATAR_BYTES } from './avatar-format';
 
@@ -30,7 +36,8 @@ function fakeUserRepo(seed: Partial<User> = {}): IUserRepository & {
 		displayName: 'Alice',
 		email: 'alice@example.com',
 		avatarStorageKey: seed.avatarStorageKey ?? null,
-		avatarMime: seed.avatarMime ?? null
+		avatarMime: seed.avatarMime ?? null,
+		deletedAt: null
 	};
 	return {
 		avatarUpdates,
@@ -52,7 +59,8 @@ function fakeUserRepo(seed: Partial<User> = {}): IUserRepository & {
 		},
 		async getAllAvatarStorageKeys() {
 			return [];
-		}
+		},
+		async anonymize() {}
 	};
 }
 
@@ -113,6 +121,14 @@ function fakeNormalizer(): IAvatarNormalizer & {
 	};
 }
 
+function noopUow(): IUnitOfWork<AnonymizeRepos> {
+	return {
+		async run() {
+			throw new Error('not implemented');
+		}
+	};
+}
+
 function service(
 	opts: {
 		storage?: ReturnType<typeof fakeStorage>;
@@ -124,7 +140,12 @@ function service(
 	const storage = opts.storage ?? fakeStorage();
 	const normalizer = opts.normalizer ?? fakeNormalizer();
 	const userRepo = opts.userRepo ?? fakeUserRepo(opts.seed ?? {});
-	const svc = createUserService({ userRepo, storageBackend: storage, normalizer });
+	const svc = createUserService({
+		userRepo,
+		uow: noopUow(),
+		storageBackend: storage,
+		normalizer
+	});
 	return { svc, storage, normalizer, userRepo };
 }
 

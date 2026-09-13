@@ -85,7 +85,10 @@ function fakeGroupMemberRepo(): IGroupMemberRepository & { created: Array<unknow
 		async countByGroup() {
 			return 0;
 		},
-		async remove() {}
+		async remove() {},
+		async getGroupIdsForUser() {
+			return [];
+		}
 	};
 }
 

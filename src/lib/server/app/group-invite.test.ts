@@ -34,7 +34,8 @@ function fakeUserRepo(seed: Array<User> = []): IUserRepository & {
 				displayName,
 				email,
 				avatarStorageKey: null,
-				avatarMime: null
+				avatarMime: null,
+				deletedAt: null
 			};
 			rows.set(row.id, row);
 			created.push({ displayName, email });
@@ -44,7 +45,8 @@ function fakeUserRepo(seed: Array<User> = []): IUserRepository & {
 		async updateAvatar() {},
 		async getAllAvatarStorageKeys() {
 			return [];
-		}
+		},
+		async anonymize() {}
 	};
 }
 
@@ -70,6 +72,9 @@ function fakeGroupMemberRepo(members: Set<string>): IGroupMemberRepository & {
 		},
 		async remove(_gid, userId) {
 			members.delete(userId);
+		},
+		async getGroupIdsForUser() {
+			return [];
 		}
 	};
 }
@@ -103,7 +108,8 @@ describe('createGroupInviteService', () => {
 			displayName: 'Dave',
 			email: 'dave@example.com',
 			avatarStorageKey: null,
-			avatarMime: null
+			avatarMime: null,
+			deletedAt: null
 		};
 		const userRepo = fakeUserRepo([existing]);
 		const groupMemberRepo = fakeGroupMemberRepo(new Set());
@@ -122,7 +128,8 @@ describe('createGroupInviteService', () => {
 			displayName: 'Dave',
 			email: 'dave@example.com',
 			avatarStorageKey: null,
-			avatarMime: null
+			avatarMime: null,
+			deletedAt: null
 		};
 		const userRepo = fakeUserRepo([existing]);
 		const groupMemberRepo = fakeGroupMemberRepo(new Set(['user-dave']));
@@ -140,7 +147,8 @@ describe('createGroupInviteService', () => {
 			displayName: 'Alice',
 			email: 'alice@example.com',
 			avatarStorageKey: null,
-			avatarMime: null
+			avatarMime: null,
+			deletedAt: null
 		};
 		const userRepo = fakeUserRepo([inviter]);
 		const groupMemberRepo = fakeGroupMemberRepo(new Set(['alice']));

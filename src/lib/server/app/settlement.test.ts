@@ -133,7 +133,10 @@ function fakeGroupMemberRepo(): IGroupMemberRepository {
 		async countByGroup() {
 			return 2;
 		},
-		async remove() {}
+		async remove() {},
+		async getGroupIdsForUser() {
+			return [];
+		}
 	};
 }
 

@@ -1,8 +1,12 @@
 import { AppError } from '$lib/server/app/error';
 import { ALLOWED_AVATAR_MIMES, MAX_AVATAR_BYTES } from '$lib/server/app/avatar-format';
 import type { IUserRepository } from '$lib/server/app/interfaces/repositories/user';
+import type { IIdentityRepository } from '$lib/server/app/interfaces/repositories/identity';
+import type { ISessionRepository } from '$lib/server/app/interfaces/repositories/session';
+import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
 import type { IFileStorageBackend } from '$lib/server/app/interfaces/file-storage';
 import type { IAvatarNormalizer } from '$lib/server/app/interfaces/avatar-normalizer';
+import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
 import { NOOP_LOGGER, type ILogger } from '$lib/server/app/interfaces/logger';
 
 const DISPLAY_NAME_MAX = 50;
@@ -41,8 +45,16 @@ export interface AvatarInput {
 	sizeBytes: number;
 }
 
+export interface AnonymizeRepos {
+	userRepo: IUserRepository;
+	identityRepo: IIdentityRepository;
+	sessionRepo: ISessionRepository;
+	groupMemberRepo: IGroupMemberRepository;
+}
+
 export interface UserServiceDeps {
 	userRepo: IUserRepository;
+	uow: IUnitOfWork<AnonymizeRepos>;
 	storageBackend: IFileStorageBackend;
 	normalizer: IAvatarNormalizer;
 	logger?: ILogger;
@@ -119,7 +131,32 @@ export function createUserService(deps: UserServiceDeps) {
 		});
 	}
 
-	return { updateProfile, updateAvatar, deleteAvatar };
+	async function anonymizeUser(userId: string): Promise<void> {
+		const current = await deps.userRepo.getById(userId);
+		if (!current) throw new UserNotFoundError();
+		const oldAvatarKey = current.avatarStorageKey;
+
+		await deps.uow.run(async ({ userRepo, identityRepo, sessionRepo, groupMemberRepo }) => {
+			await identityRepo.deleteAllForUser(userId);
+			await sessionRepo.deleteAllForUser(userId);
+
+			const groupIds = await groupMemberRepo.getGroupIdsForUser(userId);
+			for (const groupId of groupIds) {
+				const count = await groupMemberRepo.countByGroup(groupId);
+				if (count > 1) await groupMemberRepo.remove(groupId, userId);
+			}
+
+			await userRepo.anonymize(userId);
+		});
+
+		if (oldAvatarKey) {
+			await deps.storageBackend.delete(oldAvatarKey).catch((deleteErr) => {
+				logger.error('failed to delete avatar bytes after anonymize', { err: deleteErr });
+			});
+		}
+	}
+
+	return { updateProfile, updateAvatar, deleteAvatar, anonymizeUser };
 }
 
 export type UserService = ReturnType<typeof createUserService>;

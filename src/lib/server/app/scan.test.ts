@@ -126,7 +126,10 @@ function fakeGroupMemberRepo(
 		async countByGroup() {
 			return 0;
 		},
-		async remove() {}
+		async remove() {},
+		async getGroupIdsForUser() {
+			return [];
+		}
 	};
 }
 

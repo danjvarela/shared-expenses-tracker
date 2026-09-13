@@ -29,7 +29,7 @@ import { createSettlementService, type SettlementRepos } from '$lib/server/app/s
 import { createGroupMemberService } from '$lib/server/app/group-member';
 import { createGroupInviteService, type InviteRepos } from '$lib/server/app/group-invite';
 import { createNotificationService } from '$lib/server/app/notification';
-import { createUserService } from '$lib/server/app/user';
+import { createUserService, type AnonymizeRepos } from '$lib/server/app/user';
 import { createReceiptService } from '$lib/server/app/receipt';
 import { createReceiptGcService } from '$lib/server/app/receipt-gc';
 import { createAvatarGcService } from '$lib/server/app/avatar-gc';
@@ -128,6 +128,13 @@ const scanConfirmUnitOfWork = createUnitOfWork<ScanConfirmRepos>((tx) => ({
 	receiptRepo: createExpenseReceiptRepository(tx)
 }));
 
+const anonymizeUnitOfWork = createUnitOfWork<AnonymizeRepos>((tx) => ({
+	userRepo: createUserRepository(tx),
+	identityRepo: createIdentityRepository(tx),
+	sessionRepo: createSessionRepository(tx),
+	groupMemberRepo: createGroupMemberRepository(tx)
+}));
+
 export const authService = createAuthService({
 	userRepo,
 	identityRepo,
@@ -188,6 +195,7 @@ export const notificationService = createNotificationService({ notificationRepo 
 
 export const userService = createUserService({
 	userRepo,
+	uow: anonymizeUnitOfWork,
 	storageBackend: avatarStorageBackend,
 	normalizer: avatarNormalizer,
 	logger: logger.child({ component: 'user' })

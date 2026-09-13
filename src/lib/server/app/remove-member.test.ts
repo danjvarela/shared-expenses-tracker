@@ -50,6 +50,9 @@ function fakeGroupMemberRepo(
 		async remove(gid, userId) {
 			members.delete(userId);
 			removed.push({ groupId: gid, userId });
+		},
+		async getGroupIdsForUser() {
+			return [];
 		}
 	};
 }

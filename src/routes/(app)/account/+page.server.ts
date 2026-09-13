@@ -1,4 +1,4 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { userService } from '$lib/server/container';
 import { sniffMime } from '$lib/server/app/receipt-format';
 import { toActionResult } from '$lib/server/presentation/error-handling';
@@ -73,5 +73,17 @@ export const actions: Actions = {
 		}
 
 		return { source: 'deleteAvatar', success: true };
+	},
+
+	deleteAccount: async ({ locals, cookies }) => {
+		try {
+			await userService.anonymizeUser(locals.user!.id);
+		} catch (err) {
+			const result = toActionResult(err);
+			return fail(result.status, { source: 'deleteAccount', ...result.data });
+		}
+
+		cookies.delete('session', { path: '/' });
+		throw redirect(303, '/login');
 	}
 };

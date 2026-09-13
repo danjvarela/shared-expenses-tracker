@@ -70,7 +70,10 @@ function fakeGroupMemberRepo(members: Array<GroupMemberWithUser>): IGroupMemberR
 		async countByGroup() {
 			return 0;
 		},
-		async remove() {}
+		async remove() {},
+		async getGroupIdsForUser() {
+			return [];
+		}
 	};
 }
 
@@ -393,7 +396,10 @@ describe('createExpenseService', () => {
 			async countByGroup() {
 				return 0;
 			},
-			async remove() {}
+			async remove() {},
+			async getGroupIdsForUser() {
+				return [];
+			}
 		};
 		const service = createExpenseService({
 			uow: fakeUnitOfWork({
