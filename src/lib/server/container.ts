@@ -28,6 +28,7 @@ import { createSettlementService, type SettlementRepos } from '$lib/server/app/s
 import { createGroupMemberService } from '$lib/server/app/group-member';
 import { createGroupInviteService, type InviteRepos } from '$lib/server/app/group-invite';
 import { createNotificationService } from '$lib/server/app/notification';
+import { createUserService } from '$lib/server/app/user';
 import { createReceiptService } from '$lib/server/app/receipt';
 import { createReceiptGcService } from '$lib/server/app/receipt-gc';
 import { createScanService, type ScanConfirmRepos } from '$lib/server/app/scan';
@@ -76,7 +77,9 @@ const receiptScannerBackend = createReceiptScannerBackend(undefined, {
 });
 export const scannerEnabled = receiptScannerBackend !== null;
 
-const googleOAuthProvider = createGoogleOAuthProvider({ logger: logger.child({ component: 'oauth' }) });
+const googleOAuthProvider = createGoogleOAuthProvider({
+	logger: logger.child({ component: 'oauth' })
+});
 const oauthProviders: Record<string, IOAuthProvider> = {
 	[googleOAuthProvider.provider]: googleOAuthProvider
 };
@@ -177,6 +180,8 @@ export const groupService = createGroupService({
 export const categoryService = createCategoryService({ uow: categoryUnitOfWork, categoryRepo });
 
 export const notificationService = createNotificationService({ notificationRepo });
+
+export const userService = createUserService({ userRepo });
 
 export const receiptService = createReceiptService({
 	receiptRepo,
