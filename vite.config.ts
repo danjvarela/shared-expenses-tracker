@@ -6,7 +6,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
 	server: {
-		port: 5173,
+		port: 5174,
 		strictPort: true,
 		allowedHosts: process.env.CLOUDFLARE_TUNNEL_HOSTNAME
 			? [process.env.CLOUDFLARE_TUNNEL_HOSTNAME]
