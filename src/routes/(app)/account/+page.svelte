@@ -165,18 +165,14 @@
 
 	<Card.Root class="mt-4 border-destructive">
 		<Card.Header>
-			<Card.Title>Danger zone</Card.Title>
-			<Card.Description>Irreversible and destructive actions.</Card.Description>
+			<Card.Title>Delete account</Card.Title>
+			<Card.Description>
+				Erases your email and profile. Shared expense history and balances are kept and will show as
+				"Deleted user".
+			</Card.Description>
 		</Card.Header>
 		<Card.Content>
-			<div class="flex items-center justify-between gap-4">
-				<div class="text-sm">
-					<p class="font-medium">Delete account</p>
-					<p class="text-muted-foreground">
-						Erases your email and profile. Shared expense history and balances are kept and will
-						show as "Deleted user".
-					</p>
-				</div>
+			<div>
 				<AlertDialog.Root>
 					<AlertDialog.Trigger>
 						{#snippet child({ props })}
