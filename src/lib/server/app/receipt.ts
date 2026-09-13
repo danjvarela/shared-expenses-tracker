@@ -6,7 +6,7 @@ import type { IExpenseReceiptRepository } from '$lib/server/app/interfaces/repos
 import type { IExpenseRepository } from '$lib/server/app/interfaces/repositories/expense';
 import type { IExpenseGroupRepository } from '$lib/server/app/interfaces/repositories/expense-group';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
-import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
+import type { IFileStorageBackend } from '$lib/server/app/interfaces/file-storage';
 import type { IReceiptNormalizer } from '$lib/server/app/interfaces/receipt-normalizer';
 import { NOOP_LOGGER, type ILogger } from '$lib/server/app/interfaces/logger';
 import type { ExpenseReceipt } from '$lib/server/domain/expense-receipt';
@@ -51,7 +51,7 @@ export class ReceiptMimeNotAllowedError extends AppError {
 
 export interface ReceiptServiceDeps {
 	receiptRepo: IExpenseReceiptRepository;
-	storageBackend: IReceiptStorageBackend;
+	storageBackend: IFileStorageBackend;
 	normalizer: IReceiptNormalizer;
 	expenseRepo: IExpenseRepository;
 	expenseGroupRepo: IExpenseGroupRepository;

@@ -13,7 +13,7 @@ import { createCategoryRepository } from '$lib/server/infra/db/repositories/cate
 import { createNotificationRepository } from '$lib/server/infra/db/repositories/notification';
 import { createExpenseReceiptRepository } from '$lib/server/infra/db/repositories/expense-receipt';
 import { createGoogleOAuthProvider } from '$lib/server/infra/oauth/google';
-import { createReceiptStorageBackend } from '$lib/server/infra/receipt-storage';
+import { createFileStorageBackend } from '$lib/server/infra/file-storage';
 import { createReceiptScannerBackend } from '$lib/server/infra/receipt-scanner';
 import { createPopplerPdfProcessor } from '$lib/server/infra/pdf';
 import { createReceiptNormalizer } from '$lib/server/infra/receipt-normalizer';
@@ -55,7 +55,16 @@ const groupMemberRepo = createGroupMemberRepository(db);
 const categoryRepo = createCategoryRepository(db);
 const notificationRepo = createNotificationRepository(db);
 const receiptRepo = createExpenseReceiptRepository(db);
-const receiptStorageBackend = createReceiptStorageBackend({ logger: logger.child({ component: 'receipt-storage' }) });
+const receiptStorageBackend = createFileStorageBackend({
+	backend: env.RECEIPT_STORAGE_BACKEND ?? 'fs',
+	fsDir: env.RECEIPT_STORAGE_FS_DIR ?? './uploads',
+	logger: logger.child({ component: 'receipt-storage' })
+});
+const avatarStorageBackend = createFileStorageBackend({
+	backend: env.AVATAR_STORAGE_BACKEND ?? 'fs',
+	fsDir: env.AVATAR_STORAGE_FS_DIR ?? './uploads-avatars',
+	logger: logger.child({ component: 'avatar-storage' })
+});
 const pdfProcessor = createPopplerPdfProcessor({ logger: logger.child({ component: 'pdf' }) });
 const receiptNormalizer = createReceiptNormalizer({
 	pdfProcessor,
@@ -213,5 +222,6 @@ export {
 	pairBalanceRepo,
 	notificationRepo,
 	receiptRepo,
-	receiptScannerBackend
+	receiptScannerBackend,
+	avatarStorageBackend
 };

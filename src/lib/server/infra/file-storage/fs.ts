@@ -5,23 +5,23 @@ import { pipeline } from 'node:stream/promises';
 import { randomUUID } from 'node:crypto';
 import { isAbsolute, join, resolve } from 'node:path';
 import {
-	ReceiptStorageError,
-	type IReceiptStorageBackend,
-	type ReceiptPutResult,
-	type ReceiptStorageKey
-} from '$lib/server/app/interfaces/receipt-storage';
+	FileStorageError,
+	type IFileStorageBackend,
+	type FilePutResult,
+	type FileStorageKey
+} from '$lib/server/app/interfaces/file-storage';
 
 function safeKey(key: string): string {
 	if (!key || key.includes('/') || key.includes('\\') || key === '.') {
-		throw new ReceiptStorageError('Invalid storage key');
+		throw new FileStorageError('Invalid storage key');
 	}
 	return key;
 }
 
-export function createFileSystemReceiptStorageBackend(dir: string): IReceiptStorageBackend {
+export function createFileSystemFileStorageBackend(dir: string): IFileStorageBackend {
 	mkdirSync(dir, { recursive: true });
 
-	const put = async (stream: ReadableStream<Uint8Array>): Promise<ReceiptPutResult> => {
+	const put = async (stream: ReadableStream<Uint8Array>): Promise<FilePutResult> => {
 		const key = randomUUID();
 		const filePath = join(dir, key);
 		try {
@@ -33,7 +33,7 @@ export function createFileSystemReceiptStorageBackend(dir: string): IReceiptStor
 			await pipeline(nodeStream, createWriteStream(filePath));
 		} catch (err) {
 			await rm(filePath, { force: true }).catch(() => {});
-			throw new ReceiptStorageError(`Failed to store receipt: ${String(err)}`);
+			throw new FileStorageError(`Failed to store file: ${String(err)}`);
 		}
 		return { key };
 	};
@@ -45,7 +45,7 @@ export function createFileSystemReceiptStorageBackend(dir: string): IReceiptStor
 		try {
 			await access(filePath);
 		} catch {
-			throw new ReceiptStorageError('Receipt not found in storage');
+			throw new FileStorageError('File not found in storage');
 		}
 		return Readable.toWeb(createReadStream(filePath)) as ReadableStream<Uint8Array>;
 	};
@@ -54,10 +54,10 @@ export function createFileSystemReceiptStorageBackend(dir: string): IReceiptStor
 		await rm(join(dir, safeKey(key)), { force: true });
 	};
 
-	const listKeys = async (): Promise<ReceiptStorageKey[]> => {
+	const listKeys = async (): Promise<FileStorageKey[]> => {
 		const entries = await readdir(dir, { withFileTypes: true });
 		const files = entries.filter((entry) => entry.isFile());
-		const keys: ReceiptStorageKey[] = [];
+		const keys: FileStorageKey[] = [];
 		for (const file of files) {
 			const { mtime } = await stat(join(dir, file.name));
 			keys.push({ key: file.name, createdAt: mtime });

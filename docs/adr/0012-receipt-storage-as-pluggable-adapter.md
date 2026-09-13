@@ -1,5 +1,7 @@
 # Receipt storage is a pluggable adapter; the DB holds metadata only
 
+> **Amended/superseded by [ADR-0022](0022-generalize-receipt-storage-to-file-storage.md):** the adapter interface was renamed from receipt-specific (`IReceiptStorageBackend`) to domain-neutral (`IFileStorageBackend`), and the factory now wires two instances (receipts + avatars) with separate storage subdirs. This ADR's adapter design, `storageKey`/put-first/row-first reasoning, and GC enumeration model still stand; only the receipt-only framing of the interface name is superseded.
+
 Receipt bytes never live in the database. The `expense_receipt` table (SQLite) stores metadata only: an opaque `storageKey` plus `mime`, `sizeBytes`, `originalFilename`, `uploadedByUserId`, and `uploadedAt`. The bytes themselves live in a pluggable storage backend selected at boot, and the DB row references them only through the opaque `storageKey`.
 
 The `storageKey` is an opaque string, **not** a URL. Pluggable backends like Cloudflare R2 presign URLs and Google Drive export links with a finite TTL; a stored URL would expire and break the read path. A stable, backend-issued key lets the adapter mint fresh read access on demand, and survives a backend swap in principle (the key namespace is the adapter's concern, not the app's). The adapter generates the key; the app never constructs one.

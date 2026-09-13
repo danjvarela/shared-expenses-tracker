@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { mkdtemp, readdir, writeFile, utimes } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createFileSystemReceiptStorageBackend } from './fs';
+import { createFileSystemFileStorageBackend } from './fs';
 
 async function freshDir(): Promise<string> {
-	return mkdtemp(join(tmpdir(), 'receipt-fs-'));
+	return mkdtemp(join(tmpdir(), 'file-fs-'));
 }
 
 async function touchFile(dir: string, name: string, ageMs = 0): Promise<void> {
@@ -17,17 +17,17 @@ async function touchFile(dir: string, name: string, ageMs = 0): Promise<void> {
 	}
 }
 
-describe('createFileSystemReceiptStorageBackend.listKeys', () => {
+describe('createFileSystemFileStorageBackend.listKeys', () => {
 	it('returns an empty array when the storage dir is empty', async () => {
 		const dir = await freshDir();
-		const backend = createFileSystemReceiptStorageBackend(dir);
+		const backend = createFileSystemFileStorageBackend(dir);
 
 		expect(await backend.listKeys()).toEqual([]);
 	});
 
 	it('returns an empty array when only nested dirs exist (files only)', async () => {
 		const dir = await freshDir();
-		const backend = createFileSystemReceiptStorageBackend(dir);
+		const backend = createFileSystemFileStorageBackend(dir);
 
 		expect((await readdir(dir, { withFileTypes: true })).filter((e) => e.isFile())).toHaveLength(0);
 		expect(await backend.listKeys()).toEqual([]);
@@ -35,7 +35,7 @@ describe('createFileSystemReceiptStorageBackend.listKeys', () => {
 
 	it('lists every file in the storage dir as a key', async () => {
 		const dir = await freshDir();
-		const backend = createFileSystemReceiptStorageBackend(dir);
+		const backend = createFileSystemFileStorageBackend(dir);
 		await touchFile(dir, 'key-a');
 		await touchFile(dir, 'key-b');
 		await touchFile(dir, 'key-c');
@@ -46,7 +46,7 @@ describe('createFileSystemReceiptStorageBackend.listKeys', () => {
 
 	it('uses each file mtime as createdAt', async () => {
 		const dir = await freshDir();
-		const backend = createFileSystemReceiptStorageBackend(dir);
+		const backend = createFileSystemFileStorageBackend(dir);
 		const oldAge = 60_000;
 		const recentAge = 1_000;
 		await touchFile(dir, 'old', oldAge);
@@ -61,7 +61,7 @@ describe('createFileSystemReceiptStorageBackend.listKeys', () => {
 
 	it('returns a fresh array each call (no shared mutable reference)', async () => {
 		const dir = await freshDir();
-		const backend = createFileSystemReceiptStorageBackend(dir);
+		const backend = createFileSystemFileStorageBackend(dir);
 		await touchFile(dir, 'key-a');
 
 		const first = await backend.listKeys();

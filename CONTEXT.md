@@ -7,6 +7,10 @@ Splitwise-style shared expense tracker. Users split Expenses within a Group and 
 **User**:
 A person who can belong to Groups. Created either by invite (added to a Group by email, before ever logging in) or by first Google login. `displayName` and `email` are seeded from the Google profile on first login and are user-editable after.
 
+**User avatar**:
+An uploaded image for a User, normalized on ingest and stored via the pluggable file-storage backend (the same domain-neutral adapter as receipts, wired as a separate instance with its own storage subdir), and referenced by an opaque `storageKey`. Served to authenticated users. See ADR-0022.
+_Avoid_: profile picture, profile image
+
 **Identity**:
 The link between a User and an external auth provider account, keyed by (`provider`, `providerSubject`) — `providerSubject` is the provider's stable subject id (e.g. Google's `sub` claim), not email, which can change. Google is the only provider today; the shape allows more later. Login resolves an Identity by (`provider`, `providerSubject`); if none exists, falls back to matching an existing User by email (linking it rather than duplicating); only creates a new User if neither match.
 _Avoid_: Account (collides with a future financial-account concept), OAuth account

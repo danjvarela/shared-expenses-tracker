@@ -1,12 +1,12 @@
 import type { IExpenseReceiptRepository } from '$lib/server/app/interfaces/repositories/expense-receipt';
-import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
+import type { IFileStorageBackend } from '$lib/server/app/interfaces/file-storage';
 import { NOOP_LOGGER, type ILogger } from '$lib/server/app/interfaces/logger';
 
 export const RECEIPT_GC_GRACE_PERIOD_MS = 24 * 60 * 60 * 1000;
 
 export interface ReceiptGcDeps {
 	receiptRepo: IExpenseReceiptRepository;
-	storageBackend: IReceiptStorageBackend;
+	storageBackend: IFileStorageBackend;
 	now?: () => Date;
 	logger?: ILogger;
 }

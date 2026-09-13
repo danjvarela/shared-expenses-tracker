@@ -24,8 +24,9 @@ vite.config.ts.timestamp-*
 # SQLite
 *.db
 
-# Uploaded receipts (local fs storage backend)
+# Uploaded files (local fs storage backend)
 /uploads
+/uploads-avatars
 
 # Devenv
 .devenv*

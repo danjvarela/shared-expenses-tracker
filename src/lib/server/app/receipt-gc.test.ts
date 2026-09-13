@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { IExpenseReceiptRepository } from '$lib/server/app/interfaces/repositories/expense-receipt';
-import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
+import type { IFileStorageBackend } from '$lib/server/app/interfaces/file-storage';
 import { createRecordingLogger } from '$lib/server/infra/logger/testing';
 import { createReceiptGcService, RECEIPT_GC_GRACE_PERIOD_MS } from './receipt-gc';
 
@@ -8,7 +8,7 @@ const GRACE_MS = RECEIPT_GC_GRACE_PERIOD_MS;
 
 function fakeStorageBackend(
 	keys: Array<{ key: string; createdAt: Date }>
-): IReceiptStorageBackend & { deletedKeys: string[]; failOn: Set<string> } {
+): IFileStorageBackend & { deletedKeys: string[]; failOn: Set<string> } {
 	const deletedKeys: string[] = [];
 	const failOn = new Set<string>();
 	return {

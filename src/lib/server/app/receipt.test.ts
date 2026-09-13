@@ -6,7 +6,7 @@ import type {
 } from '$lib/server/app/interfaces/repositories/expense';
 import type { IExpenseGroupRepository } from '$lib/server/app/interfaces/repositories/expense-group';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
-import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
+import type { IFileStorageBackend } from '$lib/server/app/interfaces/file-storage';
 import type {
 	IReceiptNormalizer,
 	NormalizedReceipt
@@ -147,7 +147,7 @@ function fakeReceiptRepo(): IExpenseReceiptRepository & {
 	};
 }
 
-function fakeStorageBackend(): IReceiptStorageBackend & {
+function fakeStorageBackend(): IFileStorageBackend & {
 	putKeys: Array<string>;
 	deletedKeys: Array<string>;
 	streams: Map<string, ReadableStream<Uint8Array>>;

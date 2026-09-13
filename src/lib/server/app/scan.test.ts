@@ -12,7 +12,7 @@ import {
 	type IReceiptScanner,
 	type ScanResult
 } from '$lib/server/app/interfaces/receipt-scanner';
-import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
+import type { IFileStorageBackend } from '$lib/server/app/interfaces/file-storage';
 import type {
 	IReceiptNormalizer,
 	NormalizedReceipt
@@ -58,7 +58,7 @@ function bufferToStream(buf: Buffer): ReadableStream<Uint8Array> {
 	});
 }
 
-function fakeStorageBackend(): IReceiptStorageBackend & {
+function fakeStorageBackend(): IFileStorageBackend & {
 	store: Map<string, Buffer>;
 	deletedKeys: string[];
 } {

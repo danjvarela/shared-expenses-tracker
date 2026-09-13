@@ -18,7 +18,7 @@ import type {
 } from '$lib/server/app/interfaces/repositories/expense-group';
 import type { IExpenseReceiptRepository } from '$lib/server/app/interfaces/repositories/expense-receipt';
 import type { IReceiptScanner, ScanResult } from '$lib/server/app/interfaces/receipt-scanner';
-import type { IReceiptStorageBackend } from '$lib/server/app/interfaces/receipt-storage';
+import type { IFileStorageBackend } from '$lib/server/app/interfaces/file-storage';
 import type { IReceiptNormalizer } from '$lib/server/app/interfaces/receipt-normalizer';
 import { NOOP_LOGGER, type ILogger } from '$lib/server/app/interfaces/logger';
 import { parseAmountCents } from '$lib/server/app/expense-form';
@@ -80,7 +80,7 @@ export class ScanDraftValidationError extends AppError {
 }
 
 export interface ScanServiceDeps {
-	storageBackend: IReceiptStorageBackend;
+	storageBackend: IFileStorageBackend;
 	normalizer: IReceiptNormalizer;
 	scanner: IReceiptScanner;
 	groupMemberRepo: IGroupMemberRepository;
