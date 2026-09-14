@@ -11,13 +11,23 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import IconPicker from '$lib/components/icon-picker.svelte';
 	import EmojiPicker from '$lib/components/emoji-picker.svelte';
-	import { ArrowLeft, CircleCheck, Pencil, X } from '@lucide/svelte';
+	import { ArrowLeft, CircleCheck, LoaderCircle, Pencil, X } from '@lucide/svelte';
 	import { CURRENCIES } from '$lib/currency';
 	import { getInitials, avatarUrlFor } from '$lib/avatar';
 	import { untrack } from 'svelte';
-	import { enhance } from '$app/forms';
+	import LoadingButton from '$lib/components/loading-button.svelte';
+	import { useFormPending } from '$lib/forms/pending-enhance.svelte';
 
 	const { data, form } = $props();
+	const detailsForm = useFormPending();
+	const inviteSubmit = useFormPending();
+	const removeCategoryForm = useFormPending();
+	const addCategoryForm = useFormPending();
+	const editCategoryForm = useFormPending();
+	const leaveForm = useFormPending();
+	const removeForm = useFormPending();
+	const deleteForm = useFormPending();
+	const percentsForm = useFormPending();
 
 	type InviteForm = {
 		invite?: { status: string; email: string };
@@ -73,7 +83,7 @@
 				method="POST"
 				action="?/details"
 				class="flex flex-col gap-4"
-				use:enhance={() => {
+				use:detailsForm.enhance={() => {
 					detailsSaved = false;
 					return async ({ result, update }) => {
 						await update({ reset: false });
@@ -114,7 +124,7 @@
 					</Alert.Root>
 				{/if}
 
-				<Button type="submit">Save details</Button>
+				<LoadingButton type="submit" pending={detailsForm.pending}>Save details</LoadingButton>
 			</form>
 		</Card.Content>
 	</Card.Root>
@@ -132,7 +142,7 @@
 				method="POST"
 				action="?/invite"
 				class="flex flex-col gap-4"
-				use:enhance={() => {
+				use:inviteSubmit.enhance={() => {
 					return async ({ update }) => {
 						await update({ reset: false });
 					};
@@ -158,7 +168,7 @@
 					</Alert.Root>
 				{/if}
 
-				<Button type="submit">Send invite</Button>
+				<LoadingButton type="submit" pending={inviteSubmit.pending}>Send invite</LoadingButton>
 			</form>
 		</Card.Content>
 	</Card.Root>
@@ -192,7 +202,7 @@
 							<form
 								method="POST"
 								action="?/removeCategory"
-								use:enhance={() => {
+								use:removeCategoryForm.enhance={() => {
 									return async ({ update }) => {
 										await update({ reset: false });
 									};
@@ -204,9 +214,14 @@
 									variant="ghost"
 									size="icon"
 									class="size-4 hover:text-destructive"
+									disabled={removeCategoryForm.pending}
 									aria-label={`Remove ${category.name}`}
 								>
-									<X class="size-3" />
+									{#if removeCategoryForm.pending}
+										<LoaderCircle class="size-3 animate-spin" />
+									{:else}
+										<X class="size-3" />
+									{/if}
 								</Button>
 							</form>
 						</Badge>
@@ -220,7 +235,7 @@
 				method="POST"
 				action="?/addCategory"
 				class="flex flex-col gap-4"
-				use:enhance={() => {
+				use:addCategoryForm.enhance={() => {
 					categoryAdded = false;
 					return async ({ result, update }) => {
 						await update();
@@ -245,7 +260,9 @@
 					</Alert.Root>
 				{/if}
 
-				<Button type="submit">Add category</Button>
+				<LoadingButton type="submit" pending={addCategoryForm.pending}>
+					Add category
+				</LoadingButton>
 			</form>
 		</Card.Content>
 	</Card.Root>
@@ -260,7 +277,7 @@
 					method="POST"
 					action="?/editCategory"
 					class="flex flex-col gap-4"
-					use:enhance={() => {
+					use:editCategoryForm.enhance={() => {
 						return async ({ result, update }) => {
 							await update({ reset: false });
 							if (result.type === 'success') editCategoryDialogOpen = false;
@@ -278,7 +295,7 @@
 					{/if}
 
 					<Dialog.Footer>
-						<Button type="submit">Save</Button>
+						<LoadingButton type="submit" pending={editCategoryForm.pending}>Save</LoadingButton>
 					</Dialog.Footer>
 				</form>
 			{/if}
@@ -354,16 +371,16 @@
 											<form
 												method="POST"
 												action={isSolo ? '?/delete' : '?/leave'}
-												use:enhance={() => {
+												use:leaveForm.enhance={() => {
 													return async ({ update }) => {
 														leaveDialogOpen = false;
 														await update({ reset: false });
 													};
 												}}
 											>
-												<AlertDialog.Action type="submit">
+												<LoadingButton type="submit" pending={leaveForm.pending}>
 													{isSolo ? 'Delete group' : 'Leave group'}
-												</AlertDialog.Action>
+												</LoadingButton>
 											</form>
 										</AlertDialog.Footer>
 									</AlertDialog.Content>
@@ -398,7 +415,7 @@
 											<form
 												method="POST"
 												action="?/remove"
-												use:enhance={() => {
+												use:removeForm.enhance={() => {
 													return async ({ update }) => {
 														removeDialogOpen = false;
 														await update({ reset: false });
@@ -406,7 +423,9 @@
 												}}
 											>
 												<input type="hidden" name="userId" value={member.userId} />
-												<AlertDialog.Action type="submit">Remove</AlertDialog.Action>
+												<LoadingButton type="submit" pending={removeForm.pending}>
+													Remove
+												</LoadingButton>
 											</form>
 										</AlertDialog.Footer>
 									</AlertDialog.Content>
@@ -432,7 +451,7 @@
 				method="POST"
 				action="?/percents"
 				class="flex flex-col gap-4"
-				use:enhance={() => {
+				use:percentsForm.enhance={() => {
 					percentsSaved = false;
 					return async ({ result, update }) => {
 						await update({ reset: false });
@@ -469,7 +488,7 @@
 					</Alert.Root>
 				{/if}
 
-				<Button type="submit">Save</Button>
+				<LoadingButton type="submit" pending={percentsForm.pending}>Save</LoadingButton>
 			</form>
 		</Card.Content>
 	</Card.Root>
@@ -516,14 +535,16 @@
 							<form
 								method="POST"
 								action="?/delete"
-								use:enhance={() => {
+								use:deleteForm.enhance={() => {
 									return async ({ update }) => {
 										deleteDialogOpen = false;
 										await update({ reset: false });
 									};
 								}}
 							>
-								<AlertDialog.Action type="submit">Delete group</AlertDialog.Action>
+								<LoadingButton type="submit" pending={deleteForm.pending}>
+									Delete group
+								</LoadingButton>
 							</form>
 						</AlertDialog.Footer>
 					</AlertDialog.Content>

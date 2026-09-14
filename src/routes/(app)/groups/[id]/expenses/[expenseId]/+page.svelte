@@ -7,8 +7,11 @@
 	import { formatAmountCents } from '$lib/currency';
 	import { enhance } from '$app/forms';
 	import Receipts from '$lib/components/receipts/Receipts.svelte';
+	import LoadingButton from '$lib/components/loading-button.svelte';
+	import { useFormPending } from '$lib/forms/pending-enhance.svelte';
 
 	const { data, form } = $props();
+	const deleteForm = useFormPending();
 
 	function formatAmount(amountCents: number) {
 		return formatAmountCents(amountCents, data.group.currencyCode);
@@ -56,8 +59,10 @@
 					</AlertDialog.Header>
 					<AlertDialog.Footer>
 						<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-						<form method="POST" action="?/delete" use:enhance>
-							<AlertDialog.Action type="submit">Delete</AlertDialog.Action>
+						<form method="POST" action="?/delete" use:deleteForm.enhance>
+							<LoadingButton type="submit" pending={deleteForm.pending}>
+								Delete
+							</LoadingButton>
 						</form>
 					</AlertDialog.Footer>
 				</AlertDialog.Content>

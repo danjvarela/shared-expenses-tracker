@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Wallet, Sun, Moon, Settings, LogOut, Bell } from '@lucide/svelte';
+	import { Wallet, Sun, Moon, Settings, LogOut, LoaderCircle, Bell } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
@@ -13,10 +13,16 @@
 	let { user, unreadCount }: { user: User; unreadCount: number } = $props();
 	let unreadBadge = $derived(unreadCount > 9 ? '9+' : String(unreadCount));
 	let avatarUrl = $derived(user.avatarStorageKey ? avatarUrlFor(user.id) : null);
+	let loggingOut = $state(false);
 
 	async function logout() {
-		await fetch('/logout', { method: 'POST' });
-		goto(resolve('/login'));
+		loggingOut = true;
+		try {
+			await fetch('/logout', { method: 'POST' });
+			await goto(resolve('/login'));
+		} finally {
+			loggingOut = false;
+		}
 	}
 </script>
 
@@ -77,8 +83,12 @@
 							</a>
 						{/snippet}
 					</DropdownMenu.Item>
-					<DropdownMenu.Item onclick={logout}>
-						<LogOut class="size-4" />
+					<DropdownMenu.Item onclick={logout} disabled={loggingOut}>
+						{#if loggingOut}
+							<LoaderCircle class="size-4 animate-spin" />
+						{:else}
+							<LogOut class="size-4" />
+						{/if}
 						Log out
 					</DropdownMenu.Item>
 				</DropdownMenu.Content>

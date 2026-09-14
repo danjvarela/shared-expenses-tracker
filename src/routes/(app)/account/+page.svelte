@@ -8,11 +8,16 @@
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { toast } from 'svelte-sonner';
-	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import { getInitials, avatarUrlFor } from '$lib/avatar';
+	import LoadingButton from '$lib/components/loading-button.svelte';
+	import { useFormPending } from '$lib/forms/pending-enhance.svelte';
 
 	const { data, form } = $props();
+	const profileForm = useFormPending();
+	const avatarForm = useFormPending();
+	const avatarDeleteForm = useFormPending();
+	const deleteAccountForm = useFormPending();
 
 	type UpdateProfileForm = { source?: string; message?: string; success?: boolean };
 	const updateProfileForm = $derived(form as UpdateProfileForm | null);
@@ -49,7 +54,7 @@
 				method="POST"
 				action="?/updateProfile"
 				class="flex flex-col gap-4"
-				use:enhance={() => {
+				use:profileForm.enhance={() => {
 					saved = false;
 					return async ({ result, update }) => {
 						await update({ reset: false });
@@ -81,7 +86,7 @@
 					</Alert.Root>
 				{/if}
 
-				<Button type="submit">Save</Button>
+				<LoadingButton type="submit" pending={profileForm.pending}>Save</LoadingButton>
 			</form>
 		</Card.Content>
 	</Card.Root>
@@ -107,17 +112,23 @@
 						<form
 							method="POST"
 							action="?/deleteAvatar"
-							use:enhance={() => {
+							use:avatarDeleteForm.enhance={() => {
 								return async ({ result, update }) => {
 									await update({ reset: false });
 									if (result.type === 'success') toast.success('Avatar removed');
 								};
 							}}
 						>
-							<Button type="submit" variant="ghost" size="sm" class="text-destructive">
+							<LoadingButton
+								type="submit"
+								variant="ghost"
+								size="sm"
+								class="text-destructive"
+								pending={avatarDeleteForm.pending}
+							>
 								<Trash2 class="size-4" />
 								Remove
-							</Button>
+							</LoadingButton>
 						</form>
 					{/if}
 				</div>
@@ -127,7 +138,7 @@
 					action="?/updateAvatar"
 					enctype="multipart/form-data"
 					class="flex flex-col gap-4"
-					use:enhance={() => {
+					use:avatarForm.enhance={() => {
 						return async ({ result, update }) => {
 							await update({ reset: false });
 							if (result.type === 'success') toast.success('Avatar updated');
@@ -157,7 +168,7 @@
 						</Alert.Root>
 					{/if}
 
-					<Button type="submit">Upload</Button>
+					<LoadingButton type="submit" pending={avatarForm.pending}>Upload</LoadingButton>
 				</form>
 			</div>
 		</Card.Content>
@@ -190,13 +201,18 @@
 						</AlertDialog.Header>
 						<AlertDialog.Footer>
 							<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-							<form method="POST" action="?/deleteAccount" use:enhance>
-								<AlertDialog.Action
+							<form
+								method="POST"
+								action="?/deleteAccount"
+								use:deleteAccountForm.enhance
+							>
+								<LoadingButton
 									type="submit"
+									pending={deleteAccountForm.pending}
 									class="text-destructive-foreground bg-destructive hover:bg-destructive/90"
 								>
 									Delete account
-								</AlertDialog.Action>
+								</LoadingButton>
 							</form>
 						</AlertDialog.Footer>
 					</AlertDialog.Content>

@@ -10,10 +10,12 @@
 	import { resolve } from '$app/paths';
 	import { formatAmountCents } from '$lib/currency';
 	import { getInitials, avatarUrlFor } from '$lib/avatar';
-	import { enhance } from '$app/forms';
 	import { toast } from 'svelte-sonner';
+	import LoadingButton from '$lib/components/loading-button.svelte';
+	import { useFormPending } from '$lib/forms/pending-enhance.svelte';
 
 	const { data } = $props();
+	const settleForm = useFormPending();
 
 	let openDebtKey: string | null = $state(null);
 	let amountInput = $state('');
@@ -97,7 +99,7 @@
 				<form
 					method="POST"
 					class="flex flex-col gap-4"
-					use:enhance={() => {
+					use:settleForm.enhance={() => {
 						error = null;
 						return async ({ result, update }) => {
 							if (result.type === 'failure') {
@@ -138,7 +140,9 @@
 						<Field.FieldError>{error}</Field.FieldError>
 					{/if}
 
-					<Button type="submit">Confirm settlement</Button>
+					<LoadingButton type="submit" pending={settleForm.pending}>
+						Confirm settlement
+					</LoadingButton>
 				</form>
 			{/if}
 		{/each}

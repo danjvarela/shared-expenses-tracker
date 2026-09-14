@@ -7,11 +7,12 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { ArrowLeft, ChevronDown, LoaderCircle, ScanLine } from '@lucide/svelte';
+	import { ArrowLeft, ChevronDown, ScanLine } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { untrack } from 'svelte';
+	import LoadingButton from '$lib/components/loading-button.svelte';
 	import type { ScanResult, ReceiptScanLineItem } from '$lib/server/app/interfaces/receipt-scanner';
 
 	const { data } = $props();
@@ -257,15 +258,10 @@
 					class="hidden"
 					onchange={onFileChosen}
 				/>
-				<Button onclick={() => fileInput?.click()} disabled={scanning}>
-					{#if scanning}
-						<LoaderCircle class="size-4 animate-spin" />
-						Scanning…
-					{:else}
-						<ScanLine class="size-4" />
-						Upload receipt
-					{/if}
-				</Button>
+				<LoadingButton onclick={() => fileInput?.click()} pending={scanning}>
+					{#if !scanning}<ScanLine class="size-4" />{/if}
+					{scanning ? 'Scanning…' : 'Upload receipt'}
+				</LoadingButton>
 			</Card.Content>
 		</Card.Root>
 	{:else}
@@ -415,14 +411,9 @@
 				</p>
 
 				<div class="flex gap-2">
-					<Button onclick={confirm} disabled={confirming}>
-						{#if confirming}
-							<LoaderCircle class="size-4 animate-spin" />
-							Saving…
-						{:else}
-							Save expenses
-						{/if}
-					</Button>
+					<LoadingButton onclick={confirm} pending={confirming}>
+						{confirming ? 'Saving…' : 'Save expenses'}
+					</LoadingButton>
 					<Button variant="outline" onclick={discard} disabled={confirming}>Discard draft</Button>
 				</div>
 			</Card.Content>
