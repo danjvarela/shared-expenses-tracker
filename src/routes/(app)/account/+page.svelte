@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ArrowLeft, CircleCheck, Trash2 } from '@lucide/svelte';
+	import { ArrowLeft, CircleCheck, Download, Share, Trash2 } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Field from '$lib/components/ui/field/index.js';
@@ -12,6 +12,7 @@
 	import { getInitials, avatarUrlFor } from '$lib/avatar';
 	import LoadingButton from '$lib/components/loading-button.svelte';
 	import { useFormPending } from '$lib/forms/pending-enhance.svelte';
+	import { canInstall, installState, showCta, promptInstall } from '$lib/pwa/install-prompt.svelte';
 
 	const { data, form } = $props();
 	const profileForm = useFormPending();
@@ -35,6 +36,17 @@
 	let saved = $state(false);
 
 	const avatarUrl = $derived(data.avatarStorageKey ? avatarUrlFor(data.userId) : null);
+
+	let installPending = $state(false);
+
+	async function onInstall() {
+		installPending = true;
+		try {
+			await promptInstall();
+		} finally {
+			installPending = false;
+		}
+	}
 </script>
 
 <div class="container mx-auto max-w-xl p-4">
@@ -173,6 +185,34 @@
 			</div>
 		</Card.Content>
 	</Card.Root>
+
+	{#if showCta()}
+		<Card.Root class="mt-4">
+			<Card.Header>
+				<Card.Title>Install app</Card.Title>
+				<Card.Description>
+					Add Shared Expenses to your home screen for a full-screen, offline-capable experience.
+				</Card.Description>
+			</Card.Header>
+			<Card.Content>
+				{#if canInstall()}
+					<LoadingButton pending={installPending} onclick={onInstall}>
+						{#if !installPending}<Download class="size-4" />{/if}
+						Install app
+					</LoadingButton>
+				{:else if installState.isIOS}
+					<ol class="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+						<li>
+							Tap the <Share class="inline-block size-4 align-text-bottom" /> Share button in
+							the toolbar.
+						</li>
+						<li>Tap "Add to Home Screen".</li>
+						<li>Tap "Add" to confirm.</li>
+					</ol>
+				{/if}
+			</Card.Content>
+		</Card.Root>
+	{/if}
 
 	<Card.Root class="mt-4 border-destructive">
 		<Card.Header>
