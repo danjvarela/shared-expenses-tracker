@@ -149,7 +149,20 @@
 					</div>
 				</object>
 			{:else}
-				<img src={readUrl(selected.id)} alt={selected.originalFilename ?? 'Receipt'} class="w-full" />
+				<a
+					href={readUrl(selected.id)}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="block"
+					aria-label="Open receipt image in new tab"
+				>
+					<img
+						src={readUrl(selected.id)}
+						alt={selected.originalFilename ?? 'Receipt'}
+						loading="lazy"
+						class="mx-auto max-h-[80vh] w-auto object-contain"
+					/>
+				</a>
 			{/if}
 		{/if}
 	</Dialog.Content>
