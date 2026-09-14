@@ -56,7 +56,9 @@
     env.CLOUDFLARE_TUNNEL_TOKEN = config.secretspec.secrets.CLOUDFLARE_TUNNEL_TOKEN or "";
     env.PORT = "5173";
 
-    processes.dev.exec = "pnpm build && node build";
+    env.BUILD_OUT_DIR = "build-prod";
+
+    processes.dev.exec = "pnpm build && node build-prod";
     processes.dev.ready = {
       http.get = {
         port = 5173;

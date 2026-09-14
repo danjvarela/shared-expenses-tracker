@@ -31,7 +31,7 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 
-			adapter: adapter(),
+			adapter: adapter({ out: process.env.BUILD_OUT_DIR ?? 'build' }),
 
 			typescript: {
 				config: (config) => {
@@ -68,7 +68,8 @@ export default defineConfig({
 				]
 			},
 			workbox: {
-				navigateFallback: 'offline.html',
+				navigateFallback: undefined,
+				navigateFallbackDenylist: [/./],
 				additionalManifestEntries: [{ url: 'offline.html', revision: offlineRevision }]
 			}
 		})
