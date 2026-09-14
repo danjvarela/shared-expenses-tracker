@@ -1,19 +1,24 @@
 <script lang="ts">
-	import { Wallet, Sun, Moon, Settings, LogOut, LoaderCircle, Bell } from '@lucide/svelte';
+	import { Wallet, Settings, LogOut, LoaderCircle, Bell } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import { toggleMode } from 'mode-watcher';
+	import ThemeToggle from '$lib/components/theme-toggle.svelte';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { getInitials, avatarUrlFor } from '$lib/avatar';
+	import { unreadBadge as formatUnreadBadge } from '$lib/unread';
 	import type { User } from '$lib/server/domain/user';
 
 	let { user, unreadCount }: { user: User; unreadCount: number } = $props();
-	let unreadBadge = $derived(unreadCount > 9 ? '9+' : String(unreadCount));
+	let unreadBadge = $derived(formatUnreadBadge(unreadCount));
 	let avatarUrl = $derived(user.avatarStorageKey ? avatarUrlFor(user.id) : null);
 	let loggingOut = $state(false);
+	let pathname = $derived(page.url.pathname);
+	let homeActive = $derived(pathname === '/');
+	let settleActive = $derived(pathname.startsWith('/settle'));
 
 	async function logout() {
 		loggingOut = true;
@@ -26,7 +31,10 @@
 	}
 </script>
 
-<header class="flex items-center justify-center border-b">
+<header
+	class="hidden items-center justify-center border-b md:flex"
+	style="padding-top: env(safe-area-inset-top)"
+>
 	<div class="container flex max-w-xl items-center justify-between p-4">
 		<a href={resolve('/')} class="flex items-center gap-2 no-underline">
 			<div
@@ -37,11 +45,27 @@
 			<span class="font-semibold">Shared Expenses</span>
 		</a>
 
-		<div class="flex items-center gap-2">
-			<Button variant="ghost" size="icon" onclick={toggleMode} aria-label="Toggle dark mode">
-				<Sun class="size-4 scale-100 dark:scale-0" />
-				<Moon class="absolute size-4 scale-0 dark:scale-100" />
+		<nav class="flex items-center gap-1" aria-label="Primary desktop">
+			<Button
+				variant="ghost"
+				href={resolve('/')}
+				aria-current={homeActive ? 'page' : undefined}
+				class={homeActive ? 'text-primary' : 'text-muted-foreground'}
+			>
+				Home
 			</Button>
+			<Button
+				variant="ghost"
+				href={resolve('/(app)/settle')}
+				aria-current={settleActive ? 'page' : undefined}
+				class={settleActive ? 'text-primary' : 'text-muted-foreground'}
+			>
+				Settle
+			</Button>
+		</nav>
+
+		<div class="flex items-center gap-2">
+			<ThemeToggle />
 
 			<Button
 				variant="ghost"
