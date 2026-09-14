@@ -3,6 +3,16 @@ import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { SvelteKitPWA } from '@vite-pwa/sveltekit';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+const offlinePath = resolve(process.cwd(), 'static/offline.html');
+const offlineRevision = createHash('sha1')
+	.update(readFileSync(offlinePath))
+	.digest('hex')
+	.slice(0, 8);
 
 export default defineConfig({
 	server: {
@@ -27,6 +37,39 @@ export default defineConfig({
 				config: (config) => {
 					config.include.push('../drizzle.config.ts');
 				}
+			}
+		}),
+		SvelteKitPWA({
+			registerType: 'prompt',
+			manifest: {
+				name: 'Shared Expenses',
+				short_name: 'Expenses',
+				description: 'Track shared expenses and settle balances with your groups.',
+				display: 'standalone',
+				theme_color: '#008236',
+				background_color: '#ffffff',
+				start_url: '/',
+				scope: '/',
+				icons: [
+					{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+					{ src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+					{
+						src: '/maskable-192x192.png',
+						sizes: '192x192',
+						type: 'image/png',
+						purpose: 'maskable'
+					},
+					{
+						src: '/maskable-512x512.png',
+						sizes: '512x512',
+						type: 'image/png',
+						purpose: 'maskable'
+					}
+				]
+			},
+			workbox: {
+				navigateFallback: 'offline.html',
+				additionalManifestEntries: [{ url: 'offline.html', revision: offlineRevision }]
 			}
 		})
 	],

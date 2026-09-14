@@ -52,7 +52,7 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 - [ ] Not started — Export group data (CSV/PDF of expenses and balances)
 - [ ] Not started — Multi-group dashboard (cross-group total owed / owed-to-you)
 - [ ] Not started — Category management (CRUD for expense categories beyond the current fixed set)
-- [ ] Not started — Convert app to a PWA so it can be installed as an app (manifest + service worker + offline shell)
+- [ ] In progress — Convert app to a PWA so it can be installed as an app. Tier 1 only: manifest + service worker (`@vite-pwa/sveltekit`, prompt update) + offline shell with `offline.html` fallback, mobile bottom-tab chrome + breakpoint-toggled header, loading UI (page-load progress bar + list-page skeletons, shared enhance `LoadingButton` for actions), install CTA. Offline data (Tier 2/3) deferred — see ADR-0023. Tickets in `.tickets/01`–`06`.
 
 ## Dev environment
 

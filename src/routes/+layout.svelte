@@ -3,11 +3,13 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { ModeWatcher } from 'mode-watcher';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
+	import ReloadPrompt from '$lib/components/reload-prompt.svelte';
 
 	let { children } = $props();
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
-<ModeWatcher />
+<ModeWatcher themeColors={{ light: '#ffffff', dark: '#0c0a09' }} />
 <Toaster />
+<ReloadPrompt />
 {@render children()}
