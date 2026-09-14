@@ -57,7 +57,3 @@ Status tags: `Done`, `In progress`, `Not started`, `Flagged` (design undecided, 
 ## Dev environment
 
 - [x] Done — Cloudflare Tunnel in devenv: expose the app's running port to a public `*.trycloudflare.com` (or named) URL so the local dev server is reachable from the cloud (e.g. for mobile testing / OAuth callbacks). Wired into `devenv.nix` alongside the existing services.
-
-## Open questions
-
-- **Receipt storage backend rollout**: `fs` ships now behind `IReceiptStorageBackend`. R2 (published deployment) and Google Drive (personal use) still deferred behind the same interface — Drive in particular has open account/scope/sharing decisions warranting their own ADR/epic.
