@@ -3,6 +3,7 @@ import { authService } from '$lib/server/container';
 
 const PUBLIC_ROUTES = new Set([
 	'/login',
+	'/login/password',
 	'/login/[provider]',
 	'/login/[provider]/callback',
 	'/logout',
