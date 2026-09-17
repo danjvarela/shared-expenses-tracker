@@ -1,8 +1,11 @@
 import { redirect } from '@sveltejs/kit';
 import { authService } from '$lib/server/container';
+import { assertOAuthLoginAllowed } from '$lib/server/infra/app-env';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, url, cookies }) => {
+	assertOAuthLoginAllowed();
+
 	const redirectUri = `${url.origin}/login/${params.provider}/callback`;
 	const {
 		url: authorizationUrl,

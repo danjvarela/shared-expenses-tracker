@@ -13,6 +13,16 @@ const findByProviderSubject =
 		return rows[0] ?? null;
 	};
 
+const findByUserIdAndProvider =
+	(db: Database): IIdentityRepository['findByUserIdAndProvider'] =>
+	async (userId, provider) => {
+		const rows = await db
+			.select()
+			.from(identity)
+			.where(and(eq(identity.userId, userId), eq(identity.provider, provider)));
+		return rows[0] ?? null;
+	};
+
 const create =
 	(db: Database): IIdentityRepository['create'] =>
 	async (input) => {
@@ -40,6 +50,7 @@ const deleteAllForUser =
 export function createIdentityRepository(db: Database): IIdentityRepository {
 	return {
 		findByProviderSubject: findByProviderSubject(db),
+		findByUserIdAndProvider: findByUserIdAndProvider(db),
 		create: create(db),
 		hasIdentityForUser: hasIdentityForUser(db),
 		deleteAllForUser: deleteAllForUser(db)

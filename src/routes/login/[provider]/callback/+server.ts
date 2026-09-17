@@ -1,8 +1,11 @@
 import { error, redirect } from '@sveltejs/kit';
 import { authService } from '$lib/server/container';
+import { assertOAuthLoginAllowed } from '$lib/server/infra/app-env';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, url, cookies }) => {
+	assertOAuthLoginAllowed();
+
 	const code = url.searchParams.get('code');
 	const state = url.searchParams.get('state');
 	const storedState = cookies.get('oauth_state');

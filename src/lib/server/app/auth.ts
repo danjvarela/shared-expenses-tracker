@@ -1,4 +1,4 @@
-import { randomToken, sha256Hex } from '$lib/server/infra/crypto';
+import { randomToken, sha256Hex, verifyPassword } from '$lib/server/infra/crypto';
 import { AppError } from '$lib/server/app/error';
 import type { IUserRepository } from '$lib/server/app/interfaces/repositories/user';
 import type { IIdentityRepository } from '$lib/server/app/interfaces/repositories/identity';
@@ -85,6 +85,22 @@ export function createAuthService(deps: AuthDeps) {
 		return { userId: newUser.id };
 	}
 
+	async function authenticateWithPassword(
+		email: string,
+		password: string
+	): Promise<{ userId: string } | null> {
+		const user = await deps.userRepo.findByEmail(email);
+		if (!user) return null;
+
+		const identity = await deps.identityRepo.findByUserIdAndProvider(user.id, 'password');
+		if (!identity || !identity.passwordHash) return null;
+
+		const valid = await verifyPassword(password, identity.passwordHash);
+		if (!valid) return null;
+
+		return { userId: user.id };
+	}
+
 	function generateSessionToken(): string {
 		return randomToken();
 	}
@@ -124,6 +140,7 @@ export function createAuthService(deps: AuthDeps) {
 	return {
 		createAuthorizationRequest,
 		handleAuthorizationCallback,
+		authenticateWithPassword,
 		generateSessionToken,
 		createSession,
 		validateSessionToken,

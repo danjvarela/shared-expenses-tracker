@@ -58,6 +58,9 @@ function fakeIdentityRepo(): IIdentityRepository & {
 		async findByProviderSubject() {
 			return null;
 		},
+		async findByUserIdAndProvider() {
+			return null;
+		},
 		async create() {
 			throw new Error('not implemented');
 		},

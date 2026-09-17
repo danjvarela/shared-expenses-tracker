@@ -5,6 +5,7 @@ export const identitySchema = z.object({
 	userId: z.uuid(),
 	provider: z.string(),
 	providerSubject: z.string(),
+	passwordHash: z.string().nullable(),
 	createdAt: z.date()
 });
 

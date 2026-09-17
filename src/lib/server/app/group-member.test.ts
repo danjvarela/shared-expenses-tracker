@@ -16,6 +16,9 @@ function fakeIdentityRepo(identities: Set<string>): IIdentityRepository {
 		async findByProviderSubject() {
 			return null;
 		},
+		async findByUserIdAndProvider() {
+			return null;
+		},
 		async create() {
 			return {} as never;
 		},

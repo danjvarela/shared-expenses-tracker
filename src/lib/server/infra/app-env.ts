@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/private';
+import { error } from '@sveltejs/kit';
 
 export type AppEnv = 'development' | 'production' | 'demo';
 
@@ -11,3 +12,9 @@ export function resolveAppEnv(raw: string | undefined): AppEnv {
 }
 
 export const APP_ENV: AppEnv = resolveAppEnv(env.APP_ENV);
+
+export function assertOAuthLoginAllowed(appEnv: AppEnv = APP_ENV): void {
+	if (appEnv === 'demo') {
+		error(403, 'OAuth login is disabled in the demo environment');
+	}
+}

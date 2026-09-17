@@ -6,6 +6,7 @@ import type { IOAuthProvider, OAuthProfile } from '$lib/server/app/interfaces/oa
 import type { User } from '$lib/server/domain/user';
 import type { Session } from '$lib/server/domain/session';
 import { createAuthService } from './auth';
+import { hashPassword } from '$lib/server/infra/crypto';
 
 function fakeUserRepo(seed: Array<User> = []): IUserRepository & {
 	updatedDisplayNames: Array<{ userId: string; displayName: string }>;
@@ -50,7 +51,13 @@ function fakeUserRepo(seed: Array<User> = []): IUserRepository & {
 }
 
 function fakeIdentityRepo(): IIdentityRepository {
-	const rows: Array<{ id: string; userId: string; provider: string; providerSubject: string }> = [];
+	const rows: Array<{
+		id: string;
+		userId: string;
+		provider: string;
+		providerSubject: string;
+		passwordHash: string | null;
+	}> = [];
 
 	return {
 		async findByProviderSubject(provider, providerSubject) {
@@ -59,8 +66,12 @@ function fakeIdentityRepo(): IIdentityRepository {
 			);
 			return row ? { ...row, createdAt: new Date() } : null;
 		},
+		async findByUserIdAndProvider(userId, provider) {
+			const row = rows.find((row) => row.userId === userId && row.provider === provider);
+			return row ? { ...row, createdAt: new Date() } : null;
+		},
 		async create(input) {
-			const row = { id: `identity-${rows.length}`, ...input };
+			const row = { id: `identity-${rows.length}`, passwordHash: null, ...input };
 			rows.push(row);
 			return { ...row, createdAt: new Date() };
 		},
@@ -299,5 +310,64 @@ describe('createAuthService', () => {
 		const result = await service.validateSessionToken(token);
 		expect(result).toBeNull();
 		expect(await sessionRepo.findWithUser(session.id)).toBeNull();
+	});
+});
+
+describe('authenticateWithPassword', () => {
+	const demoUser: User = {
+		id: 'user-demo',
+		displayName: 'Demo User',
+		email: 'demo@example.com',
+		avatarStorageKey: null,
+		avatarMime: null,
+		deletedAt: null
+	};
+
+	async function buildService(password: string) {
+		const userRepo = fakeUserRepo([demoUser]);
+		const identityRepo = fakeIdentityRepo();
+		await identityRepo.create({
+			userId: demoUser.id,
+			provider: 'password',
+			providerSubject: demoUser.email!,
+			passwordHash: await hashPassword(password)
+		});
+		return createAuthService({
+			userRepo,
+			identityRepo,
+			sessionRepo: fakeSessionRepo(new Map()),
+			oauthProviders: {}
+		});
+	}
+
+	it('authenticates a seeded password identity with the correct password', async () => {
+		const service = await buildService('correct-password');
+		const result = await service.authenticateWithPassword(demoUser.email!, 'correct-password');
+		expect(result).toEqual({ userId: demoUser.id });
+	});
+
+	it('rejects the wrong password', async () => {
+		const service = await buildService('correct-password');
+		const result = await service.authenticateWithPassword(demoUser.email!, 'wrong-password');
+		expect(result).toBeNull();
+	});
+
+	it('rejects an unknown email without creating a user', async () => {
+		const service = await buildService('correct-password');
+		const result = await service.authenticateWithPassword('nobody@example.com', 'anything');
+		expect(result).toBeNull();
+	});
+
+	it('rejects a user that has no password identity', async () => {
+		const userRepo = fakeUserRepo([demoUser]);
+		const service = createAuthService({
+			userRepo,
+			identityRepo: fakeIdentityRepo(),
+			sessionRepo: fakeSessionRepo(new Map()),
+			oauthProviders: {}
+		});
+
+		const result = await service.authenticateWithPassword(demoUser.email!, 'anything');
+		expect(result).toBeNull();
 	});
 });
