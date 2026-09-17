@@ -18,7 +18,8 @@
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
-		"db:seed": "tsx scripts/seed.ts"
+		"db:seed": "tsx scripts/seed.ts",
+		"db:seed:demo": "tsx scripts/seed-demo.ts"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",

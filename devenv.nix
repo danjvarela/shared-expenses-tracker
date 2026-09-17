@@ -52,6 +52,7 @@
   profiles.demo.module = {
     env.APP_ENV = "demo";
     env.DATABASE_URL = config.secretspec.secrets.DEMO_DATABASE_URL or "file:demo.db";
+    env.DEMO_DATABASE_URL = config.secretspec.secrets.DEMO_DATABASE_URL or "file:demo.db";
 
     # No receipt-scanner backend configured for demo: leave RECEIPT_SCANNER_BACKEND
     # unset so the scanner stays disabled (see resolveScannerConfig's "off" path)
