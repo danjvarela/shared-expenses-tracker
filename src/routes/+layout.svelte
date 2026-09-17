@@ -5,8 +5,9 @@
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import ReloadPrompt from '$lib/components/reload-prompt.svelte';
 	import InstallPromptInit from '$lib/components/install-prompt-init.svelte';
+	import DemoBanner from '$lib/components/demo-banner.svelte';
 
-	let { children } = $props();
+	let { children, data } = $props();
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
@@ -14,4 +15,7 @@
 <Toaster />
 <ReloadPrompt />
 <InstallPromptInit />
+{#if data.appEnv === 'demo'}
+	<DemoBanner />
+{/if}
 {@render children()}
