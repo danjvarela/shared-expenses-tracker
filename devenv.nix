@@ -49,6 +49,24 @@
     processes.dev.exec = "pnpm dev";
   };
 
+  profiles.demo.module = {
+    env.APP_ENV = "demo";
+    env.DATABASE_URL = config.secretspec.secrets.DEMO_DATABASE_URL or "file:demo.db";
+
+    # No receipt-scanner backend configured for demo: leave RECEIPT_SCANNER_BACKEND
+    # unset so the scanner stays disabled (see resolveScannerConfig's "off" path)
+    # instead of requiring a Gemini/OCR/Ollama key to boot.
+    env.RECEIPT_SCANNER_BACKEND = "";
+    env.OLLAMA_API_KEY = "";
+    env.OCR_API_KEY = "";
+    env.GOOGLE_API_KEY = "";
+
+    env.RECEIPT_STORAGE_BACKEND = "fs";
+    env.RECEIPT_STORAGE_FS_DIR = "./uploads-demo";
+
+    processes.dev.exec = "pnpm build && node build";
+  };
+
   profiles.production.module = {
     env.RECEIPT_STORAGE_BACKEND = "fs";
     env.RECEIPT_STORAGE_FS_DIR = "REDACTED_RECEIPT_DIR";
