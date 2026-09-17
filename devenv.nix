@@ -70,8 +70,8 @@
 
   profiles.production.module = {
     env.RECEIPT_STORAGE_BACKEND = "fs";
-    env.RECEIPT_STORAGE_FS_DIR = "REDACTED_RECEIPT_DIR";
-    env.CLOUDFLARE_TUNNEL_HOSTNAME = "redacted.example.com";
+    env.RECEIPT_STORAGE_FS_DIR = config.secretspec.secrets.RECEIPT_STORAGE_FS_DIR or "./uploads-prod";
+    env.CLOUDFLARE_TUNNEL_HOSTNAME = config.secretspec.secrets.CLOUDFLARE_TUNNEL_HOSTNAME or "";
     env.CLOUDFLARE_TUNNEL_TOKEN = config.secretspec.secrets.CLOUDFLARE_TUNNEL_TOKEN or "";
     env.PORT = "5173";
 
