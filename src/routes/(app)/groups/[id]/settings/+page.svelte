@@ -9,6 +9,7 @@
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import IconPicker from '$lib/components/icon-picker.svelte';
 	import EmojiPicker from '$lib/components/emoji-picker.svelte';
 	import { ArrowLeft, CircleCheck, LoaderCircle, Pencil, X } from '@lucide/svelte';
@@ -60,6 +61,7 @@
 	let deleteDialogOpen = $state(false);
 
 	const isSolo = $derived(data.members.length === 1);
+	const isDemo = $derived(data.appEnv === 'demo');
 
 	function currencyLabel() {
 		const currency = CURRENCIES.find((c) => c.code === currencyCode);
@@ -342,12 +344,29 @@
 								<AlertDialog.Root bind:open={leaveDialogOpen}>
 									<AlertDialog.Trigger>
 										{#snippet child({ props })}
-											<Button
-												{...props}
-												variant="destructive"
-												size="sm"
-												disabled={member.hasOutstandingBalance}>Leave</Button
-											>
+											{#if isDemo}
+												<Tooltip.Provider>
+													<Tooltip.Root>
+														<Tooltip.Trigger>
+															{#snippet child({ props: tooltipProps })}
+																<span {...props} {...tooltipProps}>
+																	<Button variant="destructive" size="sm" disabled
+																		>Leave</Button
+																	>
+																</span>
+															{/snippet}
+														</Tooltip.Trigger>
+														<Tooltip.Content>Disabled in the demo environment</Tooltip.Content>
+													</Tooltip.Root>
+												</Tooltip.Provider>
+											{:else}
+												<Button
+													{...props}
+													variant="destructive"
+													size="sm"
+													disabled={member.hasOutstandingBalance}>Leave</Button
+												>
+											{/if}
 										{/snippet}
 									</AlertDialog.Trigger>
 									<AlertDialog.Content>
@@ -394,12 +413,29 @@
 								<AlertDialog.Root bind:open={removeDialogOpen}>
 									<AlertDialog.Trigger>
 										{#snippet child({ props })}
-											<Button
-												{...props}
-												variant="destructive"
-												size="sm"
-												disabled={member.hasOutstandingBalance}>Remove</Button
-											>
+											{#if isDemo}
+												<Tooltip.Provider>
+													<Tooltip.Root>
+														<Tooltip.Trigger>
+															{#snippet child({ props: tooltipProps })}
+																<span {...props} {...tooltipProps}>
+																	<Button variant="destructive" size="sm" disabled
+																		>Remove</Button
+																	>
+																</span>
+															{/snippet}
+														</Tooltip.Trigger>
+														<Tooltip.Content>Disabled in the demo environment</Tooltip.Content>
+													</Tooltip.Root>
+												</Tooltip.Provider>
+											{:else}
+												<Button
+													{...props}
+													variant="destructive"
+													size="sm"
+													disabled={member.hasOutstandingBalance}>Remove</Button
+												>
+											{/if}
 										{/snippet}
 									</AlertDialog.Trigger>
 									<AlertDialog.Content>
@@ -517,9 +553,24 @@
 				<AlertDialog.Root bind:open={deleteDialogOpen}>
 					<AlertDialog.Trigger>
 						{#snippet child({ props })}
-							<Button {...props} variant="destructive" disabled={data.hasOutstandingBalance}>
-								Delete group
-							</Button>
+							{#if isDemo}
+								<Tooltip.Provider>
+									<Tooltip.Root>
+										<Tooltip.Trigger>
+											{#snippet child({ props: tooltipProps })}
+												<span {...props} {...tooltipProps}>
+													<Button variant="destructive" disabled>Delete group</Button>
+												</span>
+											{/snippet}
+										</Tooltip.Trigger>
+										<Tooltip.Content>Disabled in the demo environment</Tooltip.Content>
+									</Tooltip.Root>
+								</Tooltip.Provider>
+							{:else}
+								<Button {...props} variant="destructive" disabled={data.hasOutstandingBalance}>
+									Delete group
+								</Button>
+							{/if}
 						{/snippet}
 					</AlertDialog.Trigger>
 					<AlertDialog.Content>

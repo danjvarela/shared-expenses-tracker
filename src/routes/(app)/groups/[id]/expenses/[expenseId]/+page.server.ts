@@ -1,5 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { expenseService, expenseRepo, categoryRepo, receiptService } from '$lib/server/container';
+import { assertDestructiveActionAllowed } from '$lib/server/infra/app-env';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ params, parent, locals }) => {
@@ -18,6 +19,8 @@ export const load: PageServerLoad = async ({ params, parent, locals }) => {
 
 export const actions: Actions = {
 	delete: async ({ params }) => {
+		assertDestructiveActionAllowed();
+
 		const expense = await expenseRepo.getWithSplits(params.expenseId);
 		if (!expense || expense.groupId !== params.id) {
 			error(404, 'Expense not found');

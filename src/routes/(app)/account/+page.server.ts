@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { userService } from '$lib/server/container';
 import { sniffMime } from '$lib/server/app/receipt-format';
 import { toActionResult } from '$lib/server/presentation/error-handling';
+import { assertDestructiveActionAllowed } from '$lib/server/infra/app-env';
 import type { PageServerLoad, Actions } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -65,6 +66,8 @@ export const actions: Actions = {
 	},
 
 	deleteAvatar: async ({ locals }) => {
+		assertDestructiveActionAllowed();
+
 		try {
 			await userService.deleteAvatar(locals.user!.id);
 		} catch (err) {
@@ -76,6 +79,8 @@ export const actions: Actions = {
 	},
 
 	deleteAccount: async ({ locals, cookies }) => {
+		assertDestructiveActionAllowed();
+
 		try {
 			await userService.anonymizeUser(locals.user!.id);
 		} catch (err) {

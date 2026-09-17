@@ -2,6 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { receiptService } from '$lib/server/container';
 import { toHttpError } from '$lib/server/presentation/error-handling';
+import { assertDestructiveActionAllowed } from '$lib/server/infra/app-env';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
@@ -21,6 +22,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 };
 
 export const DELETE: RequestHandler = async ({ params, locals }) => {
+	assertDestructiveActionAllowed();
+
 	try {
 		await receiptService.deleteReceipt(locals.user!.id, params.receiptId);
 		return new Response(null, { status: 204 });

@@ -18,3 +18,9 @@ export function assertOAuthLoginAllowed(appEnv: AppEnv = APP_ENV): void {
 		error(403, 'OAuth login is disabled in the demo environment');
 	}
 }
+
+export function assertDestructiveActionAllowed(appEnv: AppEnv = APP_ENV): void {
+	if (appEnv === 'demo') {
+		error(403, 'This action is disabled in the demo environment');
+	}
+}

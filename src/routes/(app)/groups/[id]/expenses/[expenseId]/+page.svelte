@@ -2,6 +2,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { ArrowLeft } from '@lucide/svelte';
 	import { formatAmountCents } from '$lib/currency';
@@ -12,6 +13,7 @@
 
 	const { data, form } = $props();
 	const deleteForm = useFormPending();
+	const isDemo = $derived(data.appEnv === 'demo');
 
 	function formatAmount(amountCents: number) {
 		return formatAmountCents(amountCents, data.group.currencyCode);
@@ -44,29 +46,44 @@
 			<Button variant="outline" href="/groups/{data.group.id}/expenses/{data.expense.id}/edit">
 				Edit
 			</Button>
-			<AlertDialog.Root>
-				<AlertDialog.Trigger>
-					{#snippet child({ props })}
-						<Button {...props} variant="destructive">Delete</Button>
-					{/snippet}
-				</AlertDialog.Trigger>
-				<AlertDialog.Content>
-					<AlertDialog.Header>
-						<AlertDialog.Title>Delete this expense?</AlertDialog.Title>
-						<AlertDialog.Description>
-							This will permanently delete "{data.expense.description}" and cannot be undone.
-						</AlertDialog.Description>
-					</AlertDialog.Header>
-					<AlertDialog.Footer>
-						<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
-						<form method="POST" action="?/delete" use:deleteForm.enhance>
-							<LoadingButton type="submit" pending={deleteForm.pending}>
-								Delete
-							</LoadingButton>
-						</form>
-					</AlertDialog.Footer>
-				</AlertDialog.Content>
-			</AlertDialog.Root>
+			{#if isDemo}
+				<Tooltip.Provider>
+					<Tooltip.Root>
+						<Tooltip.Trigger>
+							{#snippet child({ props })}
+								<span {...props}>
+									<Button variant="destructive" disabled>Delete</Button>
+								</span>
+							{/snippet}
+						</Tooltip.Trigger>
+						<Tooltip.Content>Disabled in the demo environment</Tooltip.Content>
+					</Tooltip.Root>
+				</Tooltip.Provider>
+			{:else}
+				<AlertDialog.Root>
+					<AlertDialog.Trigger>
+						{#snippet child({ props })}
+							<Button {...props} variant="destructive">Delete</Button>
+						{/snippet}
+					</AlertDialog.Trigger>
+					<AlertDialog.Content>
+						<AlertDialog.Header>
+							<AlertDialog.Title>Delete this expense?</AlertDialog.Title>
+							<AlertDialog.Description>
+								This will permanently delete "{data.expense.description}" and cannot be undone.
+							</AlertDialog.Description>
+						</AlertDialog.Header>
+						<AlertDialog.Footer>
+							<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+							<form method="POST" action="?/delete" use:deleteForm.enhance>
+								<LoadingButton type="submit" pending={deleteForm.pending}>
+									Delete
+								</LoadingButton>
+							</form>
+						</AlertDialog.Footer>
+					</AlertDialog.Content>
+				</AlertDialog.Root>
+			{/if}
 		</div>
 	</div>
 
@@ -111,5 +128,5 @@
 		</Card.Content>
 	</Card.Root>
 
-	<Receipts groupId={data.group.id} expenseId={data.expense.id} receipts={data.receipts} />
+	<Receipts groupId={data.group.id} expenseId={data.expense.id} receipts={data.receipts} {isDemo} />
 </div>

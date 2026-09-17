@@ -7,6 +7,7 @@ import {
 	categoryService
 } from '$lib/server/container';
 import { toActionResult } from '$lib/server/presentation/error-handling';
+import { assertDestructiveActionAllowed } from '$lib/server/infra/app-env';
 import { CURRENCIES } from '$lib/currency';
 import type { PageServerLoad, Actions } from './$types';
 
@@ -166,6 +167,8 @@ export const actions: Actions = {
 	},
 
 	delete: async ({ params }) => {
+		assertDestructiveActionAllowed();
+
 		try {
 			await groupService.deleteGroup(params.id);
 		} catch (err) {
@@ -177,6 +180,8 @@ export const actions: Actions = {
 	},
 
 	remove: async ({ request, params, locals }) => {
+		assertDestructiveActionAllowed();
+
 		const formData = await request.formData();
 		const userId = formData.get('userId');
 
@@ -196,6 +201,8 @@ export const actions: Actions = {
 	},
 
 	leave: async ({ params, locals }) => {
+		assertDestructiveActionAllowed();
+
 		const userId = locals.user!.id;
 
 		try {

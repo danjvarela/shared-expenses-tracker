@@ -6,6 +6,7 @@
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { toast } from 'svelte-sonner';
 	import { resolve } from '$app/paths';
@@ -15,6 +16,7 @@
 	import { canInstall, installState, showCta, promptInstall } from '$lib/pwa/install-prompt.svelte';
 
 	const { data, form } = $props();
+	const isDemo = $derived(data.appEnv === 'demo');
 	const profileForm = useFormPending();
 	const avatarForm = useFormPending();
 	const avatarDeleteForm = useFormPending();
@@ -131,16 +133,41 @@
 								};
 							}}
 						>
-							<LoadingButton
-								type="submit"
-								variant="ghost"
-								size="sm"
-								class="text-destructive"
-								pending={avatarDeleteForm.pending}
-							>
-								<Trash2 class="size-4" />
-								Remove
-							</LoadingButton>
+							{#if isDemo}
+								<Tooltip.Provider>
+									<Tooltip.Root>
+										<Tooltip.Trigger>
+											{#snippet child({ props })}
+												<span {...props}>
+													<LoadingButton
+														type="submit"
+														variant="ghost"
+														size="sm"
+														class="text-destructive"
+														pending={avatarDeleteForm.pending}
+														disabled
+													>
+														<Trash2 class="size-4" />
+														Remove
+													</LoadingButton>
+												</span>
+											{/snippet}
+										</Tooltip.Trigger>
+										<Tooltip.Content>Disabled in the demo environment</Tooltip.Content>
+									</Tooltip.Root>
+								</Tooltip.Provider>
+							{:else}
+								<LoadingButton
+									type="submit"
+									variant="ghost"
+									size="sm"
+									class="text-destructive"
+									pending={avatarDeleteForm.pending}
+								>
+									<Trash2 class="size-4" />
+									Remove
+								</LoadingButton>
+							{/if}
 						</form>
 					{/if}
 				</div>
@@ -224,6 +251,20 @@
 		</Card.Header>
 		<Card.Content>
 			<div>
+				{#if isDemo}
+					<Tooltip.Provider>
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#snippet child({ props })}
+									<span {...props}>
+										<Button variant="destructive" disabled>Delete account</Button>
+									</span>
+								{/snippet}
+							</Tooltip.Trigger>
+							<Tooltip.Content>Disabled in the demo environment</Tooltip.Content>
+						</Tooltip.Root>
+					</Tooltip.Provider>
+				{:else}
 				<AlertDialog.Root>
 					<AlertDialog.Trigger>
 						{#snippet child({ props })}
@@ -257,6 +298,7 @@
 						</AlertDialog.Footer>
 					</AlertDialog.Content>
 				</AlertDialog.Root>
+				{/if}
 			</div>
 		</Card.Content>
 	</Card.Root>

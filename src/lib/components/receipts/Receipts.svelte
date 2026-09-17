@@ -2,6 +2,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import { Plus, Trash2, FileText, ExternalLink } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import type { ExpenseReceipt } from '$lib/server/domain/expense-receipt';
@@ -9,8 +10,10 @@
 	let {
 		groupId,
 		expenseId,
-		receipts
-	}: { groupId: string; expenseId: string; receipts: Array<ExpenseReceipt> } = $props();
+		receipts,
+		isDemo = false
+	}: { groupId: string; expenseId: string; receipts: Array<ExpenseReceipt>; isDemo?: boolean } =
+		$props();
 
 	// svelte-ignore state_referenced_locally
 	let localReceipts = $state(receipts);
@@ -107,15 +110,38 @@
 							/>
 						{/if}
 					</Button>
-					<Button
-						variant="destructive"
-						size="icon"
-						class="absolute top-1 right-1 size-7 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-						aria-label="Delete receipt"
-						onclick={() => (pendingDelete = receipt)}
-					>
-						<Trash2 class="size-4" />
-					</Button>
+					{#if isDemo}
+						<Tooltip.Provider>
+							<Tooltip.Root>
+								<Tooltip.Trigger>
+									{#snippet child({ props })}
+										<span {...props} class="absolute top-1 right-1 block size-7">
+											<Button
+												variant="destructive"
+												size="icon"
+												class="size-7 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+												aria-label="Delete receipt"
+												disabled
+											>
+												<Trash2 class="size-4" />
+											</Button>
+										</span>
+									{/snippet}
+								</Tooltip.Trigger>
+								<Tooltip.Content>Disabled in the demo environment</Tooltip.Content>
+							</Tooltip.Root>
+						</Tooltip.Provider>
+					{:else}
+						<Button
+							variant="destructive"
+							size="icon"
+							class="absolute top-1 right-1 size-7 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+							aria-label="Delete receipt"
+							onclick={() => (pendingDelete = receipt)}
+						>
+							<Trash2 class="size-4" />
+						</Button>
+					{/if}
 				</div>
 			{/each}
 		</div>
