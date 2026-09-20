@@ -7,7 +7,6 @@ import {
 	MAX_RECEIPT_BYTES
 } from '$lib/server/app/receipt';
 import { ALLOWED_RECEIPT_MIMES } from '$lib/server/app/receipt-format';
-import { AppError } from '$lib/server/app/error';
 import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
 import type { IGroupMemberRepository } from '$lib/server/app/interfaces/repositories/group-member';
 import type { IExpenseRepository } from '$lib/server/app/interfaces/repositories/expense';
@@ -21,9 +20,12 @@ import type { IReceiptScanner, ScanResult } from '$lib/server/app/interfaces/rec
 import type { IFileStorageBackend } from '$lib/server/app/interfaces/file-storage';
 import type { IReceiptNormalizer } from '$lib/server/app/interfaces/receipt-normalizer';
 import { NOOP_LOGGER, type ILogger } from '$lib/server/app/interfaces/logger';
-import { parseAmountCents } from '$lib/server/app/expense-form';
-import { resolveSplits } from '$lib/server/app/split-resolver';
 import { applyPairBalanceDeltas, expenseDeltas } from '$lib/server/app/pair-balance';
+import {
+	DraftValidationError,
+	normalizeDraftLines,
+	type DraftLineInput
+} from '$lib/server/app/draft-line';
 
 export interface ScanInput {
 	groupId: string;
@@ -45,13 +47,7 @@ export interface ScanOutput {
 	storageMeta: ScanStorageMeta;
 }
 
-export interface ScanDraftLineInput {
-	description: string;
-	amountDecimal: string;
-	categoryId: string | null;
-	date: string;
-	percents: Record<string, string>;
-}
+export type ScanDraftLineInput = DraftLineInput;
 
 export interface ScanConfirmInput {
 	groupId: string;
@@ -73,11 +69,7 @@ export interface ScanConfirmOutput {
 	expenseIds: string[];
 }
 
-export class ScanDraftValidationError extends AppError {
-	constructor(message: string) {
-		super(message, 400);
-	}
-}
+export { DraftValidationError as ScanDraftValidationError };
 
 export interface ScanServiceDeps {
 	storageBackend: IFileStorageBackend;
@@ -104,7 +96,10 @@ export function createScanService(deps: ScanServiceDeps) {
 
 	async function scan(actorUserId: string, input: ScanInput): Promise<ScanOutput> {
 		const log = logger.child({ scanId: randomUUID(), groupId: input.groupId, actorUserId });
-		log.info('receipt scan started', { originalSizeBytes: input.sizeBytes, sniffedMime: input.sniffedMime });
+		log.info('receipt scan started', {
+			originalSizeBytes: input.sizeBytes,
+			sniffedMime: input.sniffedMime
+		});
 
 		const isMember = await deps.groupMemberRepo.isMember(input.groupId, actorUserId);
 		if (!isMember) throw new ReceiptNotAuthorizedError();
@@ -169,108 +164,6 @@ export function createScanService(deps: ScanServiceDeps) {
 		};
 	}
 
-	function normalizeCategoryId(raw: string | null): string | null {
-		return typeof raw === 'string' && raw !== '' && raw !== 'none' ? raw : null;
-	}
-
-	function parseLineDate(raw: string): Date {
-		if (typeof raw !== 'string' || raw.trim() === '') {
-			throw new ScanDraftValidationError('Date is required for every line');
-		}
-		const date = new Date(raw);
-		if (Number.isNaN(date.getTime())) {
-			throw new ScanDraftValidationError('Invalid date');
-		}
-		return date;
-	}
-
-	function resolveLineSplits(
-		amountCents: number,
-		paidByUserId: string,
-		members: Array<{ userId: string; defaultSplitPercent: number | null }>,
-		percents: Record<string, string>
-	): Array<{ userId: string; amountCents: number }> {
-		const fromPercents = members.map((member) => {
-			const raw = percents[member.userId];
-			const included = typeof raw === 'string' && raw.trim() !== '';
-			let percent: number | undefined;
-			if (included) {
-				percent = Number(raw);
-				if (Number.isNaN(percent) || percent < 0) {
-					throw new ScanDraftValidationError('Split percentages must be non-negative numbers');
-				}
-			}
-			return { userId: member.userId, included, percent };
-		});
-
-		if (fromPercents.some((member) => member.included)) {
-			return resolveSplits({
-				method: 'percentage',
-				amountCents,
-				payerId: paidByUserId,
-				members: fromPercents
-			});
-		}
-
-		// No custom split specified — fall back to the group default split.
-		const fromDefaults = members.map((member) => ({
-			userId: member.userId,
-			included: member.defaultSplitPercent !== null,
-			percent: member.defaultSplitPercent ?? undefined
-		}));
-
-		if (fromDefaults.some((member) => member.included)) {
-			return resolveSplits({
-				method: 'percentage',
-				amountCents,
-				payerId: paidByUserId,
-				members: fromDefaults
-			});
-		}
-
-		// No default split configured — split equally among all members.
-		return resolveSplits({
-			method: 'equal',
-			amountCents,
-			payerId: paidByUserId,
-			members: members.map((member) => ({ userId: member.userId, included: true }))
-		});
-	}
-
-	function normalizeDraft(
-		input: ScanConfirmInput,
-		members: Array<{ userId: string; defaultSplitPercent: number | null }>
-	): Array<{
-		description: string;
-		amountCents: number;
-		categoryId: string | null;
-		date: Date;
-		splits: Array<{ userId: string; amountCents: number }>;
-	}> {
-		if (!Array.isArray(input.lines) || input.lines.length === 0) {
-			throw new ScanDraftValidationError('Draft has no line items');
-		}
-
-		return input.lines.map((line) => {
-			if (typeof line.description !== 'string' || line.description.trim() === '') {
-				throw new ScanDraftValidationError('Description is required for every line');
-			}
-			const amountCents = parseAmountCents(line.amountDecimal);
-			if (amountCents === null || amountCents <= 0) {
-				throw new ScanDraftValidationError('Enter a valid amount for every line');
-			}
-			const date = parseLineDate(line.date);
-			const splits = resolveLineSplits(amountCents, input.paidByUserId, members, line.percents);
-			return {
-				description: line.description.trim(),
-				amountCents,
-				categoryId: normalizeCategoryId(line.categoryId),
-				date,
-				splits
-			};
-		});
-	}
-
 	async function confirmDraft(
 		actorUserId: string,
 		input: ScanConfirmInput
@@ -280,7 +173,10 @@ export function createScanService(deps: ScanServiceDeps) {
 			actorUserId,
 			paidByUserId: input.paidByUserId
 		});
-		log.info('draft confirm started', { storageKey: input.storageKey, lineCount: input.lines.length });
+		log.info('draft confirm started', {
+			storageKey: input.storageKey,
+			lineCount: input.lines.length
+		});
 
 		const isMember = await deps.groupMemberRepo.isMember(input.groupId, actorUserId);
 		if (!isMember) throw new ReceiptNotAuthorizedError();
@@ -288,10 +184,10 @@ export function createScanService(deps: ScanServiceDeps) {
 		const members = await deps.groupMemberRepo.getAllForGroupWithUser(input.groupId);
 		const memberIds = new Set(members.map((member) => member.userId));
 		if (!memberIds.has(input.paidByUserId)) {
-			throw new ScanDraftValidationError('Select who paid');
+			throw new DraftValidationError('Select who paid');
 		}
 
-		const normalized = normalizeDraft(input, members);
+		const normalized = normalizeDraftLines(input.lines, input.paidByUserId, members);
 
 		return deps.uow.run(async ({ expenseRepo, pairBalanceRepo, expenseGroupRepo, receiptRepo }) => {
 			const expenseGroup = await expenseGroupRepo.create({

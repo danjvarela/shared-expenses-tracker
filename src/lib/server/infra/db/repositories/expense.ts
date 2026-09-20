@@ -164,6 +164,41 @@ const getAllForGroupWithDetails =
 		);
 	};
 
+const getAllForExpenseGroupWithDetails =
+	(db: Database): IExpenseRepository['getAllForExpenseGroupWithDetails'] =>
+	async (expenseGroupId) => {
+		const expenseRows = await db
+			.select({
+				id: expense.id,
+				groupId: expense.groupId,
+				expenseGroupId: expense.expenseGroupId,
+				paidByUserId: expense.paidByUserId,
+				categoryId: expense.categoryId,
+				description: expense.description,
+				amountCents: expense.amountCents,
+				date: expense.date,
+				createdAt: expense.createdAt,
+				updatedAt: expense.updatedAt,
+				paidByName: user.displayName,
+				categoryName: category.name,
+				categoryIcon: category.icon
+			})
+			.from(expense)
+			.innerJoin(user, eq(user.id, expense.paidByUserId))
+			.leftJoin(category, eq(category.id, expense.categoryId))
+			.where(eq(expense.expenseGroupId, expenseGroupId));
+
+		return Promise.all(
+			expenseRows.map(async (expenseRow) => {
+				const splits = await db
+					.select()
+					.from(expenseSplit)
+					.where(eq(expenseSplit.expenseId, expenseRow.id));
+				return { ...expenseRow, splits };
+			})
+		);
+	};
+
 export function createExpenseRepository(db: Database): IExpenseRepository {
 	return {
 		create: create(db),
@@ -172,6 +207,7 @@ export function createExpenseRepository(db: Database): IExpenseRepository {
 		delete: deleteExpense(db),
 		countByExpenseGroup: countByExpenseGroup(db),
 		getAllForGroupWithSplits: getAllForGroupWithSplits(db),
-		getAllForGroupWithDetails: getAllForGroupWithDetails(db)
+		getAllForGroupWithDetails: getAllForGroupWithDetails(db),
+		getAllForExpenseGroupWithDetails: getAllForExpenseGroupWithDetails(db)
 	};
 }

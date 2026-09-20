@@ -7,7 +7,7 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { ArrowLeft, ChevronDown, ScanLine } from '@lucide/svelte';
+	import { ArrowLeft, ChevronDown, Plus, ScanLine, Trash2 } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -174,6 +174,24 @@
 		}
 	}
 
+	function blankLine(): DraftLine {
+		return {
+			description: '',
+			amountDecimal: '0',
+			categoryId: NO_CATEGORY,
+			percents: null,
+			customSplitOpen: false
+		};
+	}
+
+	function addLine() {
+		lines = [...lines, blankLine()];
+	}
+
+	function removeLine(index: number) {
+		lines = lines.filter((_, i) => i !== index);
+	}
+
 	function lineSum(): number {
 		return lines.reduce((total, line) => total + (Number(line.amountDecimal) || 0), 0);
 	}
@@ -194,7 +212,7 @@
 	}
 
 	async function confirm() {
-		if (confirming) return;
+		if (confirming || lines.length === 0) return;
 		confirming = true;
 		try {
 			const response = await fetch(`/groups/${data.group.id}/scan/confirm`, {
@@ -248,8 +266,8 @@
 		<Card.Root>
 			<Card.Content class="flex flex-col gap-4">
 				<p class="text-sm text-muted-foreground">
-					Upload a receipt and review the scanned items before saving. PDF, PNG, JPEG, WEBP,
-					HEIC, HEIF, or AVIF — single-page only.
+					Upload a receipt and review the scanned items before saving. PDF, PNG, JPEG, WEBP, HEIC,
+					HEIF, or AVIF — single-page only.
 				</p>
 				<input
 					bind:this={fileInput}
@@ -304,10 +322,7 @@
 						<Collapsible.Content class="flex flex-col gap-1 pt-2">
 							{#each data.members as member (member.userId)}
 								<div class="flex items-center gap-2">
-									<Label
-										for={`draft-percent-${member.userId}`}
-										class="w-28 shrink-0 text-xs"
-									>
+									<Label for={`draft-percent-${member.userId}`} class="w-28 shrink-0 text-xs">
 										{member.displayName}
 									</Label>
 									<Input
@@ -318,8 +333,7 @@
 										max="100"
 										placeholder="%"
 										value={effectiveDraftPercents[member.userId]}
-										oninput={(e) =>
-											setDraftPercent(member.userId, e.currentTarget.value)}
+										oninput={(e) => setDraftPercent(member.userId, e.currentTarget.value)}
 									/>
 								</div>
 							{/each}
@@ -331,11 +345,22 @@
 					{#each lines as line, i (i)}
 						<div class="rounded-lg border p-3">
 							<div class="flex flex-col gap-2">
-								<Input
-									bind:value={line.description}
-									placeholder="Description"
-									aria-label="Line description"
-								/>
+								<div class="flex items-center gap-2">
+									<Input
+										bind:value={line.description}
+										placeholder="Description"
+										aria-label="Line description"
+									/>
+									<Button
+										variant="ghost"
+										size="icon"
+										class="shrink-0 text-muted-foreground hover:text-destructive"
+										aria-label="Remove line"
+										onclick={() => removeLine(i)}
+									>
+										<Trash2 class="size-4" />
+									</Button>
+								</div>
 								<Input
 									bind:value={line.amountDecimal}
 									type="number"
@@ -371,10 +396,7 @@
 								<Collapsible.Content class="flex flex-col gap-1 pt-2">
 									{#each data.members as member (member.userId)}
 										<div class="flex items-center gap-2">
-											<Label
-												for={`percent-${i}-${member.userId}`}
-												class="w-28 shrink-0 text-xs"
-											>
+											<Label for={`percent-${i}-${member.userId}`} class="w-28 shrink-0 text-xs">
 												{member.displayName}
 											</Label>
 											<Input
@@ -385,8 +407,7 @@
 												max="100"
 												placeholder="%"
 												value={effectiveLinePercents(line)[member.userId]}
-												oninput={(e) =>
-													setLinePercent(line, member.userId, e.currentTarget.value)}
+												oninput={(e) => setLinePercent(line, member.userId, e.currentTarget.value)}
 											/>
 										</div>
 									{/each}
@@ -395,6 +416,11 @@
 						</div>
 					{/each}
 				</div>
+
+				<Button variant="outline" class="self-start" onclick={addLine}>
+					<Plus class="size-4" />
+					Add line
+				</Button>
 
 				{#if scanResult.totalDecimal}
 					<div class="text-sm text-muted-foreground">
@@ -411,7 +437,7 @@
 				</p>
 
 				<div class="flex gap-2">
-					<LoadingButton onclick={confirm} pending={confirming}>
+					<LoadingButton onclick={confirm} pending={confirming} disabled={lines.length === 0}>
 						{confirming ? 'Saving…' : 'Save expenses'}
 					</LoadingButton>
 					<Button variant="outline" onclick={discard} disabled={confirming}>Discard draft</Button>

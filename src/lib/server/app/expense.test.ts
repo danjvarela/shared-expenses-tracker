@@ -183,6 +183,16 @@ function fakeExpenseRepo(seed: Array<ExpenseWithSplits> = []): IExpenseRepositor
 					categoryName: null,
 					categoryIcon: null
 				}));
+		},
+		async getAllForExpenseGroupWithDetails(expenseGroupId) {
+			return Array.from(rows.values())
+				.filter((row) => row.expenseGroupId === expenseGroupId)
+				.map((row) => ({
+					...row,
+					paidByName: row.paidByUserId,
+					categoryName: null,
+					categoryIcon: null
+				}));
 		}
 	};
 }

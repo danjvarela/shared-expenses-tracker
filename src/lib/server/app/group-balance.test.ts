@@ -35,6 +35,9 @@ function fakeExpenseRepo(expenses: Array<ExpenseWithSplits>): IExpenseRepository
 		async getAllForGroupWithDetails() {
 			throw new Error('not implemented');
 		},
+		async getAllForExpenseGroupWithDetails() {
+			throw new Error('not implemented');
+		},
 		async getAllForGroupWithSplits(groupId) {
 			return expenses.filter((expense) => expense.groupId === groupId);
 		}

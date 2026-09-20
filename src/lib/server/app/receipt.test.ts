@@ -49,6 +49,9 @@ function fakeExpenseRepo(seed: Array<ExpenseWithSplitsAndNames> = []): IExpenseR
 		},
 		async getAllForGroupWithDetails() {
 			return [];
+		},
+		async getAllForExpenseGroupWithDetails() {
+			return [];
 		}
 	};
 }

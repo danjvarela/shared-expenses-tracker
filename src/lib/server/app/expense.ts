@@ -1,4 +1,9 @@
 import { AppError } from '$lib/server/app/error';
+import {
+	DraftValidationError,
+	normalizeDraftLines,
+	type DraftLineInput
+} from '$lib/server/app/draft-line';
 import type { IUnitOfWork } from '$lib/server/app/interfaces/unit-of-work';
 import type {
 	IExpenseRepository,
@@ -58,6 +63,27 @@ export class PaidByCannotChangeWithFormerMemberError extends AppError {
 	constructor() {
 		super('Cannot change who paid while the expense involves a former member');
 	}
+}
+
+export class NotAGroupMemberError extends AppError {
+	constructor() {
+		super('Not a member of this group', 403);
+	}
+}
+
+export interface ExpenseGroupEditLineInput extends DraftLineInput {
+	id: string | null;
+}
+
+export interface ExpenseGroupEditInput {
+	expenseGroupId: string;
+	paidByUserId: string;
+	lines: ExpenseGroupEditLineInput[];
+}
+
+export interface ExpenseGroupEditOutput {
+	expenseGroupId: string;
+	expenseIds: string[];
 }
 
 export function createExpenseService(deps: {
@@ -191,6 +217,111 @@ export function createExpenseService(deps: {
 		});
 	}
 
+	async function getExpenseGroupExpenses(
+		expenseGroupId: string
+	): Promise<Array<ExpenseWithDetails>> {
+		return await deps.expenseRepo.getAllForExpenseGroupWithDetails(expenseGroupId);
+	}
+
+	async function updateExpenseGroup(
+		actorUserId: string,
+		input: ExpenseGroupEditInput
+	): Promise<ExpenseGroupEditOutput> {
+		return deps.uow.run(async ({ expenseRepo, pairBalanceRepo, expenseGroupRepo }) => {
+			const expenseGroup = await expenseGroupRepo.getById(input.expenseGroupId);
+			if (!expenseGroup) throw new ExpenseGroupNotFoundError();
+
+			const isMember = await deps.groupMemberRepo.isMember(expenseGroup.groupId, actorUserId);
+			if (!isMember) throw new NotAGroupMemberError();
+
+			const existingAll = await expenseRepo.getAllForExpenseGroupWithDetails(input.expenseGroupId);
+
+			const members = await deps.groupMemberRepo.getAllForGroupWithUser(expenseGroup.groupId);
+			const memberIds = new Set(members.map((member) => member.userId));
+			if (!memberIds.has(input.paidByUserId)) {
+				throw new DraftValidationError('Select who paid');
+			}
+
+			// Expenses involving a former group member are frozen — this batch operation
+			// only produces splits among current members, so a locked line is left
+			// untouched entirely (never updated or deleted), same as the single-expense
+			// edit page's former-member lock.
+			const isLocked = (row: (typeof existingAll)[number]) =>
+				!memberIds.has(row.paidByUserId) ||
+				row.splits.some((split) => !memberIds.has(split.userId));
+			const existing = existingAll.filter((row) => !isLocked(row));
+			const existingById = new Map(existing.map((row) => [row.id, row]));
+
+			for (const line of input.lines) {
+				if (line.id !== null && !existingById.has(line.id)) {
+					throw new ExpenseNotFoundError();
+				}
+			}
+
+			const normalized = normalizeDraftLines(input.lines, input.paidByUserId, members);
+
+			const submittedIds = new Set(input.lines.map((line) => line.id).filter((id) => id !== null));
+			const toDelete = existing.filter((row) => !submittedIds.has(row.id));
+
+			const expenseIds: string[] = [];
+
+			for (let i = 0; i < input.lines.length; i++) {
+				const line = input.lines[i];
+				const normalizedLine = normalized[i];
+
+				if (line.id === null) {
+					const created = await expenseRepo.create({
+						groupId: expenseGroup.groupId,
+						expenseGroupId: expenseGroup.id,
+						paidByUserId: input.paidByUserId,
+						categoryId: normalizedLine.categoryId,
+						description: normalizedLine.description,
+						amountCents: normalizedLine.amountCents,
+						date: normalizedLine.date,
+						splits: normalizedLine.splits
+					});
+					expenseIds.push(created.id);
+					await applyPairBalanceDeltas(
+						pairBalanceRepo,
+						expenseGroup.groupId,
+						expenseDeltas(input.paidByUserId, normalizedLine.splits)
+					);
+				} else {
+					const existingRow = existingById.get(line.id)!;
+					const updated = await expenseRepo.update(line.id, {
+						paidByUserId: input.paidByUserId,
+						categoryId: normalizedLine.categoryId,
+						description: normalizedLine.description,
+						amountCents: normalizedLine.amountCents,
+						date: normalizedLine.date,
+						splits: normalizedLine.splits
+					});
+					expenseIds.push(updated.id);
+
+					const reversedOldDeltas = expenseDeltas(existingRow.paidByUserId, existingRow.splits).map(
+						(delta) => ({ ...delta, deltaAToB: -delta.deltaAToB })
+					);
+					const newDeltas = expenseDeltas(input.paidByUserId, normalizedLine.splits);
+					await applyPairBalanceDeltas(pairBalanceRepo, expenseGroup.groupId, [
+						...reversedOldDeltas,
+						...newDeltas
+					]);
+				}
+			}
+
+			for (const row of toDelete) {
+				await expenseRepo.delete(row.id);
+				const reversedDeltas = expenseDeltas(row.paidByUserId, row.splits).map((delta) => ({
+					...delta,
+					deltaAToB: -delta.deltaAToB
+				}));
+				await applyPairBalanceDeltas(pairBalanceRepo, expenseGroup.groupId, reversedDeltas);
+			}
+
+			return { expenseGroupId: expenseGroup.id, expenseIds };
+		});
+	}
+
 	async function deleteExpense(id: string): Promise<void> {
 		return deps.uow.run(async ({ expenseRepo, pairBalanceRepo, expenseGroupRepo }) => {
 			const existing = await expenseRepo.getWithSplits(id);
@@ -212,7 +343,14 @@ export function createExpenseService(deps: {
 		});
 	}
 
-	return { getGroupExpenses, createExpense, updateExpense, deleteExpense };
+	return {
+		getGroupExpenses,
+		getExpenseGroupExpenses,
+		createExpense,
+		updateExpense,
+		updateExpenseGroup,
+		deleteExpense
+	};
 }
 
 export type ExpenseService = ReturnType<typeof createExpenseService>;

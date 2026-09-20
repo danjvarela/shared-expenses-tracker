@@ -53,4 +53,6 @@ export interface IExpenseRepository {
 	getAllForGroupWithSplits(groupId: string): Promise<Array<ExpenseWithSplits>>;
 
 	getAllForGroupWithDetails(groupId: string): Promise<Array<ExpenseWithDetails>>;
+
+	getAllForExpenseGroupWithDetails(expenseGroupId: string): Promise<Array<ExpenseWithDetails>>;
 }

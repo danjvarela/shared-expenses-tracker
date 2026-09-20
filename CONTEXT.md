@@ -31,7 +31,7 @@ A User's membership in a Group. Carries no role or permission (no admin/member d
 _Avoid_: Membership, participant
 
 **ExpenseGroup**:
-A bundle of one or more Expenses that were created together, scoped to a Group. Every Expense belongs to exactly one ExpenseGroup — there is no batchless Expense (a manually-added single expense is wrapped in its own one-child ExpenseGroup). Carries no defaults of its own; the payer for scanned lines defaults to the scanning user and the split arrangement comes from `GroupMember.defaultSplitPercent`, both applied at draft time. A one-child ExpenseGroup is the normal state of every manual expense and is never labeled or shown as a "group" to the user — see ADR-0013.
+A bundle of one or more Expenses that were created together, scoped to a Group. Every Expense belongs to exactly one ExpenseGroup — there is no batchless Expense (a manually-added single expense is wrapped in its own one-child ExpenseGroup). Carries no defaults of its own; the payer for scanned lines defaults to the scanning user and the split arrangement comes from `GroupMember.defaultSplitPercent`, both applied at draft time. A one-child ExpenseGroup is the normal state of every manual expense and is never labeled or shown as a "group" to the user — see ADR-0013. Any ExpenseGroup (regardless of origin) can be batch-edited after creation — add, remove, or edit its child Expenses on one page — by any member of its Group. Batch edit keeps one payer and one date applied to every child Expense, even though each Expense row stores these independently — see ADR-0024.
 _Avoid_: Batch, bundle, receipt group (the origin is not always a receipt), ExpenseGrouping
 
 **Expense**:
@@ -47,7 +47,7 @@ An image or PDF attached to one ExpenseGroup, stored via the pluggable storage b
 _Avoid_: Receipt (collides with the scan-receipt-to-ExpenseGroup concept), Attachment, Image
 
 **Receipt scan**:
-The act of turning receipt bytes into a draft ExpenseGroup: the scanner returns raw line items, the app maps them into child Expenses (payer defaults to the scanning user, splits from `GroupMember.defaultSplitPercent`), the user edits the draft, then confirms to persist. Receipts are assumed to be in the Group's selected currency — foreign-currency receipts are out of scope. The scan UI is not rendered when no scanner backend is configured. See ADR-0013.
+The act of turning receipt bytes into a draft ExpenseGroup: the scanner returns raw line items, the app maps them into child Expenses (payer defaults to the scanning user, splits from `GroupMember.defaultSplitPercent`), the user edits the draft — including adding a blank line or removing one the scanner got wrong — then confirms to persist. Receipts are assumed to be in the Group's selected currency — foreign-currency receipts are out of scope. The scan UI is not rendered when no scanner backend is configured. See ADR-0013, ADR-0024.
 _Avoid_: OCR, extraction (implementation detail of a backend, not the domain act)
 
 **Scanner**:

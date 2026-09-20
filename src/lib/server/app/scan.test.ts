@@ -187,6 +187,9 @@ function fakeConfirmExpenseRepo(): IExpenseRepository & {
 		},
 		async getAllForGroupWithDetails() {
 			return [];
+		},
+		async getAllForExpenseGroupWithDetails() {
+			return [];
 		}
 	};
 }
