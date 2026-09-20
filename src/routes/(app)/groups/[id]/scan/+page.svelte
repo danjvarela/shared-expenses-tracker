@@ -227,7 +227,7 @@
 					name: draftName.trim() || null,
 					lines: lines.map((line) => ({
 						description: line.description,
-						amountDecimal: line.amountDecimal,
+						amountDecimal: String(line.amountDecimal),
 						categoryId: line.categoryId === NO_CATEGORY ? null : line.categoryId,
 						date: draftDate,
 						percents: effectiveLinePercents(line)

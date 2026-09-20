@@ -9,8 +9,9 @@ export interface ValidatedExpenseForm {
 	splits: Array<{ userId: string; amountCents: number }>;
 }
 
-export function parseAmountCents(raw: FormDataEntryValue | null): number | null {
-	if (typeof raw !== 'string' || raw.trim() === '') return null;
+export function parseAmountCents(raw: FormDataEntryValue | number | null): number | null {
+	if (typeof raw === 'string' && raw.trim() === '') return null;
+	if (typeof raw !== 'string' && typeof raw !== 'number') return null;
 	const pesos = Number(raw);
 	if (Number.isNaN(pesos)) return null;
 	return Math.round(pesos * 100);
