@@ -78,6 +78,7 @@ export interface ExpenseGroupEditLineInput extends DraftLineInput {
 export interface ExpenseGroupEditInput {
 	expenseGroupId: string;
 	paidByUserId: string;
+	name?: string | null;
 	lines: ExpenseGroupEditLineInput[];
 }
 
@@ -233,6 +234,10 @@ export function createExpenseService(deps: {
 
 			const isMember = await deps.groupMemberRepo.isMember(expenseGroup.groupId, actorUserId);
 			if (!isMember) throw new NotAGroupMemberError();
+
+			if (input.name !== undefined) {
+				await expenseGroupRepo.update(expenseGroup.id, { name: input.name });
+			}
 
 			const existingAll = await expenseRepo.getAllForExpenseGroupWithDetails(input.expenseGroupId);
 

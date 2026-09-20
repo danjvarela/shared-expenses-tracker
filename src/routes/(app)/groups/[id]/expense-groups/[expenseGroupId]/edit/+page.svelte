@@ -69,6 +69,7 @@
 		};
 	}
 
+	let name = $state(untrack(() => data.expenseGroupName ?? ''));
 	let paidByUserId = $state(
 		untrack(() => unlockedExpenses[0]?.paidByUserId ?? data.members[0]?.userId ?? '')
 	);
@@ -113,6 +114,7 @@
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						paidByUserId,
+						name: name.trim() || null,
 						lines: lines.map((line) => ({
 							id: line.id,
 							description: line.description,
@@ -150,6 +152,11 @@
 
 	<Card.Root>
 		<Card.Content class="flex flex-col gap-4">
+			<Field.Field>
+				<Field.FieldLabel for="name">Name</Field.FieldLabel>
+				<Input id="name" bind:value={name} placeholder="Scanned receipt" aria-label="Name" />
+			</Field.Field>
+
 			<Field.Field>
 				<Field.FieldLabel for="paidByUserId">Paid by</Field.FieldLabel>
 				<Select.Root type="single" bind:value={paidByUserId}>

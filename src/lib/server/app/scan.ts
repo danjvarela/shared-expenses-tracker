@@ -55,6 +55,7 @@ export interface ScanConfirmInput {
 	storageKey: string;
 	storageMeta: ScanStorageMeta;
 	lines: ScanDraftLineInput[];
+	name?: string | null;
 }
 
 export interface ScanConfirmRepos {
@@ -191,7 +192,8 @@ export function createScanService(deps: ScanServiceDeps) {
 
 		return deps.uow.run(async ({ expenseRepo, pairBalanceRepo, expenseGroupRepo, receiptRepo }) => {
 			const expenseGroup = await expenseGroupRepo.create({
-				groupId: input.groupId
+				groupId: input.groupId,
+				name: input.name ?? null
 			} satisfies ExpenseGroupCreateInput);
 			log.info('expense group created', { expenseGroupId: expenseGroup.id });
 

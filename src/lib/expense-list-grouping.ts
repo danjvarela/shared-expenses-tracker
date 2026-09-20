@@ -2,6 +2,7 @@ import type { ExpenseDateRange } from './expense-date-filter';
 
 export interface ExpenseListLike {
 	expenseGroupId: string;
+	expenseGroupName: string | null;
 	amountCents: number;
 	createdAt: Date;
 	date: Date;
@@ -65,7 +66,13 @@ export function filterExpenses<E extends FilterableExpense>(
 
 export type ExpenseListItem<E> =
 	| { kind: 'single'; expense: E }
-	| { kind: 'group'; expenseGroupId: string; children: E[]; totalCents: number };
+	| {
+			kind: 'group';
+			expenseGroupId: string;
+			expenseGroupName: string | null;
+			children: E[];
+			totalCents: number;
+	  };
 
 export interface MonthSection<E> {
 	monthKey: string;
@@ -133,7 +140,13 @@ export function groupExpensesForList<E extends ExpenseListLike>(
 			(a, b) => a.createdAt.valueOf() - b.createdAt.valueOf()
 		);
 		const totalCents = sortedChildren.reduce((sum, child) => sum + child.amountCents, 0);
-		return { kind: 'group' as const, expenseGroupId, children: sortedChildren, totalCents };
+		return {
+			kind: 'group' as const,
+			expenseGroupId,
+			expenseGroupName: sortedChildren[0].expenseGroupName,
+			children: sortedChildren,
+			totalCents
+		};
 	});
 }
 

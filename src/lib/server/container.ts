@@ -248,6 +248,7 @@ export {
 	groupMemberRepo,
 	categoryRepo,
 	expenseRepo,
+	expenseGroupRepo,
 	pairBalanceRepo,
 	notificationRepo,
 	receiptRepo,

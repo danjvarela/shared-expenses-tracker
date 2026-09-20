@@ -32,6 +32,7 @@ function entry(
 	return {
 		id,
 		expenseGroupId,
+		expenseGroupName: null,
 		description: `${id} desc`,
 		amountCents,
 		createdAt: new Date(createdAt),
@@ -61,6 +62,7 @@ describe('groupExpensesForList', () => {
 		expect(items[0]).toEqual({
 			kind: 'group',
 			expenseGroupId: 'g1',
+			expenseGroupName: null,
 			totalCents: 4000,
 			children: [entry('e1', 'g1', 1, 1000), entry('e2', 'g1', 2, 2500), entry('e3', 'g1', 3, 500)]
 		});

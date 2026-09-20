@@ -524,7 +524,7 @@
 												class="transition-colors group-data-[state=open]:bg-muted/40 hover:bg-accent/50"
 											>
 												<Card.Header>
-													<Card.Title>Scanned receipt</Card.Title>
+													<Card.Title>{item.expenseGroupName ?? 'Scanned receipt'}</Card.Title>
 													<Card.Description>
 														Paid by {firstChild.paidByName} · {formatDate(repDate)}
 													</Card.Description>

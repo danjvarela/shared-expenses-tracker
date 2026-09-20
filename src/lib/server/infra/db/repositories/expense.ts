@@ -4,6 +4,7 @@ import { expense } from '$lib/server/infra/db/schema/expense';
 import { expenseSplit } from '$lib/server/infra/db/schema/expense-split';
 import { user } from '$lib/server/infra/db/schema/user';
 import { category } from '$lib/server/infra/db/schema/category';
+import { expenseGroup } from '$lib/server/infra/db/schema/expense-group';
 import { count, eq } from 'drizzle-orm';
 
 const create =
@@ -146,11 +147,13 @@ const getAllForGroupWithDetails =
 				updatedAt: expense.updatedAt,
 				paidByName: user.displayName,
 				categoryName: category.name,
-				categoryIcon: category.icon
+				categoryIcon: category.icon,
+				expenseGroupName: expenseGroup.name
 			})
 			.from(expense)
 			.innerJoin(user, eq(user.id, expense.paidByUserId))
 			.leftJoin(category, eq(category.id, expense.categoryId))
+			.leftJoin(expenseGroup, eq(expenseGroup.id, expense.expenseGroupId))
 			.where(eq(expense.groupId, groupId));
 
 		return Promise.all(
@@ -181,11 +184,13 @@ const getAllForExpenseGroupWithDetails =
 				updatedAt: expense.updatedAt,
 				paidByName: user.displayName,
 				categoryName: category.name,
-				categoryIcon: category.icon
+				categoryIcon: category.icon,
+				expenseGroupName: expenseGroup.name
 			})
 			.from(expense)
 			.innerJoin(user, eq(user.id, expense.paidByUserId))
 			.leftJoin(category, eq(category.id, expense.categoryId))
+			.leftJoin(expenseGroup, eq(expenseGroup.id, expense.expenseGroupId))
 			.where(eq(expense.expenseGroupId, expenseGroupId));
 
 		return Promise.all(

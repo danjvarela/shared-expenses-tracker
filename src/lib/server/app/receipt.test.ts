@@ -63,7 +63,10 @@ function fakeExpenseGroupRepo(missing = false): IExpenseGroupRepository {
 		},
 		async getById(id) {
 			if (missing) return null;
-			return { id, groupId, createdAt: new Date() };
+			return { id, groupId, name: null, createdAt: new Date() };
+		},
+		async update(id, input) {
+			return { id, groupId, name: input.name, createdAt: new Date() };
 		},
 		async delete() {}
 	};

@@ -181,7 +181,8 @@ function fakeExpenseRepo(seed: Array<ExpenseWithSplits> = []): IExpenseRepositor
 					...row,
 					paidByName: row.paidByUserId,
 					categoryName: null,
-					categoryIcon: null
+					categoryIcon: null,
+					expenseGroupName: null
 				}));
 		},
 		async getAllForExpenseGroupWithDetails(expenseGroupId) {
@@ -191,7 +192,8 @@ function fakeExpenseRepo(seed: Array<ExpenseWithSplits> = []): IExpenseRepositor
 					...row,
 					paidByName: row.paidByUserId,
 					categoryName: null,
-					categoryIcon: null
+					categoryIcon: null,
+					expenseGroupName: null
 				}));
 		}
 	};
@@ -211,6 +213,7 @@ function fakeExpenseGroupRepo(): IExpenseGroupRepository & {
 			const group: ExpenseGroup = {
 				id: `expense-group-${nextId++}`,
 				groupId: input.groupId,
+				name: input.name ?? null,
 				createdAt: new Date()
 			};
 			created.push(group);
@@ -218,6 +221,11 @@ function fakeExpenseGroupRepo(): IExpenseGroupRepository & {
 		},
 		async getById(id) {
 			return created.find((group) => group.id === id) ?? null;
+		},
+		async update(id, input) {
+			const group = created.find((g) => g.id === id)!;
+			group.name = input.name;
+			return group;
 		},
 		async delete(id) {
 			deleted.push(id);
@@ -303,7 +311,7 @@ describe('createExpenseService', () => {
 		});
 
 		expect(await service.getGroupExpenses(groupId)).toEqual([
-			{ ...seed, paidByName: alice, categoryName: null, categoryIcon: null }
+			{ ...seed, paidByName: alice, categoryName: null, categoryIcon: null, expenseGroupName: null }
 		]);
 		expect(await service.getGroupExpenses('other-group')).toEqual([]);
 	});

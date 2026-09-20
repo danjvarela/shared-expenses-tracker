@@ -1,5 +1,10 @@
 import { error } from '@sveltejs/kit';
-import { expenseService, groupMemberService, categoryRepo } from '$lib/server/container';
+import {
+	expenseService,
+	groupMemberService,
+	categoryRepo,
+	expenseGroupRepo
+} from '$lib/server/container';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, parent, locals }) => {
@@ -9,6 +14,9 @@ export const load: PageServerLoad = async ({ params, parent, locals }) => {
 	if (expenses.length === 0 || expenses.some((expense) => expense.groupId !== params.id)) {
 		error(404, 'Expense group not found');
 	}
+
+	const expenseGroup = await expenseGroupRepo.getById(params.expenseGroupId);
+	if (!expenseGroup) error(404, 'Expense group not found');
 
 	const members = await groupMemberService.getGroupMembers(params.id);
 	const categories = await categoryRepo.getAllForGroup(params.id);
@@ -21,5 +29,12 @@ export const load: PageServerLoad = async ({ params, parent, locals }) => {
 			expense.splits.some((split) => !memberIds.has(split.userId))
 	}));
 
-	return { group, members, categories, expenses: lines, user: locals.user };
+	return {
+		group,
+		members,
+		categories,
+		expenses: lines,
+		expenseGroupName: expenseGroup.name,
+		user: locals.user
+	};
 };

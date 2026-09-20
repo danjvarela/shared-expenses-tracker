@@ -7,6 +7,7 @@ import { toHttpError } from '$lib/server/presentation/error-handling';
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	const body = (await request.json().catch(() => null)) as {
 		paidByUserId?: unknown;
+		name?: unknown;
 		lines?: unknown;
 	} | null;
 
@@ -18,6 +19,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		const result = await expenseService.updateExpenseGroup(locals.user!.id, {
 			expenseGroupId: params.expenseGroupId,
 			paidByUserId: body.paidByUserId,
+			name: typeof body.name === 'string' ? body.name : body.name === null ? null : undefined,
 			lines: body.lines as ExpenseGroupEditLineInput[]
 		});
 		return json(result, { status: 200 });

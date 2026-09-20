@@ -39,6 +39,7 @@
 		originalFilename: string | null;
 	} | null>(null);
 	let paidByUserId = $state(untrack(() => data.user?.id ?? data.members[0]?.userId ?? ''));
+	let draftName = $state('');
 	let draftDate = $state(today);
 	let lines = $state<DraftLine[]>([]);
 	let draftPercents = $state<Record<string, string> | null>(null);
@@ -163,6 +164,7 @@
 			storageKey = key;
 			storageMeta = meta;
 			paidByUserId = data.user?.id ?? data.members[0]?.userId ?? '';
+			draftName = scanned.merchant ?? '';
 			draftDate = defaultLineDate(scanned);
 			lines = scanned.lineItems.map((item) => lineFromItem(item));
 			toast.success('Receipt scanned');
@@ -222,6 +224,7 @@
 					paidByUserId,
 					storageKey,
 					storageMeta,
+					name: draftName.trim() || null,
 					lines: lines.map((line) => ({
 						description: line.description,
 						amountDecimal: line.amountDecimal,
@@ -286,11 +289,18 @@
 		<Card.Root>
 			<Card.Header>
 				<Card.Title>Draft</Card.Title>
-				<Card.Description>
-					{#if scanResult.merchant}{scanResult.merchant}{:else}Scanned receipt{/if}
-				</Card.Description>
 			</Card.Header>
 			<Card.Content class="flex flex-col gap-4">
+				<Field.Field>
+					<Field.FieldLabel for="draftName">Name</Field.FieldLabel>
+					<Input
+						id="draftName"
+						bind:value={draftName}
+						placeholder="Scanned receipt"
+						aria-label="Receipt name"
+					/>
+				</Field.Field>
+
 				<Field.Field>
 					<Field.FieldLabel for="paidByUserId">Paid by</Field.FieldLabel>
 					<Select.Root type="single" bind:value={paidByUserId}>

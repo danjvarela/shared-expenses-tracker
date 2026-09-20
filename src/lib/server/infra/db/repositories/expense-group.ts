@@ -6,7 +6,10 @@ import { expenseGroup } from '$lib/server/infra/db/schema/expense-group';
 const create =
 	(db: Database): IExpenseGroupRepository['create'] =>
 	async (input) => {
-		const [row] = await db.insert(expenseGroup).values({ groupId: input.groupId }).returning();
+		const [row] = await db
+			.insert(expenseGroup)
+			.values({ groupId: input.groupId, name: input.name ?? null })
+			.returning();
 		return row;
 	};
 
@@ -15,6 +18,17 @@ const getById =
 	async (id) => {
 		const [row] = await db.select().from(expenseGroup).where(eq(expenseGroup.id, id));
 		return row ?? null;
+	};
+
+const update =
+	(db: Database): IExpenseGroupRepository['update'] =>
+	async (id, input) => {
+		const [row] = await db
+			.update(expenseGroup)
+			.set({ name: input.name })
+			.where(eq(expenseGroup.id, id))
+			.returning();
+		return row;
 	};
 
 const remove =
@@ -27,6 +41,7 @@ export function createExpenseGroupRepository(db: Database): IExpenseGroupReposit
 	return {
 		create: create(db),
 		getById: getById(db),
+		update: update(db),
 		delete: remove(db)
 	};
 }

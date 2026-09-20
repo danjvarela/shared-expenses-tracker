@@ -1,0 +1,1 @@
+ALTER TABLE `expense_group` ADD `name` text;

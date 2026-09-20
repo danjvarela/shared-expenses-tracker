@@ -8,6 +8,7 @@ export const expenseGroup = sqliteTable('expense_group', {
 	groupId: text()
 		.notNull()
 		.references(() => group.id, { onDelete: 'cascade' }),
+	name: text(),
 	createdAt: integer({ mode: 'timestamp' })
 		.notNull()
 		.$defaultFn(() => new Date())

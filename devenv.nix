@@ -33,7 +33,7 @@
   # set STRUCTURING_BACKEND=google and provide the two values below (no defaults).
   env.STRUCTURING_BACKEND = "google";
   env.GOOGLE_API_KEY = config.secretspec.secrets.GOOGLE_API_KEY or "";
-  env.GEMINI_MODEL = "gemini-3.6-flash";
+  env.GEMINI_MODEL = "gemini-2.5-flash";
 
   env.GC_SECRET = config.secretspec.secrets.GC_SECRET or "";
 

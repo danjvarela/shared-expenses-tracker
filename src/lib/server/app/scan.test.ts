@@ -205,6 +205,7 @@ function fakeConfirmExpenseGroupRepo(): IExpenseGroupRepository & {
 			const group: ExpenseGroup = {
 				id: `expense-group-${nextId++}`,
 				groupId: input.groupId,
+				name: input.name ?? null,
 				createdAt: new Date()
 			};
 			created.push(group);
@@ -212,6 +213,9 @@ function fakeConfirmExpenseGroupRepo(): IExpenseGroupRepository & {
 		},
 		async getById() {
 			return null;
+		},
+		async update(id, input) {
+			return { id, groupId: '', name: input.name, createdAt: new Date() };
 		},
 		async delete() {}
 	};

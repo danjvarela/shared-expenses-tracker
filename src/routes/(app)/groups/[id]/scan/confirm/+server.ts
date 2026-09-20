@@ -12,6 +12,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		storageKey?: unknown;
 		storageMeta?: unknown;
 		lines?: unknown;
+		name?: unknown;
 	} | null;
 
 	if (
@@ -35,7 +36,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				sizeBytes: number;
 				originalFilename: string | null;
 			},
-			lines: body.lines as ScanDraftLineInput[]
+			lines: body.lines as ScanDraftLineInput[],
+			name: typeof body.name === 'string' ? body.name : null
 		});
 		return json(result, { status: 201 });
 	} catch (err) {
