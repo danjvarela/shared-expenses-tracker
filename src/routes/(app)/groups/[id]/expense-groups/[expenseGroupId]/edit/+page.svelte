@@ -35,8 +35,8 @@
 		return new Date(date).toISOString().slice(0, 10);
 	}
 
-	const unlockedExpenses = data.expenses.filter((expense) => !expense.locked);
-	const lockedExpenses = data.expenses.filter((expense) => expense.locked);
+	const unlockedExpenses = $derived(data.expenses.filter((expense) => !expense.locked));
+	const lockedExpenses = $derived(data.expenses.filter((expense) => expense.locked));
 
 	function percentsFromSplits(expense: (typeof unlockedExpenses)[number]): Record<string, string> {
 		return Object.fromEntries(
