@@ -15,25 +15,10 @@ export interface CategoryBreakdownEntry {
 	amountCents: number;
 }
 
-export interface GroupBreakdownEntry {
-	groupId: string;
-	groupName: string;
-	currencyCode: string;
-	amountCents: number;
-}
-
 export interface GroupDashboard {
 	currentMonthTotalCents: number;
 	months: Array<string>;
 	categoryBreakdown: Array<CategoryBreakdownEntry>;
-	averagePerMonthCents: number;
-	averagePerDayCents: number;
-}
-
-export interface HomepageDashboard {
-	currentMonthTotalCents: number;
-	months: Array<string>;
-	groupBreakdown: Array<GroupBreakdownEntry>;
 	averagePerMonthCents: number;
 	averagePerDayCents: number;
 }
@@ -133,67 +118,7 @@ export function createDashboardService(deps: DashboardDeps) {
 		};
 	}
 
-	async function getHomepageDashboard(userId: string, month?: string): Promise<HomepageDashboard> {
-		const now = new Date();
-		const currentMonth = monthKey(now);
-		const targetMonth = month ?? currentMonth;
-
-		const groups = await deps.groupRepo.getAll(userId);
-		const groupExpenses = await Promise.all(
-			groups.map((group) => deps.expenseRepo.getAllForGroupWithSplits(group.id))
-		);
-
-		const userSplits: Array<{ groupId: string; date: Date; amountCents: number }> = [];
-		groups.forEach((group, index) => {
-			for (const expense of groupExpenses[index]) {
-				for (const split of expense.splits) {
-					if (split.userId !== userId) continue;
-					userSplits.push({
-						groupId: group.id,
-						date: expense.date,
-						amountCents: split.amountCents
-					});
-				}
-			}
-		});
-
-		const currentMonthTotalCents = userSplits
-			.filter((split) => monthKey(split.date) === currentMonth)
-			.reduce((sum, split) => sum + split.amountCents, 0);
-
-		const months = monthsWithActivity(userSplits.map((split) => split.date));
-
-		const breakdownByGroup = new Map<string, number>();
-		for (const split of userSplits) {
-			if (monthKey(split.date) !== targetMonth) continue;
-			const current = breakdownByGroup.get(split.groupId) ?? 0;
-			breakdownByGroup.set(split.groupId, current + split.amountCents);
-		}
-		const groupById = new Map(groups.map((group) => [group.id, group]));
-		const groupBreakdown = [...breakdownByGroup.entries()]
-			.map(([groupId, amountCents]) => {
-				const group = groupById.get(groupId);
-				return {
-					groupId,
-					groupName: group?.name ?? '',
-					currencyCode: group?.currencyCode ?? '',
-					amountCents
-				};
-			})
-			.sort((a, b) => b.amountCents - a.amountCents);
-
-		const { averagePerMonthCents, averagePerDayCents } = computeAverages(userSplits, now);
-
-		return {
-			currentMonthTotalCents,
-			months,
-			groupBreakdown,
-			averagePerMonthCents,
-			averagePerDayCents
-		};
-	}
-
-	return { getGroupDashboard, getHomepageDashboard };
+	return { getGroupDashboard };
 }
 
 export type DashboardService = ReturnType<typeof createDashboardService>;
