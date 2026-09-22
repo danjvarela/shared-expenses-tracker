@@ -81,7 +81,6 @@ export function createDashboardService(deps: DashboardDeps) {
 	async function getGroupDashboard(groupId: string, month?: string): Promise<GroupDashboard> {
 		const now = new Date();
 		const currentMonth = monthKey(now);
-		const targetMonth = month ?? currentMonth;
 
 		const [expenses, categories] = await Promise.all([
 			deps.expenseRepo.getAllForGroupWithSplits(groupId),
@@ -94,6 +93,7 @@ export function createDashboardService(deps: DashboardDeps) {
 			.reduce((sum, expense) => sum + expense.amountCents, 0);
 
 		const months = monthsWithActivity(expenses.map((expense) => expense.date));
+		const targetMonth = month ?? months[0] ?? currentMonth;
 
 		const breakdownByCategory = new Map<string | null, number>();
 		for (const expense of expenses) {
@@ -148,7 +148,11 @@ export function createDashboardService(deps: DashboardDeps) {
 			for (const expense of groupExpenses[index]) {
 				for (const split of expense.splits) {
 					if (split.userId !== userId) continue;
-					userSplits.push({ groupId: group.id, date: expense.date, amountCents: split.amountCents });
+					userSplits.push({
+						groupId: group.id,
+						date: expense.date,
+						amountCents: split.amountCents
+					});
 				}
 			}
 		});

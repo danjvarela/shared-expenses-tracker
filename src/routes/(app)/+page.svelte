@@ -48,12 +48,9 @@
 </script>
 
 <div class="container mx-auto max-w-xl p-4">
-	<div class="mb-4 flex items-center justify-between">
-		<h1 class="text-2xl font-semibold">Your groups</h1>
-		<Button href="/groups/new">Create group</Button>
-	</div>
+	<h1 class="mb-4 text-2xl font-semibold">Dashboard</h1>
 
-	<div class="mb-4 flex flex-col gap-4">
+	<div class="mb-6 flex flex-col gap-4">
 		<Card.Root>
 			<Card.Header>
 				<Card.Title>This month</Card.Title>
@@ -122,6 +119,11 @@
 		</Card.Root>
 	</div>
 
+	<div class="mb-4 flex items-center justify-between">
+		<h2 class="text-xl font-semibold">Your groups</h2>
+		<Button href="/groups/new">Create group</Button>
+	</div>
+
 	{#if data.hasOutstandingDebt}
 		<Alert.Root class="mb-4">
 			<Alert.Title>You have pending balances</Alert.Title>
@@ -134,10 +136,7 @@
 	{#if data.userGroupBalances.length}
 		<div class="flex flex-col gap-3">
 			{#each data.userGroupBalances as group (group.id)}
-				<a
-					href={resolve('/(app)/groups/[id]', { id: group.id })}
-					class="block no-underline"
-				>
+				<a href={resolve('/(app)/groups/[id]', { id: group.id })} class="block no-underline">
 					<Card.Root class="transition-colors hover:bg-muted/50">
 						<Card.Header>
 							<Card.Title>{group.name}</Card.Title>

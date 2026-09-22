@@ -4,9 +4,10 @@
 	import * as Chart from '$lib/components/ui/chart/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import { Plus, ScanLine, Settings } from '@lucide/svelte';
+	import { ArrowLeft, ChevronRight, Plus, ScanLine, Settings } from '@lucide/svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { formatAmountCents } from '$lib/currency';
 	import { BarChart } from 'layerchart';
 
@@ -50,10 +51,19 @@
 </script>
 
 <div class="container mx-auto flex max-w-xl flex-col gap-4 p-4">
+	<Button variant="ghost" href={resolve('/(app)')} class="-ml-2 w-fit">
+		<ArrowLeft class="size-4" />
+		Back
+	</Button>
 	<div class="flex items-center justify-between">
 		<h1 class="text-2xl font-semibold">{data.group.name}</h1>
 		<div class="flex gap-2">
-			<Button variant="outline" size="icon" href="settings" aria-label="Settings">
+			<Button
+				variant="outline"
+				size="icon"
+				href={resolve('/(app)/groups/[id]/settings', { id: data.group.id })}
+				aria-label="Settings"
+			>
 				<Settings class="size-4" />
 			</Button>
 			<DropdownMenu.Root>
@@ -67,7 +77,10 @@
 				<DropdownMenu.Content align="end" class="w-[200px]">
 					<DropdownMenu.Item>
 						{#snippet child({ props })}
-							<a {...props} href="expenses/new">
+							<a
+								{...props}
+								href={resolve('/(app)/groups/[id]/expenses/new', { id: data.group.id })}
+							>
 								<Plus class="size-4" />
 								Add expense
 							</a>
@@ -76,7 +89,7 @@
 					{#if data.scannerEnabled}
 						<DropdownMenu.Item>
 							{#snippet child({ props })}
-								<a {...props} href="scan">
+								<a {...props} href={resolve('/(app)/groups/[id]/scan', { id: data.group.id })}>
 									<ScanLine class="size-4" />
 									Scan receipt
 								</a>
@@ -121,6 +134,7 @@
 						x="amount"
 						y="name"
 						orientation="horizontal"
+						padding={{ left: 80, right: 16, top: 16, bottom: 8 }}
 						props={{ bars: { fill: 'var(--color-amount)' } }}
 					/>
 				</Chart.Container>
@@ -147,4 +161,18 @@
 			<p class="text-2xl font-semibold">{formatAmount(data.dashboard.averagePerDayCents)}</p>
 		</Card.Content>
 	</Card.Root>
+
+	<a
+		href={resolve('/(app)/groups/[id]/expenses', { id: data.group.id })}
+		class="block no-underline"
+	>
+		<Card.Root class="transition-colors hover:bg-muted/50">
+			<Card.Header class="flex items-center justify-between">
+				<Card.Title>View all expenses</Card.Title>
+				<Card.Action class="self-center">
+					<ChevronRight class="size-4 text-muted-foreground" />
+				</Card.Action>
+			</Card.Header>
+		</Card.Root>
+	</a>
 </div>
