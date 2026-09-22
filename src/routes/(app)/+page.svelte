@@ -2,9 +2,12 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Empty from '$lib/components/ui/empty/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
+	import * as Select from '$lib/components/ui/select/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { resolve } from '$app/paths';
 	import { formatAmountCents } from '$lib/currency';
+	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 
 	const { data } = $props();
 
@@ -14,12 +17,109 @@
 		if (netBalanceCents < 0) return { text: `You owe ${amount}`, class: 'text-red-600' };
 		return { text: 'Settled up', class: 'text-muted-foreground' };
 	}
+
+	function formatPlainAmount(amountCents: number) {
+		return new Intl.NumberFormat(undefined, {
+			minimumFractionDigits: 2,
+			maximumFractionDigits: 2
+		}).format(amountCents / 100);
+	}
+
+	function monthLabel(month: string) {
+		const [year, monthNum] = month.split('-').map(Number);
+		return new Date(year, monthNum - 1, 1).toLocaleDateString(undefined, {
+			month: 'long',
+			year: 'numeric'
+		});
+	}
+
+	function currentMonthKey() {
+		const now = new Date();
+		return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+	}
+
+	const selectedMonth = $derived(page.url.searchParams.get('month') ?? currentMonthKey());
+
+	function setMonth(month: string) {
+		const url = new URL(page.url);
+		url.searchParams.set('month', month);
+		goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+	}
 </script>
 
 <div class="container mx-auto max-w-xl p-4">
 	<div class="mb-4 flex items-center justify-between">
 		<h1 class="text-2xl font-semibold">Your groups</h1>
 		<Button href="/groups/new">Create group</Button>
+	</div>
+
+	<div class="mb-4 flex flex-col gap-4">
+		<Card.Root>
+			<Card.Header>
+				<Card.Title>This month</Card.Title>
+			</Card.Header>
+			<Card.Content>
+				<p class="text-2xl font-semibold">
+					{formatPlainAmount(data.dashboard.currentMonthTotalCents)}
+				</p>
+			</Card.Content>
+		</Card.Root>
+
+		<Card.Root>
+			<Card.Header class="flex items-center justify-between">
+				<Card.Title>Spend by group</Card.Title>
+				{#if data.dashboard.months.length > 0}
+					<Select.Root type="single" value={selectedMonth ?? undefined} onValueChange={setMonth}>
+						<Select.Trigger class="w-[160px]">
+							{selectedMonth ? monthLabel(selectedMonth) : 'Select month'}
+						</Select.Trigger>
+						<Select.Content>
+							{#each data.dashboard.months as month (month)}
+								<Select.Item value={month}>{monthLabel(month)}</Select.Item>
+							{/each}
+						</Select.Content>
+					</Select.Root>
+				{/if}
+			</Card.Header>
+			<Card.Content>
+				{#if data.dashboard.groupBreakdown.length > 0}
+					<div class="flex flex-col gap-2">
+						{#each data.dashboard.groupBreakdown as entry (entry.groupId)}
+							<div class="flex items-center justify-between">
+								<span>{entry.groupName}</span>
+								<span class="font-medium">
+									{formatAmountCents(entry.amountCents, entry.currencyCode)}
+								</span>
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<p class="text-sm text-muted-foreground">No expenses yet</p>
+				{/if}
+			</Card.Content>
+		</Card.Root>
+
+		<Card.Root>
+			<Card.Header>
+				<Card.Title>Average per month</Card.Title>
+			</Card.Header>
+			<Card.Content>
+				<p class="text-2xl font-semibold">
+					{formatPlainAmount(data.dashboard.averagePerMonthCents)}
+				</p>
+			</Card.Content>
+		</Card.Root>
+
+		<Card.Root>
+			<Card.Header>
+				<Card.Title>Average per day</Card.Title>
+			</Card.Header>
+			<Card.Content>
+				<p class="text-2xl font-semibold">
+					{formatPlainAmount(data.dashboard.averagePerDayCents)}
+				</p>
+			</Card.Content>
+		</Card.Root>
 	</div>
 
 	{#if data.hasOutstandingDebt}
