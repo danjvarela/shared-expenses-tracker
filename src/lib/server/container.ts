@@ -27,6 +27,7 @@ import { createGroupService, type GroupRepos } from '$lib/server/app/group';
 import { createCategoryService, type CategoryRepos } from '$lib/server/app/category';
 import { createSettlementService, type SettlementRepos } from '$lib/server/app/settlement';
 import { createGroupMemberService } from '$lib/server/app/group-member';
+import { createDashboardService } from '$lib/server/app/dashboard';
 import { createGroupInviteService, type InviteRepos } from '$lib/server/app/group-invite';
 import { createNotificationService } from '$lib/server/app/notification';
 import { createUserService, type AnonymizeRepos } from '$lib/server/app/user';
@@ -168,6 +169,8 @@ export const settlementService = createSettlementService({
 	notificationRepo,
 	logger: logger.child({ component: 'settlement' })
 });
+
+export const dashboardService = createDashboardService({ expenseRepo, categoryRepo, groupRepo });
 
 export const groupMemberService = createGroupMemberService({
 	groupMemberRepo,
