@@ -75,7 +75,7 @@ A payment of `amountCents` from one User (`fromUserId`) to another (`toUserId`),
 _Avoid_: Payment, payoff
 
 **Category**:
-A global, shared label (with an `icon`) for classifying Expenses. Not owned by a Group or User. An Expense's `categoryId` is nullable — uncategorized Expenses are allowed.
+A label (with an `icon`) for classifying Expenses, either a global default (`ownerGroupId` null — visible to every Group, not editable/removable by any of them) or a Group-custom one (`ownerGroupId` set — editable and removable only by that Group). A Group sees the union of all global defaults plus its own customs, joined via `GroupCategory`. An Expense's `categoryId` is nullable — uncategorized Expenses are allowed.
 _Avoid_: Tag, type
 
 **Money (`amountCents`)**:
