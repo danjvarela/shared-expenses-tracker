@@ -66,7 +66,7 @@
 								<Card.Title>{debt.counterpartyName}</Card.Title>
 								<Card.Description>
 									<a
-										href={resolve('/(app)/groups/[id]', { id: debt.groupId })}
+										href={resolve('/(app)/groups/[id]/expenses', { id: debt.groupId })}
 										class="inline-flex items-center gap-1 hover:underline"
 									>
 										{#if Icon}<Icon class="size-3" />{/if}

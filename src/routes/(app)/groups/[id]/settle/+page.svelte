@@ -35,7 +35,7 @@
 <div class="container mx-auto max-w-xl p-4">
 	<Button
 		variant="ghost"
-		href={resolve('/(app)/groups/[id]', { id: data.group.id })}
+		href={resolve('/(app)/groups/[id]/expenses', { id: data.group.id })}
 		class="mb-2 -ml-2"
 	>
 		<ArrowLeft class="size-4" />

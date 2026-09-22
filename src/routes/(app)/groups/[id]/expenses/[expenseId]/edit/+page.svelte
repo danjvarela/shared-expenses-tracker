@@ -59,7 +59,7 @@
 </script>
 
 <div class="container mx-auto max-w-xl p-4 pb-24">
-	<Button variant="ghost" href="/groups/{data.group.id}" class="mb-2 -ml-2">
+	<Button variant="ghost" href="/groups/{data.group.id}/expenses" class="mb-2 -ml-2">
 		<ArrowLeft class="size-4" />
 		Back
 	</Button>
@@ -201,7 +201,7 @@
 
 				<div class="mt-6 flex gap-2">
 					<Button type="submit">Save changes</Button>
-					<Button variant="outline" href="/groups/{data.group.id}">Cancel</Button>
+					<Button variant="outline" href="/groups/{data.group.id}/expenses">Cancel</Button>
 				</div>
 			</form>
 		</Card.Content>

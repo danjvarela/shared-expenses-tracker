@@ -242,7 +242,7 @@
 			}
 
 			toast.success('Expenses saved');
-			await goto(resolve(`/groups/${data.group.id}`));
+			await goto(resolve(`/groups/${data.group.id}/expenses`));
 		} catch {
 			toast.error('Could not save the expenses');
 		} finally {
@@ -252,7 +252,7 @@
 </script>
 
 <div class="container mx-auto max-w-xl p-4">
-	<Button variant="ghost" href="/groups/{data.group.id}" class="mb-2 -ml-2">
+	<Button variant="ghost" href="/groups/{data.group.id}/expenses" class="mb-2 -ml-2">
 		<ArrowLeft class="size-4" />
 		Back
 	</Button>

@@ -35,7 +35,7 @@
 </script>
 
 <div class="container mx-auto max-w-xl p-4">
-	<Button variant="ghost" href="/groups/{data.group.id}" class="mb-2 -ml-2">
+	<Button variant="ghost" href="/groups/{data.group.id}/expenses" class="mb-2 -ml-2">
 		<ArrowLeft class="size-4" />
 		Back
 	</Button>
@@ -76,9 +76,7 @@
 						<AlertDialog.Footer>
 							<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
 							<form method="POST" action="?/delete" use:deleteForm.enhance>
-								<LoadingButton type="submit" pending={deleteForm.pending}>
-									Delete
-								</LoadingButton>
+								<LoadingButton type="submit" pending={deleteForm.pending}>Delete</LoadingButton>
 							</form>
 						</AlertDialog.Footer>
 					</AlertDialog.Content>

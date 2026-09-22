@@ -134,7 +134,7 @@
 			}
 
 			toast.success('Expenses updated');
-			await goto(resolve(`/groups/${data.group.id}`));
+			await goto(resolve(`/groups/${data.group.id}/expenses`));
 		} catch {
 			toast.error('Could not save the changes');
 		} finally {
@@ -144,7 +144,7 @@
 </script>
 
 <div class="container mx-auto max-w-xl p-4">
-	<Button variant="ghost" href="/groups/{data.group.id}" class="mb-2 -ml-2">
+	<Button variant="ghost" href="/groups/{data.group.id}/expenses" class="mb-2 -ml-2">
 		<ArrowLeft class="size-4" />
 		Back
 	</Button>
@@ -275,7 +275,9 @@
 				<LoadingButton onclick={save} pending={saving} disabled={lines.length === 0}>
 					{saving ? 'Saving…' : 'Save changes'}
 				</LoadingButton>
-				<Button variant="outline" href="/groups/{data.group.id}" disabled={saving}>Cancel</Button>
+				<Button variant="outline" href="/groups/{data.group.id}/expenses" disabled={saving}
+					>Cancel</Button
+				>
 			</div>
 		</Card.Content>
 	</Card.Root>

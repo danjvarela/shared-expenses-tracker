@@ -8,7 +8,11 @@
 
 	let { data, children } = $props();
 
-	const LIST_ROUTES = new Set(['/(app)/groups/[id]', '/(app)/settle', '/(app)/notifications']);
+	const LIST_ROUTES = new Set([
+		'/(app)/groups/[id]/expenses',
+		'/(app)/settle',
+		'/(app)/notifications'
+	]);
 	let listSkeletonRouteId = $derived.by(() => {
 		const id = navigating.to?.route.id;
 		return id && LIST_ROUTES.has(id) ? id : null;
@@ -20,7 +24,8 @@
 		'/(app)/notifications': 'Notifications',
 		'/(app)/account': 'Account',
 		'/(app)/groups/new': 'New group',
-		'/(app)/groups/[id]': 'Expenses',
+		'/(app)/groups/[id]': 'Dashboard',
+		'/(app)/groups/[id]/expenses': 'Expenses',
 		'/(app)/groups/[id]/settings': 'Group settings',
 		'/(app)/groups/[id]/settle': 'Settle up',
 		'/(app)/groups/[id]/expenses/new': 'New expense',

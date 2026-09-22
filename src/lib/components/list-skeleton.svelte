@@ -5,7 +5,7 @@
 
 	let { routeId }: { routeId: string } = $props();
 
-	let isGroupExpenses = $derived(routeId === '/(app)/groups/[id]');
+	let isGroupExpenses = $derived(routeId === '/(app)/groups/[id]/expenses');
 	let isSettle = $derived(routeId === '/(app)/settle');
 	let isNotifications = $derived(routeId === '/(app)/notifications');
 </script>
