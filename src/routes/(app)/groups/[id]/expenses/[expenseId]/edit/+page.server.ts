@@ -56,6 +56,6 @@ export const actions: Actions = {
 			throw err;
 		}
 
-		redirect(303, `/groups/${params.id}`);
+		redirect(303, `/groups/${params.id}/expenses/${params.expenseId}`);
 	}
 };
