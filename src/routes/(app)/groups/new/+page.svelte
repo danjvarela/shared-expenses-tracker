@@ -3,7 +3,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import * as Field from '$lib/components/ui/field/index.js';
-	import * as Select from '$lib/components/ui/select/index.js';
+	import Combobox from '$lib/components/combobox.svelte';
 	import IconPicker from '$lib/components/icon-picker.svelte';
 	import { ArrowLeft } from '@lucide/svelte';
 	import { CURRENCIES, DEFAULT_CURRENCY_CODE } from '$lib/currency';
@@ -13,10 +13,11 @@
 	let avatarIcon: string | null = $state(null);
 	let currencyCode = $state(DEFAULT_CURRENCY_CODE);
 
-	function currencyLabel() {
-		const currency = CURRENCIES.find((c) => c.code === currencyCode);
-		return currency ? `${currency.code} — ${currency.name}` : currencyCode;
-	}
+	const currencyOptions = CURRENCIES.map((currency) => ({
+		value: currency.code,
+		label: `${currency.code} — ${currency.name}`,
+		triggerLabel: currency.code
+	}));
 </script>
 
 <div class="container mx-auto max-w-xl p-4">
@@ -36,14 +37,13 @@
 
 				<Field.Field>
 					<Field.FieldLabel for="currencyCode">Currency</Field.FieldLabel>
-					<Select.Root type="single" name="currencyCode" bind:value={currencyCode}>
-						<Select.Trigger id="currencyCode">{currencyLabel()}</Select.Trigger>
-						<Select.Content>
-							{#each CURRENCIES as currency (currency.code)}
-								<Select.Item value={currency.code}>{currency.code} — {currency.name}</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
+					<Combobox
+						id="currencyCode"
+						name="currencyCode"
+						options={currencyOptions}
+						bind:value={currencyCode}
+						searchPlaceholder="Search currencies..."
+					/>
 				</Field.Field>
 
 				<Field.Field>

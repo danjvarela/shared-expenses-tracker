@@ -10,6 +10,7 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
+	import Combobox from '$lib/components/combobox.svelte';
 	import IconPicker from '$lib/components/icon-picker.svelte';
 	import EmojiPicker from '$lib/components/emoji-picker.svelte';
 	import { ArrowLeft, CircleCheck, LoaderCircle, Pencil, X } from '@lucide/svelte';
@@ -63,10 +64,11 @@
 	const isSolo = $derived(data.members.length === 1);
 	const isDemo = $derived(data.appEnv === 'demo');
 
-	function currencyLabel() {
-		const currency = CURRENCIES.find((c) => c.code === currencyCode);
-		return currency ? `${currency.code} — ${currency.name}` : currencyCode;
-	}
+	const currencyOptions = CURRENCIES.map((currency) => ({
+		value: currency.code,
+		label: `${currency.code} — ${currency.name}`,
+		triggerLabel: currency.code
+	}));
 </script>
 
 <div class="container mx-auto max-w-xl p-4">
@@ -100,14 +102,13 @@
 
 				<Field.Field>
 					<Field.FieldLabel for="currencyCode">Currency</Field.FieldLabel>
-					<Select.Root type="single" name="currencyCode" bind:value={currencyCode}>
-						<Select.Trigger id="currencyCode">{currencyLabel()}</Select.Trigger>
-						<Select.Content>
-							{#each CURRENCIES as currency (currency.code)}
-								<Select.Item value={currency.code}>{currency.code} — {currency.name}</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
+					<Combobox
+						id="currencyCode"
+						name="currencyCode"
+						options={currencyOptions}
+						bind:value={currencyCode}
+						searchPlaceholder="Search currencies..."
+					/>
 				</Field.Field>
 
 				<Field.Field>
@@ -262,9 +263,7 @@
 					</Alert.Root>
 				{/if}
 
-				<LoadingButton type="submit" pending={addCategoryForm.pending}>
-					Add category
-				</LoadingButton>
+				<LoadingButton type="submit" pending={addCategoryForm.pending}>Add category</LoadingButton>
 			</form>
 		</Card.Content>
 	</Card.Root>
@@ -350,9 +349,7 @@
 														<Tooltip.Trigger>
 															{#snippet child({ props: tooltipProps })}
 																<span {...props} {...tooltipProps}>
-																	<Button variant="destructive" size="sm" disabled
-																		>Leave</Button
-																	>
+																	<Button variant="destructive" size="sm" disabled>Leave</Button>
 																</span>
 															{/snippet}
 														</Tooltip.Trigger>
@@ -419,9 +416,7 @@
 														<Tooltip.Trigger>
 															{#snippet child({ props: tooltipProps })}
 																<span {...props} {...tooltipProps}>
-																	<Button variant="destructive" size="sm" disabled
-																		>Remove</Button
-																	>
+																	<Button variant="destructive" size="sm" disabled>Remove</Button>
 																</span>
 															{/snippet}
 														</Tooltip.Trigger>

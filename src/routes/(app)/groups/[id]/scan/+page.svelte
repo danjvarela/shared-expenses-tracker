@@ -5,6 +5,7 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import * as Field from '$lib/components/ui/field/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
+	import Combobox from '$lib/components/combobox.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { ArrowLeft, ChevronDown, Plus, ScanLine, Trash2 } from '@lucide/svelte';
@@ -85,10 +86,13 @@
 		return paidByUserId ? memberName(paidByUserId) : 'Select payer';
 	}
 
-	function categoryLabel(categoryId: string) {
-		if (categoryId === NO_CATEGORY) return 'None';
-		return data.categories.find((category) => category.id === categoryId)?.name ?? 'None';
-	}
+	const categoryOptions = $derived([
+		{ value: NO_CATEGORY, label: 'None' },
+		...data.categories.map((category) => ({
+			value: category.id,
+			label: `${category.icon} ${category.name}`
+		}))
+	]);
 
 	function defaultLineDate(scanned: ScanResult | null): string {
 		if (scanned?.date) {
@@ -379,20 +383,11 @@
 									placeholder={data.group.currencyCode}
 									aria-label="Line amount"
 								/>
-								<Select.Root type="single" bind:value={line.categoryId}>
-									<Select.Trigger aria-label="Line category">
-										{categoryLabel(line.categoryId)}
-									</Select.Trigger>
-									<Select.Content>
-										<Select.Item value={NO_CATEGORY}>None</Select.Item>
-										{#each data.categories as category (category.id)}
-											<Select.Item value={category.id}>
-												{category.icon}
-												{category.name}
-											</Select.Item>
-										{/each}
-									</Select.Content>
-								</Select.Root>
+								<Combobox
+									options={categoryOptions}
+									bind:value={line.categoryId}
+									searchPlaceholder="Search categories..."
+								/>
 							</div>
 							<Collapsible.Root bind:open={line.customSplitOpen} class="mt-2">
 								<Collapsible.Trigger

@@ -4,6 +4,7 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import * as Field from '$lib/components/ui/field/index.js';
 	import * as Select from '$lib/components/ui/select/index.js';
+	import Combobox from '$lib/components/combobox.svelte';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -46,10 +47,13 @@
 		return data.members.some((member) => member.userId === userId);
 	}
 
-	function categoryLabel() {
-		if (categoryId === NO_CATEGORY) return 'None';
-		return data.categories.find((category) => category.id === categoryId)?.name ?? 'None';
-	}
+	const categoryOptions = $derived([
+		{ value: NO_CATEGORY, label: 'None' },
+		...data.categories.map((category) => ({
+			value: category.id,
+			label: `${category.icon} ${category.name}`
+		}))
+	]);
 
 	const formerMemberSplits = $derived(
 		data.expense.splits.filter((split) => !isCurrentMember(split.userId))
@@ -138,15 +142,13 @@
 
 				<Field.Field>
 					<Field.FieldLabel for="categoryId">Category</Field.FieldLabel>
-					<Select.Root type="single" name="categoryId" bind:value={categoryId}>
-						<Select.Trigger id="categoryId">{categoryLabel()}</Select.Trigger>
-						<Select.Content>
-							<Select.Item value={NO_CATEGORY}>None</Select.Item>
-							{#each data.categories as category (category.id)}
-								<Select.Item value={category.id}>{category.icon} {category.name}</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
+					<Combobox
+						id="categoryId"
+						name="categoryId"
+						options={categoryOptions}
+						bind:value={categoryId}
+						searchPlaceholder="Search categories..."
+					/>
 				</Field.Field>
 
 				<Field.FieldSet>
