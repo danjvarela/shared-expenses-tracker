@@ -13,8 +13,12 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 };
 
 async function createExpense(
-	{ request, params, locals }: { request: Request; params: { id: string }; locals: App.Locals },
-	redirectTo: string
+	{
+		request,
+		params,
+		locals
+	}: { request: Request; params: { id: string }; locals: App.Locals },
+	buildRedirectTo: (expenseId: string) => string
 ) {
 	const members = await groupMemberService.getGroupMembers(params.id);
 	const formData = await request.formData();
@@ -24,7 +28,7 @@ async function createExpense(
 		return fail(400, { error: result.error });
 	}
 
-	await expenseService.createExpense(
+	const expense = await expenseService.createExpense(
 		{
 			groupId: params.id,
 			...result.data
@@ -32,11 +36,12 @@ async function createExpense(
 		locals.user!.id
 	);
 
-	redirect(303, redirectTo);
+	redirect(303, buildRedirectTo(expense.id));
 }
 
 export const actions: Actions = {
-	create: async (event) => createExpense(event, `/groups/${event.params.id}`),
+	create: async (event) =>
+		createExpense(event, (expenseId) => `/groups/${event.params.id}/expenses/${expenseId}`),
 	createAndAddAnother: async (event) =>
-		createExpense(event, `/groups/${event.params.id}/expenses/new`)
+		createExpense(event, () => `/groups/${event.params.id}/expenses/new`)
 };

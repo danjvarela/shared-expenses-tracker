@@ -32,6 +32,6 @@ export const actions: Actions = {
 			return fail(400, { error: 'Failed to delete expense' });
 		}
 
-		redirect(303, `/groups/${params.id}`);
+		redirect(303, `/groups/${params.id}/expenses`);
 	}
 };
