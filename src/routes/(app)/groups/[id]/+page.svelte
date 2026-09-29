@@ -110,6 +110,20 @@
 		</Card.Content>
 	</Card.Root>
 
+	<a
+		href={resolve('/(app)/groups/[id]/expenses', { id: data.group.id })}
+		class="block no-underline"
+	>
+		<Card.Root class="transition-colors hover:bg-muted/50">
+			<Card.Header class="flex items-center justify-between">
+				<Card.Title>View all expenses</Card.Title>
+				<Card.Action class="self-center">
+					<ChevronRight class="size-4 text-muted-foreground" />
+				</Card.Action>
+			</Card.Header>
+		</Card.Root>
+	</a>
+
 	<Card.Root>
 		<Card.Header class="flex items-center justify-between">
 			<Card.Title>Spend by category</Card.Title>
@@ -161,18 +175,4 @@
 			<p class="text-2xl font-semibold">{formatAmount(data.dashboard.averagePerDayCents)}</p>
 		</Card.Content>
 	</Card.Root>
-
-	<a
-		href={resolve('/(app)/groups/[id]/expenses', { id: data.group.id })}
-		class="block no-underline"
-	>
-		<Card.Root class="transition-colors hover:bg-muted/50">
-			<Card.Header class="flex items-center justify-between">
-				<Card.Title>View all expenses</Card.Title>
-				<Card.Action class="self-center">
-					<ChevronRight class="size-4 text-muted-foreground" />
-				</Card.Action>
-			</Card.Header>
-		</Card.Root>
-	</a>
 </div>
