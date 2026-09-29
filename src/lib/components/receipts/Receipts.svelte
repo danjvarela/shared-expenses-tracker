@@ -130,7 +130,7 @@
 											<Button
 												variant="destructive"
 												size="icon"
-												class="size-7 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+												class="size-7 shadow-sm"
 												aria-label="Delete receipt"
 												disabled
 											>
@@ -146,7 +146,7 @@
 						<Button
 							variant="destructive"
 							size="icon"
-							class="absolute top-1 right-1 size-7 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+							class="absolute top-1 right-1 size-7 shadow-sm"
 							aria-label="Delete receipt"
 							onclick={() => (pendingDelete = receipt)}
 						>
