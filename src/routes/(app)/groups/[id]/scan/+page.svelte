@@ -8,12 +8,13 @@
 	import Combobox from '$lib/components/combobox.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { ArrowLeft, ChevronDown, Plus, ScanLine, Trash2 } from '@lucide/svelte';
+	import { ArrowLeft, Camera, ChevronDown, Plus, ScanLine, Trash2 } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { untrack } from 'svelte';
 	import LoadingButton from '$lib/components/loading-button.svelte';
+	import CameraCapture from '$lib/components/camera-capture.svelte';
 	import type { ScanResult, ReceiptScanLineItem } from '$lib/server/app/interfaces/receipt-scanner';
 
 	const { data } = $props();
@@ -30,6 +31,7 @@
 	};
 
 	let fileInput = $state<HTMLInputElement>();
+	let cameraOpen = $state(false);
 	let scanning = $state(false);
 	let confirming = $state(false);
 	let scanResult = $state<ScanResult | null>(null);
@@ -138,7 +140,11 @@
 	async function onFileChosen() {
 		const file = fileInput?.files?.[0];
 		if (!file) return;
+		await scanFile(file);
+		if (fileInput) fileInput.value = '';
+	}
 
+	async function scanFile(file: File) {
 		scanning = true;
 		try {
 			const formData = new FormData();
@@ -176,7 +182,6 @@
 			toast.error('Could not scan the receipt');
 		} finally {
 			scanning = false;
-			if (fileInput) fileInput.value = '';
 		}
 	}
 
@@ -284,10 +289,17 @@
 					class="hidden"
 					onchange={onFileChosen}
 				/>
-				<LoadingButton onclick={() => fileInput?.click()} pending={scanning}>
-					{#if !scanning}<ScanLine class="size-4" />{/if}
-					{scanning ? 'Scanning…' : 'Upload receipt'}
-				</LoadingButton>
+				<div class="flex gap-2">
+					<LoadingButton onclick={() => (cameraOpen = true)} pending={scanning} variant="outline">
+						{#if !scanning}<Camera class="size-4" />{/if}
+						Take photo
+					</LoadingButton>
+					<LoadingButton onclick={() => fileInput?.click()} pending={scanning}>
+						{#if !scanning}<ScanLine class="size-4" />{/if}
+						{scanning ? 'Scanning…' : 'Upload receipt'}
+					</LoadingButton>
+				</div>
+				<CameraCapture bind:open={cameraOpen} onCapture={scanFile} />
 			</Card.Content>
 		</Card.Root>
 	{:else}

@@ -3,8 +3,9 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
-	import { Plus, Trash2, FileText, ExternalLink } from '@lucide/svelte';
+	import { Plus, Camera, Trash2, FileText, ExternalLink } from '@lucide/svelte';
 	import { toast } from 'svelte-sonner';
+	import CameraCapture from '$lib/components/camera-capture.svelte';
 	import type { ExpenseReceipt } from '$lib/server/domain/expense-receipt';
 
 	let {
@@ -20,6 +21,7 @@
 	let fileInput: HTMLInputElement | undefined = $state();
 	let selected = $state<ExpenseReceipt | null>(null);
 	let pendingDelete = $state<ExpenseReceipt | null>(null);
+	let cameraOpen = $state(false);
 
 	function readUrl(receiptId: string) {
 		return `/groups/${groupId}/expenses/${expenseId}/receipts/${receiptId}`;
@@ -32,7 +34,11 @@
 	async function onFileChosen() {
 		const file = fileInput?.files?.[0];
 		if (!file) return;
+		await uploadFile(file);
+		if (fileInput) fileInput.value = '';
+	}
 
+	async function uploadFile(file: File) {
 		const formData = new FormData();
 		formData.append('file', file);
 
@@ -49,8 +55,6 @@
 			const message = await response.text();
 			toast.error(message || 'Could not add the receipt');
 		}
-
-		if (fileInput) fileInput.value = '';
 	}
 
 	async function confirmDelete() {
@@ -74,10 +78,16 @@
 <section class="mt-6">
 	<div class="mb-2 flex items-center justify-between">
 		<h2 class="text-sm font-medium text-muted-foreground">Receipts</h2>
-		<Button size="sm" variant="outline" onclick={() => fileInput?.click()}>
-			<Plus class="size-4" />
-			Add
-		</Button>
+		<div class="flex gap-2">
+			<Button size="sm" variant="outline" onclick={() => (cameraOpen = true)}>
+				<Camera class="size-4" />
+				Take photo
+			</Button>
+			<Button size="sm" variant="outline" onclick={() => fileInput?.click()}>
+				<Plus class="size-4" />
+				Add
+			</Button>
+		</div>
 		<input
 			bind:this={fileInput}
 			type="file"
@@ -86,6 +96,7 @@
 			class="hidden"
 			onchange={onFileChosen}
 		/>
+		<CameraCapture bind:open={cameraOpen} onCapture={uploadFile} />
 	</div>
 
 	{#if localReceipts.length === 0}
