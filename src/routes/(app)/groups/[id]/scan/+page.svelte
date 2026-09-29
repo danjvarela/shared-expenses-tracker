@@ -285,7 +285,6 @@
 					bind:this={fileInput}
 					type="file"
 					accept="application/pdf,image/png,image/jpeg,image/webp,image/heic,image/heif,image/avif"
-					capture="environment"
 					class="hidden"
 					onchange={onFileChosen}
 				/>

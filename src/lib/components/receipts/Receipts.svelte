@@ -92,7 +92,6 @@
 			bind:this={fileInput}
 			type="file"
 			accept="image/*,application/pdf"
-			capture="environment"
 			class="hidden"
 			onchange={onFileChosen}
 		/>
