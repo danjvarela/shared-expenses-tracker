@@ -171,6 +171,44 @@
 				}}
 			>
 				<Field.Field>
+					<Field.FieldLabel for="description">Description</Field.FieldLabel>
+					<Input id="description" name="description" required />
+				</Field.Field>
+
+				<Field.Field>
+					<Field.FieldLabel for="amount">Amount ({data.group.currencyCode})</Field.FieldLabel>
+					<Input id="amount" name="amount" type="number" step="0.01" min="0.01" required />
+				</Field.Field>
+
+				<Field.Field>
+					<Field.FieldLabel for="date">Date</Field.FieldLabel>
+					<Input id="date" name="date" type="date" value={today} required />
+				</Field.Field>
+
+				<Field.Field>
+					<Field.FieldLabel for="paidByUserId">Paid by</Field.FieldLabel>
+					<Select.Root type="single" name="paidByUserId" bind:value={paidByUserId}>
+						<Select.Trigger id="paidByUserId">{paidByLabel()}</Select.Trigger>
+						<Select.Content>
+							{#each data.members as member (member.userId)}
+								<Select.Item value={member.userId}>{member.displayName}</Select.Item>
+							{/each}
+						</Select.Content>
+					</Select.Root>
+				</Field.Field>
+
+				<Field.Field>
+					<Field.FieldLabel for="categoryId">Category</Field.FieldLabel>
+					<Combobox
+						id="categoryId"
+						name="categoryId"
+						options={categoryOptions}
+						bind:value={categoryId}
+						searchPlaceholder="Search categories..."
+					/>
+				</Field.Field>
+
+				<Field.Field>
 					<Field.FieldLabel>Receipts (optional)</Field.FieldLabel>
 					<div class="flex gap-2">
 						<Button type="button" size="sm" variant="outline" onclick={() => (cameraOpen = true)}>
@@ -219,44 +257,6 @@
 							{/each}
 						</div>
 					{/if}
-				</Field.Field>
-
-				<Field.Field>
-					<Field.FieldLabel for="description">Description</Field.FieldLabel>
-					<Input id="description" name="description" required />
-				</Field.Field>
-
-				<Field.Field>
-					<Field.FieldLabel for="amount">Amount ({data.group.currencyCode})</Field.FieldLabel>
-					<Input id="amount" name="amount" type="number" step="0.01" min="0.01" required />
-				</Field.Field>
-
-				<Field.Field>
-					<Field.FieldLabel for="date">Date</Field.FieldLabel>
-					<Input id="date" name="date" type="date" value={today} required />
-				</Field.Field>
-
-				<Field.Field>
-					<Field.FieldLabel for="paidByUserId">Paid by</Field.FieldLabel>
-					<Select.Root type="single" name="paidByUserId" bind:value={paidByUserId}>
-						<Select.Trigger id="paidByUserId">{paidByLabel()}</Select.Trigger>
-						<Select.Content>
-							{#each data.members as member (member.userId)}
-								<Select.Item value={member.userId}>{member.displayName}</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
-				</Field.Field>
-
-				<Field.Field>
-					<Field.FieldLabel for="categoryId">Category</Field.FieldLabel>
-					<Combobox
-						id="categoryId"
-						name="categoryId"
-						options={categoryOptions}
-						bind:value={categoryId}
-						searchPlaceholder="Search categories..."
-					/>
 				</Field.Field>
 
 				<Collapsible.Root bind:open={customSplitOpen}>
