@@ -10,6 +10,7 @@
 	import { formatAmountCents } from '$lib/currency';
 	import type { CategoryBreakdownEntry } from '$lib/server/app/dashboard';
 	import { BarChart } from 'layerchart';
+	import { untrack } from 'svelte';
 
 	const { data } = $props();
 
@@ -36,16 +37,20 @@
 		| { status: 'success'; value: T };
 
 	let totalMonth = $state(currentMonthKey());
-	let totalState = $state<FetchState<number>>({
-		status: 'success',
-		value: data.dashboard.currentMonthTotalCents
-	});
+	let totalState = $state<FetchState<number>>(
+		untrack(() => ({
+			status: 'success',
+			value: data.dashboard.currentMonthTotalCents
+		}))
+	);
 
-	let breakdownMonth = $state(data.dashboard.months[0] ?? currentMonthKey());
-	let breakdownState = $state<FetchState<Array<CategoryBreakdownEntry>>>({
-		status: 'success',
-		value: data.dashboard.categoryBreakdown
-	});
+	let breakdownMonth = $state(untrack(() => data.dashboard.months[0] ?? currentMonthKey()));
+	let breakdownState = $state<FetchState<Array<CategoryBreakdownEntry>>>(
+		untrack(() => ({
+			status: 'success',
+			value: data.dashboard.categoryBreakdown
+		}))
+	);
 
 	async function loadMonthTotal(groupId: string, month: string) {
 		totalState = { status: 'loading' };
