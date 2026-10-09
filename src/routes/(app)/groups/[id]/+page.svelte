@@ -3,12 +3,12 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import * as Chart from '$lib/components/ui/chart/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
+	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { ArrowLeft, ChevronRight, Plus, ScanLine, Settings } from '@lucide/svelte';
-	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { formatAmountCents } from '$lib/currency';
+	import type { CategoryBreakdownEntry } from '$lib/server/app/dashboard';
 	import { BarChart } from 'layerchart';
 
 	const { data } = $props();
@@ -30,19 +30,68 @@
 		return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 	}
 
-	const selectedMonth = $derived(page.url.searchParams.get('month') ?? currentMonthKey());
+	type FetchState<T> =
+		| { status: 'loading' }
+		| { status: 'error' }
+		| { status: 'success'; value: T };
 
-	function setMonth(month: string) {
-		const url = new URL(page.url);
-		url.searchParams.set('month', month);
-		goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+	let totalMonth = $state(currentMonthKey());
+	let totalState = $state<FetchState<number>>({
+		status: 'success',
+		value: data.dashboard.currentMonthTotalCents
+	});
+
+	let breakdownMonth = $state(data.dashboard.months[0] ?? currentMonthKey());
+	let breakdownState = $state<FetchState<Array<CategoryBreakdownEntry>>>({
+		status: 'success',
+		value: data.dashboard.categoryBreakdown
+	});
+
+	async function loadMonthTotal(groupId: string, month: string) {
+		totalState = { status: 'loading' };
+		try {
+			const res = await fetch(
+				`/groups/${groupId}/dashboard/month-total?month=${encodeURIComponent(month)}`
+			);
+			if (!res.ok) throw new Error('Failed to load total');
+			const { totalCents } = (await res.json()) as { totalCents: number };
+			totalState = { status: 'success', value: totalCents };
+		} catch {
+			totalState = { status: 'error' };
+		}
+	}
+
+	async function loadMonthBreakdown(groupId: string, month: string) {
+		breakdownState = { status: 'loading' };
+		try {
+			const res = await fetch(
+				`/groups/${groupId}/dashboard/month-breakdown?month=${encodeURIComponent(month)}`
+			);
+			if (!res.ok) throw new Error('Failed to load breakdown');
+			const { breakdown } = (await res.json()) as { breakdown: Array<CategoryBreakdownEntry> };
+			breakdownState = { status: 'success', value: breakdown };
+		} catch {
+			breakdownState = { status: 'error' };
+		}
+	}
+
+	function setTotalMonth(month: string) {
+		totalMonth = month;
+		loadMonthTotal(data.group.id, month);
+	}
+
+	function setBreakdownMonth(month: string) {
+		breakdownMonth = month;
+		loadMonthBreakdown(data.group.id, month);
 	}
 
 	const chartData = $derived(
-		data.dashboard.categoryBreakdown.map((entry) => ({
-			name: entry.icon ? `${entry.icon} ${entry.name}` : entry.name,
-			amount: entry.amountCents / 100
-		}))
+		breakdownState.status === 'success'
+			? breakdownState.value.map((entry) => ({
+					name: entry.icon ? `${entry.icon} ${entry.name}` : entry.name,
+					amount: entry.amountCents / 100
+				}))
+			: []
 	);
 
 	const chartConfig: Chart.ChartConfig = {
@@ -102,11 +151,34 @@
 	</div>
 
 	<Card.Root>
-		<Card.Header>
-			<Card.Title>This month</Card.Title>
+		<Card.Header class="flex items-center justify-between">
+			<Card.Title>{monthLabel(totalMonth)}</Card.Title>
+			{#if data.dashboard.months.length > 0}
+				<Select.Root type="single" value={totalMonth} onValueChange={setTotalMonth}>
+					<Select.Trigger class="w-[160px]">
+						{monthLabel(totalMonth)}
+					</Select.Trigger>
+					<Select.Content>
+						{#each data.dashboard.months as month (month)}
+							<Select.Item value={month}>{monthLabel(month)}</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			{/if}
 		</Card.Header>
 		<Card.Content>
-			<p class="text-2xl font-semibold">{formatAmount(data.dashboard.currentMonthTotalCents)}</p>
+			{#if totalState.status === 'loading'}
+				<Skeleton class="h-8 w-32" />
+			{:else if totalState.status === 'error'}
+				<div class="flex items-center gap-2">
+					<p class="text-sm text-destructive">Failed to load total.</p>
+					<Button variant="outline" size="sm" onclick={() => loadMonthTotal(data.group.id, totalMonth)}>
+						Retry
+					</Button>
+				</div>
+			{:else}
+				<p class="text-2xl font-semibold">{formatAmount(totalState.value)}</p>
+			{/if}
 		</Card.Content>
 	</Card.Root>
 
@@ -128,9 +200,9 @@
 		<Card.Header class="flex items-center justify-between">
 			<Card.Title>Spend by category</Card.Title>
 			{#if data.dashboard.months.length > 0}
-				<Select.Root type="single" value={selectedMonth ?? undefined} onValueChange={setMonth}>
+				<Select.Root type="single" value={breakdownMonth} onValueChange={setBreakdownMonth}>
 					<Select.Trigger class="w-[160px]">
-						{selectedMonth ? monthLabel(selectedMonth) : 'Select month'}
+						{monthLabel(breakdownMonth)}
 					</Select.Trigger>
 					<Select.Content>
 						{#each data.dashboard.months as month (month)}
@@ -141,7 +213,20 @@
 			{/if}
 		</Card.Header>
 		<Card.Content>
-			{#if data.dashboard.categoryBreakdown.length > 0}
+			{#if breakdownState.status === 'loading'}
+				<Skeleton class="h-[300px] w-full" />
+			{:else if breakdownState.status === 'error'}
+				<div class="flex items-center gap-2">
+					<p class="text-sm text-destructive">Failed to load breakdown.</p>
+					<Button
+						variant="outline"
+						size="sm"
+						onclick={() => loadMonthBreakdown(data.group.id, breakdownMonth)}
+					>
+						Retry
+					</Button>
+				</div>
+			{:else if breakdownState.value.length > 0}
 				<Chart.Container config={chartConfig} class="h-[300px] w-full">
 					<BarChart
 						data={chartData}

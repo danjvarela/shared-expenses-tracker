@@ -80,6 +80,23 @@ export function createDashboardService(deps: DashboardDeps) {
 		const months = monthsWithActivity(expenses.map((expense) => expense.date));
 		const targetMonth = month ?? months[0] ?? currentMonth;
 
+		const categoryBreakdown = await buildCategoryBreakdown(expenses, categoryById, targetMonth);
+		const { averagePerMonthCents, averagePerDayCents } = computeAverages(expenses, now);
+
+		return {
+			currentMonthTotalCents,
+			months,
+			categoryBreakdown,
+			averagePerMonthCents,
+			averagePerDayCents
+		};
+	}
+
+	async function buildCategoryBreakdown(
+		expenses: Array<{ date: Date; amountCents: number; categoryId: string | null }>,
+		categoryById: Map<string, { id: string; name: string; icon: string | null }>,
+		targetMonth: string
+	): Promise<Array<CategoryBreakdownEntry>> {
 		const breakdownByCategory = new Map<string | null, number>();
 		for (const expense of expenses) {
 			if (monthKey(expense.date) !== targetMonth) continue;
@@ -95,7 +112,7 @@ export function createDashboardService(deps: DashboardDeps) {
 		missingCategories.forEach((category) => {
 			if (category) categoryById.set(category.id, category);
 		});
-		const categoryBreakdown = [...breakdownByCategory.entries()]
+		return [...breakdownByCategory.entries()]
 			.map(([categoryId, amountCents]) => {
 				const category = categoryId ? categoryById.get(categoryId) : undefined;
 				return {
@@ -106,19 +123,28 @@ export function createDashboardService(deps: DashboardDeps) {
 				};
 			})
 			.sort((a, b) => b.amountCents - a.amountCents);
-
-		const { averagePerMonthCents, averagePerDayCents } = computeAverages(expenses, now);
-
-		return {
-			currentMonthTotalCents,
-			months,
-			categoryBreakdown,
-			averagePerMonthCents,
-			averagePerDayCents
-		};
 	}
 
-	return { getGroupDashboard };
+	async function getMonthTotalCents(groupId: string, month: string): Promise<number> {
+		const expenses = await deps.expenseRepo.getAllForGroupWithSplits(groupId);
+		return expenses
+			.filter((expense) => monthKey(expense.date) === month)
+			.reduce((sum, expense) => sum + expense.amountCents, 0);
+	}
+
+	async function getMonthCategoryBreakdown(
+		groupId: string,
+		month: string
+	): Promise<Array<CategoryBreakdownEntry>> {
+		const [expenses, categories] = await Promise.all([
+			deps.expenseRepo.getAllForGroupWithSplits(groupId),
+			deps.categoryRepo.getAllForGroup(groupId)
+		]);
+		const categoryById = new Map(categories.map((category) => [category.id, category]));
+		return buildCategoryBreakdown(expenses, categoryById, month);
+	}
+
+	return { getGroupDashboard, getMonthTotalCents, getMonthCategoryBreakdown };
 }
 
 export type DashboardService = ReturnType<typeof createDashboardService>;
