@@ -7,7 +7,18 @@
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import { ArrowLeft, ChevronDown, Plus, ScanLine, Search, Tags, Users, X } from '@lucide/svelte';
+	import {
+		ArrowLeft,
+		ChevronDown,
+		Paperclip,
+		Plus,
+		ScanLine,
+		Search,
+		Tags,
+		Users,
+		X
+	} from '@lucide/svelte';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
@@ -252,6 +263,9 @@
 			setDateFilter({ mode: 'all' });
 		}
 	}
+
+	const receiptIconClass = (hasReceipt: boolean) =>
+		hasReceipt ? 'size-4 text-primary' : 'size-4 text-muted-foreground/40';
 
 	function loadMoreSentinel(node: HTMLElement, _visibleCount: number) {
 		const observer = new IntersectionObserver(
@@ -498,11 +512,29 @@
 													{formatAmount(expense.amountCents)}
 												</Card.Action>
 											</Card.Header>
-											<Card.Content class="text-sm text-muted-foreground">
-												{#if expense.categoryName}
-													{expense.categoryIcon}
-													{expense.categoryName}
-												{/if}
+											<Card.Content
+												class="flex items-center justify-between text-sm text-muted-foreground"
+											>
+												<span>
+													{#if expense.categoryName}
+														{expense.categoryIcon}
+														{expense.categoryName}
+													{/if}
+												</span>
+												<Tooltip.Provider>
+													<Tooltip.Root>
+														<Tooltip.Trigger>
+															{#snippet child({ props })}
+																<span {...props}>
+																	<Paperclip class={receiptIconClass(expense.hasReceipt)} />
+																</span>
+															{/snippet}
+														</Tooltip.Trigger>
+														<Tooltip.Content>
+															{expense.hasReceipt ? 'Receipt attached' : 'No receipt'}
+														</Tooltip.Content>
+													</Tooltip.Root>
+												</Tooltip.Provider>
 											</Card.Content>
 										</Card.Root>
 									</a>
@@ -528,9 +560,25 @@
 													class="flex items-center justify-between text-sm text-muted-foreground"
 												>
 													<span>Expand to view line items</span>
-													<ChevronDown
-														class="size-4 transition-transform group-data-[state=open]:rotate-180"
-													/>
+													<span class="flex items-center gap-2">
+														<Tooltip.Provider>
+															<Tooltip.Root>
+																<Tooltip.Trigger>
+																	{#snippet child({ props })}
+																		<span {...props}>
+																			<Paperclip class={receiptIconClass(item.hasReceipt)} />
+																		</span>
+																	{/snippet}
+																</Tooltip.Trigger>
+																<Tooltip.Content>
+																	{item.hasReceipt ? 'Receipt attached' : 'No receipt'}
+																</Tooltip.Content>
+															</Tooltip.Root>
+														</Tooltip.Provider>
+														<ChevronDown
+															class="size-4 transition-transform group-data-[state=open]:rotate-180"
+														/>
+													</span>
 												</Card.Content>
 											</Card.Root>
 										</Collapsible.Trigger>

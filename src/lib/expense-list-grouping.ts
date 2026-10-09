@@ -6,6 +6,7 @@ export interface ExpenseListLike {
 	amountCents: number;
 	createdAt: Date;
 	date: Date;
+	hasReceipt: boolean;
 }
 
 export interface FilterableExpense {
@@ -72,6 +73,7 @@ export type ExpenseListItem<E> =
 			expenseGroupName: string | null;
 			children: E[];
 			totalCents: number;
+			hasReceipt: boolean;
 	  };
 
 export interface MonthSection<E> {
@@ -145,7 +147,8 @@ export function groupExpensesForList<E extends ExpenseListLike>(
 			expenseGroupId,
 			expenseGroupName: sortedChildren[0].expenseGroupName,
 			children: sortedChildren,
-			totalCents
+			totalCents,
+			hasReceipt: sortedChildren[0].hasReceipt
 		};
 	});
 }

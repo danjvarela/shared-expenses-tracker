@@ -19,6 +19,7 @@ export interface ExpenseWithDetails extends ExpenseWithSplits {
 	categoryName: string | null;
 	categoryIcon: string | null;
 	expenseGroupName: string | null;
+	hasReceipt: boolean;
 }
 
 export interface IExpenseRepository {

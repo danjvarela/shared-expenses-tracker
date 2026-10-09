@@ -182,7 +182,8 @@ function fakeExpenseRepo(seed: Array<ExpenseWithSplits> = []): IExpenseRepositor
 					paidByName: row.paidByUserId,
 					categoryName: null,
 					categoryIcon: null,
-					expenseGroupName: null
+					expenseGroupName: null,
+					hasReceipt: false
 				}));
 		},
 		async getAllForExpenseGroupWithDetails(expenseGroupId) {
@@ -193,7 +194,8 @@ function fakeExpenseRepo(seed: Array<ExpenseWithSplits> = []): IExpenseRepositor
 					paidByName: row.paidByUserId,
 					categoryName: null,
 					categoryIcon: null,
-					expenseGroupName: null
+					expenseGroupName: null,
+					hasReceipt: false
 				}));
 		}
 	};
@@ -311,7 +313,14 @@ describe('createExpenseService', () => {
 		});
 
 		expect(await service.getGroupExpenses(groupId)).toEqual([
-			{ ...seed, paidByName: alice, categoryName: null, categoryIcon: null, expenseGroupName: null }
+			{
+				...seed,
+				paidByName: alice,
+				categoryName: null,
+				categoryIcon: null,
+				expenseGroupName: null,
+				hasReceipt: false
+			}
 		]);
 		expect(await service.getGroupExpenses('other-group')).toEqual([]);
 	});

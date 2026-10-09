@@ -5,7 +5,8 @@ import { expenseSplit } from '$lib/server/infra/db/schema/expense-split';
 import { user } from '$lib/server/infra/db/schema/user';
 import { category } from '$lib/server/infra/db/schema/category';
 import { expenseGroup } from '$lib/server/infra/db/schema/expense-group';
-import { count, eq } from 'drizzle-orm';
+import { expenseReceipt } from '$lib/server/infra/db/schema/expense-receipt';
+import { count, eq, sql } from 'drizzle-orm';
 
 const create =
 	(db: Database): IExpenseRepository['create'] =>
@@ -148,13 +149,16 @@ const getAllForGroupWithDetails =
 				paidByName: user.displayName,
 				categoryName: category.name,
 				categoryIcon: category.icon,
-				expenseGroupName: expenseGroup.name
+				expenseGroupName: expenseGroup.name,
+				hasReceipt: sql<number>`count(${expenseReceipt.id})`.mapWith(Number)
 			})
 			.from(expense)
 			.innerJoin(user, eq(user.id, expense.paidByUserId))
 			.leftJoin(category, eq(category.id, expense.categoryId))
 			.leftJoin(expenseGroup, eq(expenseGroup.id, expense.expenseGroupId))
-			.where(eq(expense.groupId, groupId));
+			.leftJoin(expenseReceipt, eq(expenseReceipt.expenseGroupId, expense.expenseGroupId))
+			.where(eq(expense.groupId, groupId))
+			.groupBy(expense.id);
 
 		return Promise.all(
 			expenseRows.map(async (expenseRow) => {
@@ -162,7 +166,7 @@ const getAllForGroupWithDetails =
 					.select()
 					.from(expenseSplit)
 					.where(eq(expenseSplit.expenseId, expenseRow.id));
-				return { ...expenseRow, splits };
+				return { ...expenseRow, hasReceipt: expenseRow.hasReceipt > 0, splits };
 			})
 		);
 	};
@@ -185,13 +189,16 @@ const getAllForExpenseGroupWithDetails =
 				paidByName: user.displayName,
 				categoryName: category.name,
 				categoryIcon: category.icon,
-				expenseGroupName: expenseGroup.name
+				expenseGroupName: expenseGroup.name,
+				hasReceipt: sql<number>`count(${expenseReceipt.id})`.mapWith(Number)
 			})
 			.from(expense)
 			.innerJoin(user, eq(user.id, expense.paidByUserId))
 			.leftJoin(category, eq(category.id, expense.categoryId))
 			.leftJoin(expenseGroup, eq(expenseGroup.id, expense.expenseGroupId))
-			.where(eq(expense.expenseGroupId, expenseGroupId));
+			.leftJoin(expenseReceipt, eq(expenseReceipt.expenseGroupId, expense.expenseGroupId))
+			.where(eq(expense.expenseGroupId, expenseGroupId))
+			.groupBy(expense.id);
 
 		return Promise.all(
 			expenseRows.map(async (expenseRow) => {
@@ -199,7 +206,7 @@ const getAllForExpenseGroupWithDetails =
 					.select()
 					.from(expenseSplit)
 					.where(eq(expenseSplit.expenseId, expenseRow.id));
-				return { ...expenseRow, splits };
+				return { ...expenseRow, hasReceipt: expenseRow.hasReceipt > 0, splits };
 			})
 		);
 	};

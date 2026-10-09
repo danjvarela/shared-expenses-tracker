@@ -39,7 +39,8 @@ function entry(
 		date: new Date(date ?? createdAt),
 		categoryName,
 		categoryId,
-		paidByName
+		paidByName,
+		hasReceipt: false
 	};
 }
 
@@ -64,6 +65,7 @@ describe('groupExpensesForList', () => {
 			expenseGroupId: 'g1',
 			expenseGroupName: null,
 			totalCents: 4000,
+			hasReceipt: false,
 			children: [entry('e1', 'g1', 1, 1000), entry('e2', 'g1', 2, 2500), entry('e3', 'g1', 3, 500)]
 		});
 	});
