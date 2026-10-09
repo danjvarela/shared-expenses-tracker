@@ -43,5 +43,8 @@ export const actions: Actions = {
 	create: async (event) =>
 		createExpense(event, (expenseId) => `/groups/${event.params.id}/expenses/${expenseId}`),
 	createAndAddAnother: async (event) =>
-		createExpense(event, () => `/groups/${event.params.id}/expenses/new`)
+		createExpense(
+			event,
+			(expenseId) => `/groups/${event.params.id}/expenses/new?createdId=${expenseId}`
+		)
 };

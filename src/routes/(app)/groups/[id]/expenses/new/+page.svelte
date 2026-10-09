@@ -9,10 +9,77 @@
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import { ArrowLeft, ChevronDown } from '@lucide/svelte';
-	import { untrack } from 'svelte';
+	import { ArrowLeft, ChevronDown, Plus, Camera, X, FileText } from '@lucide/svelte';
+	import { untrack, onDestroy } from 'svelte';
+	import { enhance, applyAction } from '$app/forms';
+	import { goto } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
+	import CameraCapture from '$lib/components/camera-capture.svelte';
+	import LoadingButton from '$lib/components/loading-button.svelte';
 
 	const { data, form } = $props();
+
+	// Mirrors MAX_RECEIPT_BYTES in src/lib/server/app/receipt.ts
+	const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
+
+	let stagedFiles = $state<Array<{ file: File; previewUrl: string }>>([]);
+	let fileInput: HTMLInputElement | undefined = $state();
+	let cameraOpen = $state(false);
+	let submitting = $state(false);
+
+	function stageFile(file: File) {
+		if (file.size > MAX_RECEIPT_BYTES) {
+			toast.error(`${file.name || 'File'} is too large (max 10MB)`);
+			return;
+		}
+		if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+			toast.error(`${file.name || 'File'} is not a supported file type`);
+			return;
+		}
+		stagedFiles = [...stagedFiles, { file, previewUrl: URL.createObjectURL(file) }];
+	}
+
+	function onFileChosen() {
+		const file = fileInput?.files?.[0];
+		if (file) stageFile(file);
+		if (fileInput) fileInput.value = '';
+	}
+
+	onDestroy(() => {
+		for (const { previewUrl } of stagedFiles) URL.revokeObjectURL(previewUrl);
+	});
+
+	function removeStagedFile(index: number) {
+		URL.revokeObjectURL(stagedFiles[index].previewUrl);
+		stagedFiles = stagedFiles.filter((_, i) => i !== index);
+	}
+
+	function uploadStagedFilesInBackground(expenseId: string) {
+		const files = stagedFiles;
+		stagedFiles = [];
+		for (const { file, previewUrl } of files) {
+			URL.revokeObjectURL(previewUrl);
+			const formData = new FormData();
+			formData.append('file', file);
+			fetch(`/groups/${data.group.id}/expenses/${expenseId}/receipts`, {
+				method: 'POST',
+				body: formData
+			}).then(async (response) => {
+				if (!response.ok) {
+					const message = await response.text();
+					toast.error(message || `Could not upload ${file.name}. Add it again from the expense.`);
+				}
+			});
+		}
+	}
+
+	function extractExpenseId(location: string): string | null {
+		const url = new URL(location, window.location.origin);
+		const createdId = url.searchParams.get('createdId');
+		if (createdId) return createdId;
+		const match = url.pathname.match(/\/expenses\/([^/]+)$/);
+		return match ? match[1] : null;
+	}
 
 	const today = new Date().toISOString().slice(0, 10);
 
@@ -83,7 +150,77 @@
 
 	<Card.Root>
 		<Card.Content>
-			<form method="POST" class="flex flex-col gap-4">
+			<form
+				method="POST"
+				class="flex flex-col gap-4"
+				use:enhance={() => {
+					submitting = true;
+					return async ({ result }) => {
+						if (result.type === 'redirect') {
+							const expenseId = extractExpenseId(result.location);
+							if (expenseId && stagedFiles.length > 0) {
+								uploadStagedFilesInBackground(expenseId);
+							}
+							submitting = false;
+							await goto(result.location.replace(/\?createdId=[^&]+/, ''));
+							return;
+						}
+						submitting = false;
+						await applyAction(result);
+					};
+				}}
+			>
+				<Field.Field>
+					<Field.FieldLabel>Receipts (optional)</Field.FieldLabel>
+					<div class="flex gap-2">
+						<Button type="button" size="sm" variant="outline" onclick={() => (cameraOpen = true)}>
+							<Camera class="size-4" />
+							Take photo
+						</Button>
+						<Button type="button" size="sm" variant="outline" onclick={() => fileInput?.click()}>
+							<Plus class="size-4" />
+							Add
+						</Button>
+					</div>
+					<input
+						bind:this={fileInput}
+						type="file"
+						accept="image/*,application/pdf"
+						class="hidden"
+						onchange={onFileChosen}
+					/>
+					<CameraCapture bind:open={cameraOpen} onCapture={stageFile} />
+
+					{#if stagedFiles.length > 0}
+						<div class="grid grid-cols-3 gap-2 sm:grid-cols-4">
+							{#each stagedFiles as { file, previewUrl }, index (previewUrl)}
+								<div class="group relative aspect-square overflow-hidden rounded">
+									{#if file.type === 'application/pdf'}
+										<div
+											class="flex h-full w-full flex-col items-center justify-center gap-1 bg-muted text-muted-foreground"
+										>
+											<FileText class="size-8" />
+											<span class="max-w-full truncate px-2 text-xs">PDF</span>
+										</div>
+									{:else}
+										<img src={previewUrl} alt={file.name} class="h-full w-full object-cover" />
+									{/if}
+									<Button
+										type="button"
+										variant="destructive"
+										size="icon"
+										class="absolute top-1 right-1 size-7 shadow-sm"
+										aria-label="Remove receipt"
+										onclick={() => removeStagedFile(index)}
+									>
+										<X class="size-4" />
+									</Button>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				</Field.Field>
+
 				<Field.Field>
 					<Field.FieldLabel for="description">Description</Field.FieldLabel>
 					<Input id="description" name="description" required />
@@ -222,10 +359,17 @@
 				{/if}
 
 				<div class="flex gap-2">
-					<Button type="submit" formaction="?/create">Add expense</Button>
-					<Button type="submit" formaction="?/createAndAddAnother" variant="outline">
+					<LoadingButton type="submit" formaction="?/create" pending={submitting}>
+						Add expense
+					</LoadingButton>
+					<LoadingButton
+						type="submit"
+						formaction="?/createAndAddAnother"
+						variant="outline"
+						pending={submitting}
+					>
 						Save and add another
-					</Button>
+					</LoadingButton>
 				</div>
 			</form>
 		</Card.Content>
