@@ -54,23 +54,30 @@
 		stagedFiles = stagedFiles.filter((_, i) => i !== index);
 	}
 
-	function uploadStagedFilesInBackground(expenseId: string) {
+	async function uploadStagedFiles(expenseId: string) {
 		const files = stagedFiles;
 		stagedFiles = [];
-		for (const { file, previewUrl } of files) {
-			URL.revokeObjectURL(previewUrl);
-			const formData = new FormData();
-			formData.append('file', file);
-			fetch(`/groups/${data.group.id}/expenses/${expenseId}/receipts`, {
-				method: 'POST',
-				body: formData
-			}).then(async (response) => {
-				if (!response.ok) {
-					const message = await response.text();
-					toast.error(message || `Could not upload ${file.name}. Add it again from the expense.`);
+		await Promise.all(
+			files.map(async ({ file, previewUrl }) => {
+				URL.revokeObjectURL(previewUrl);
+				const formData = new FormData();
+				formData.append('file', file);
+				try {
+					const response = await fetch(
+						`/groups/${data.group.id}/expenses/${expenseId}/receipts`,
+						{ method: 'POST', body: formData }
+					);
+					if (!response.ok) {
+						const message = await response.text();
+						toast.error(
+							message || `Could not upload ${file.name}. Add it again from the expense.`
+						);
+					}
+				} catch {
+					toast.error(`Could not upload ${file.name}. Add it again from the expense.`);
 				}
-			});
-		}
+			})
+		);
 	}
 
 	function extractExpenseId(location: string): string | null {
@@ -159,7 +166,7 @@
 						if (result.type === 'redirect') {
 							const expenseId = extractExpenseId(result.location);
 							if (expenseId && stagedFiles.length > 0) {
-								uploadStagedFilesInBackground(expenseId);
+								await uploadStagedFiles(expenseId);
 							}
 							submitting = false;
 							await goto(result.location.replace(/\?createdId=[^&]+/, ''));
