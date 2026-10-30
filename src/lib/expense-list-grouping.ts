@@ -67,6 +67,22 @@ export function filterExpenses<E extends FilterableExpense>(
 	return result;
 }
 
+/** Shown wherever an `expense_group` has no name of its own. */
+export const UNNAMED_EXPENSE_GROUP_LABEL = 'Scanned receipt';
+
+/**
+ * Sibling counts keyed by `expenseGroupId`. Call this with the *unfiltered* list: once filtering
+ * has run, a group's sole surviving match is indistinguishable from an expense that was always
+ * alone, because both arrive as a bucket of one.
+ */
+export function countExpensesByGroup(expenses: { expenseGroupId: string }[]): Map<string, number> {
+	const counts = new Map<string, number>();
+	for (const expense of expenses) {
+		counts.set(expense.expenseGroupId, (counts.get(expense.expenseGroupId) ?? 0) + 1);
+	}
+	return counts;
+}
+
 export type ExpenseListItem<E> =
 	| { kind: 'single'; expense: E }
 	| {

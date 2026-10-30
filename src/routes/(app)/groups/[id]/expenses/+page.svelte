@@ -8,6 +8,7 @@
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import {
 		ArrowLeft,
+		ArrowRight,
 		ChevronDown,
 		Paperclip,
 		Plus,
@@ -29,8 +30,10 @@
 		nextVisibleCount,
 		hasMoreToLoad,
 		filterExpenses,
+		countExpensesByGroup,
 		RENDER_WINDOW_SIZE,
-		UNCATEGORIZED_ID
+		UNCATEGORIZED_ID,
+		UNNAMED_EXPENSE_GROUP_LABEL
 	} from '$lib/expense-list-grouping';
 	import {
 		parseDateFilterParams,
@@ -98,6 +101,9 @@
 		})
 	);
 	const items = $derived(groupExpensesForList(filtered));
+	// Counted over the unfiltered list: filtering can strip a group down to one surviving child,
+	// which then renders as a single row with no trace of the group it came from.
+	const expenseGroupCounts = $derived(countExpensesByGroup(data.groupExpenses));
 	let visibleCount = $state(RENDER_WINDOW_SIZE);
 	const sections = $derived(sectionExpensesByMonth(items.slice(0, visibleCount)));
 	const hasMore = $derived(hasMoreToLoad(visibleCount, items.length));
@@ -519,48 +525,60 @@
 		{:else}
 			<div class="flex flex-col gap-6">
 				{#each sections as section (section.monthKey)}
-					<section class="flex flex-col gap-3">
+					<section class="flex flex-col gap-5">
 						<h2 class="text-sm font-medium text-muted-foreground">{section.monthLabel}</h2>
 						{#each section.items as item (item.kind === 'single' ? item.expense.id : item.expenseGroupId)}
 							{#if item.kind === 'single'}
 								{@const expense = item.expense}
-								<a href="expenses/{expense.id}">
-									<Card.Root class="transition-colors hover:bg-accent/50">
-										<Card.Header>
-											<Card.Title>{expense.description}</Card.Title>
-											<Card.Description>
-												Paid by {expense.paidByName} · {formatDate(expense.date)}
-											</Card.Description>
-											<Card.Action class="flex items-center gap-2 text-lg font-semibold">
-												{formatAmount(expense.amountCents)}
-											</Card.Action>
-										</Card.Header>
-										<Card.Content
-											class="flex items-center justify-between text-sm text-muted-foreground"
+								{@const groupSize = expenseGroupCounts.get(expense.expenseGroupId) ?? 1}
+								<div class="flex flex-col gap-1">
+									<a href="expenses/{expense.id}">
+										<Card.Root class="transition-colors hover:bg-accent/50">
+											<Card.Header>
+												<Card.Title>{expense.description}</Card.Title>
+												<Card.Description>
+													Paid by {expense.paidByName} · {formatDate(expense.date)}
+												</Card.Description>
+												<Card.Action class="flex items-center gap-2 text-lg font-semibold">
+													{formatAmount(expense.amountCents)}
+												</Card.Action>
+											</Card.Header>
+											<Card.Content
+												class="flex items-center justify-between text-sm text-muted-foreground"
+											>
+												<span>
+													{#if expense.categoryName}
+														{expense.categoryIcon}
+														{expense.categoryName}
+													{/if}
+												</span>
+												<Tooltip.Provider>
+													<Tooltip.Root>
+														<Tooltip.Trigger>
+															{#snippet child({ props })}
+																<span {...props}>
+																	<Paperclip class={receiptIconClass(expense.hasReceipt)} />
+																</span>
+															{/snippet}
+														</Tooltip.Trigger>
+														<Tooltip.Content>
+															{expense.hasReceipt ? 'Receipt attached' : 'No receipt'}
+														</Tooltip.Content>
+													</Tooltip.Root>
+												</Tooltip.Provider>
+											</Card.Content>
+										</Card.Root>
+									</a>
+									{#if hasActiveFilters && groupSize > 1}
+										<a
+											href="expense-groups/{expense.expenseGroupId}/edit"
+											class="inline-flex items-center gap-1 self-end text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
 										>
-											<span>
-												{#if expense.categoryName}
-													{expense.categoryIcon}
-													{expense.categoryName}
-												{/if}
-											</span>
-											<Tooltip.Provider>
-												<Tooltip.Root>
-													<Tooltip.Trigger>
-														{#snippet child({ props })}
-															<span {...props}>
-																<Paperclip class={receiptIconClass(expense.hasReceipt)} />
-															</span>
-														{/snippet}
-													</Tooltip.Trigger>
-													<Tooltip.Content>
-														{expense.hasReceipt ? 'Receipt attached' : 'No receipt'}
-													</Tooltip.Content>
-												</Tooltip.Root>
-											</Tooltip.Provider>
-										</Card.Content>
-									</Card.Root>
-								</a>
+											in {expense.expenseGroupName ?? UNNAMED_EXPENSE_GROUP_LABEL}
+											<ArrowRight class="size-3.5 shrink-0" />
+										</a>
+									{/if}
+								</div>
 							{:else}
 								{@const firstChild = item.children[0]}
 								{@const repDate = expenseListItemDate(item)}
@@ -570,7 +588,9 @@
 											class="transition-colors group-data-[state=open]:bg-muted/40 hover:bg-accent/50"
 										>
 											<Card.Header>
-												<Card.Title>{item.expenseGroupName ?? 'Scanned receipt'}</Card.Title>
+												<Card.Title>
+													{item.expenseGroupName ?? UNNAMED_EXPENSE_GROUP_LABEL}
+												</Card.Title>
 												<Card.Description>
 													Paid by {firstChild.paidByName} · {formatDate(repDate)}
 												</Card.Description>

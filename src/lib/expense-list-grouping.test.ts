@@ -6,6 +6,7 @@ import {
 	nextVisibleCount,
 	hasMoreToLoad,
 	filterExpenses,
+	countExpensesByGroup,
 	RENDER_WINDOW_SIZE,
 	UNCATEGORIZED_ID,
 	type ExpenseListLike
@@ -116,6 +117,55 @@ describe('groupExpensesForList', () => {
 
 	it('returns an empty list for no expenses', () => {
 		expect(groupExpensesForList([])).toEqual([]);
+	});
+});
+
+describe('countExpensesByGroup', () => {
+	it('counts siblings from the unfiltered list so a lone match still knows its group size', () => {
+		const all = [entry('e1', 'g1', 1), entry('e2', 'g1', 2), entry('e3', 'g1', 3)];
+
+		const counts = countExpensesByGroup(all);
+		const matched = filterExpenses(all, {
+			search: 'e2 desc',
+			categoryIds: null,
+			payerNames: null,
+			dateRange: null
+		});
+
+		expect(matched).toHaveLength(1);
+		expect(groupExpensesForList(matched)[0].kind).toBe('single');
+		expect(counts.get(matched[0].expenseGroupId)).toBe(3);
+	});
+
+	it('counts a true solo expense as one so it gets no group affiliation', () => {
+		const all = [entry('solo', 'g1', 1), entry('other', 'g2', 2)];
+
+		expect(countExpensesByGroup(all).get('g1')).toBe(1);
+	});
+
+	it('counts a two-child group as two even when both children match', () => {
+		const all = [entry('e1', 'g1', 1), entry('e2', 'g1', 2)];
+
+		const matched = filterExpenses(all, {
+			search: 'desc',
+			categoryIds: null,
+			payerNames: null,
+			dateRange: null
+		});
+
+		expect(matched).toHaveLength(2);
+		expect(countExpensesByGroup(all).get('g1')).toBe(2);
+	});
+
+	it('counts a null-name group like any other', () => {
+		const all = [entry('e1', 'g1', 1), entry('e2', 'g1', 2), entry('e3', 'g1', 3)];
+		expect(all.every((e) => e.expenseGroupName === null)).toBe(true);
+
+		expect(countExpensesByGroup(all).get('g1')).toBe(3);
+	});
+
+	it('returns an empty map for no expenses', () => {
+		expect(countExpensesByGroup([])).toEqual(new Map());
 	});
 });
 
