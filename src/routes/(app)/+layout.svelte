@@ -14,6 +14,9 @@
 		'/(app)/notifications'
 	]);
 	let listSkeletonRouteId = $derived.by(() => {
+		// Back/forward navigations skip the skeleton: it would render a short page at the exact
+		// moment SvelteKit restores the scroll position, clamping it to the top.
+		if (navigating.type === 'popstate') return null;
 		const id = navigating.to?.route.id;
 		return id && LIST_ROUTES.has(id) ? id : null;
 	});

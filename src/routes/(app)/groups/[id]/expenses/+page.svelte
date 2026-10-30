@@ -3,7 +3,6 @@
 	import * as Empty from '$lib/components/ui/empty/index.js';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
-	import * as ScrollArea from '$lib/components/ui/scroll-area/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
@@ -42,6 +41,8 @@
 	} from '$lib/expense-date-filter';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import DateFilterButton from '$lib/components/date-filter-button.svelte';
+	import { flushSync } from 'svelte';
+	import type { Snapshot } from './$types';
 
 	const { data } = $props();
 
@@ -119,14 +120,37 @@
 		visibleCount = nextVisibleCount(visibleCount, items.length);
 	}
 
+	// Reset the render window when the group or a filter genuinely changes, but not on the first
+	// run: that would clobber the `visibleCount` restored from the navigation snapshot below.
+	let lastResetKey: string | null = null;
 	$effect(() => {
-		data.group.id;
-		searchInput;
-		selectedCategoryIds;
-		selectedPayerNames;
-		dateFilter;
+		const key = JSON.stringify([
+			data.group.id,
+			searchInput,
+			selectedCategoryIds,
+			selectedPayerNames,
+			dateFilter
+		]);
+		if (lastResetKey === null) {
+			lastResetKey = key;
+			return;
+		}
+		if (key === lastResetKey) return;
+		lastResetKey = key;
 		visibleCount = RENDER_WINDOW_SIZE;
 	});
+
+	// Only `visibleCount` needs capturing: the search, category, payer and date filters already
+	// round-trip through the URL. `flushSync` makes the taller list hit the DOM before SvelteKit
+	// applies the restored scroll position, which would otherwise be clamped to the short list.
+	export const snapshot: Snapshot<number> = {
+		capture: () => visibleCount,
+		restore: (value) => {
+			flushSync(() => {
+				visibleCount = value;
+			});
+		}
+	};
 
 	function setSearch(value: string) {
 		const url = new URL(page.url);
@@ -287,16 +311,16 @@
 	}
 </script>
 
-<div class="container mx-auto flex h-[calc(100dvh-4rem)] max-w-xl flex-col p-4">
+<div class="container mx-auto flex min-h-[calc(100dvh-4rem)] max-w-xl flex-col p-4">
 	<Button
 		variant="ghost"
 		href={resolve('/(app)/groups/[id]', { id: data.group.id })}
-		class="mb-2 -ml-2 w-fit shrink-0"
+		class="mb-2 -ml-2 w-fit"
 	>
 		<ArrowLeft class="size-4" />
 		Back
 	</Button>
-	<div class="mb-4 flex shrink-0 items-center justify-between">
+	<div class="mb-4 flex items-center justify-between">
 		<h1 class="text-2xl font-semibold">{data.group.name}</h1>
 		<div class="flex gap-2">
 			<DropdownMenu.Root>
@@ -332,7 +356,7 @@
 	</div>
 
 	{#if data.hasOutstandingDebt}
-		<Alert.Root class="mb-4 shrink-0">
+		<Alert.Root class="mb-4">
 			<Alert.Title>You have pending balances</Alert.Title>
 			<Alert.Action class="top-1/2 -translate-y-1/2">
 				<Button size="sm" href="settle">Settle up</Button>
@@ -341,7 +365,7 @@
 	{/if}
 
 	{#if data.groupExpenses.length}
-		<div class="mb-4 flex shrink-0 flex-col gap-2">
+		<div class="sticky top-0 z-10 mb-4 flex flex-col gap-2 border-b bg-background py-2">
 			<div class="flex items-center gap-2">
 				<div class="relative flex-1">
 					<Search
@@ -482,150 +506,148 @@
 				</div>
 			{/if}
 		</div>
-		<ScrollArea.Root class="min-h-0 flex-1">
-			{#if hasNoMatches}
-				<Empty.Root>
-					<Empty.Header>
-						<Empty.Title>No expenses match your filters</Empty.Title>
-						<Empty.Description>Try adjusting or clearing your filters.</Empty.Description>
-					</Empty.Header>
-					<Empty.Content>
-						<Button variant="outline" onclick={clearFilters}>Clear filters</Button>
-					</Empty.Content>
-				</Empty.Root>
-			{:else}
-				<div class="flex flex-col gap-6">
-					{#each sections as section (section.monthKey)}
-						<section class="flex flex-col gap-3">
-							<h2 class="text-sm font-medium text-muted-foreground">{section.monthLabel}</h2>
-							{#each section.items as item (item.kind === 'single' ? item.expense.id : item.expenseGroupId)}
-								{#if item.kind === 'single'}
-									{@const expense = item.expense}
-									<a href="expenses/{expense.id}">
-										<Card.Root class="transition-colors hover:bg-accent/50">
+		{#if hasNoMatches}
+			<Empty.Root class="flex flex-1 items-center justify-center">
+				<Empty.Header>
+					<Empty.Title>No expenses match your filters</Empty.Title>
+					<Empty.Description>Try adjusting or clearing your filters.</Empty.Description>
+				</Empty.Header>
+				<Empty.Content>
+					<Button variant="outline" onclick={clearFilters}>Clear filters</Button>
+				</Empty.Content>
+			</Empty.Root>
+		{:else}
+			<div class="flex flex-col gap-6">
+				{#each sections as section (section.monthKey)}
+					<section class="flex flex-col gap-3">
+						<h2 class="text-sm font-medium text-muted-foreground">{section.monthLabel}</h2>
+						{#each section.items as item (item.kind === 'single' ? item.expense.id : item.expenseGroupId)}
+							{#if item.kind === 'single'}
+								{@const expense = item.expense}
+								<a href="expenses/{expense.id}">
+									<Card.Root class="transition-colors hover:bg-accent/50">
+										<Card.Header>
+											<Card.Title>{expense.description}</Card.Title>
+											<Card.Description>
+												Paid by {expense.paidByName} · {formatDate(expense.date)}
+											</Card.Description>
+											<Card.Action class="flex items-center gap-2 text-lg font-semibold">
+												{formatAmount(expense.amountCents)}
+											</Card.Action>
+										</Card.Header>
+										<Card.Content
+											class="flex items-center justify-between text-sm text-muted-foreground"
+										>
+											<span>
+												{#if expense.categoryName}
+													{expense.categoryIcon}
+													{expense.categoryName}
+												{/if}
+											</span>
+											<Tooltip.Provider>
+												<Tooltip.Root>
+													<Tooltip.Trigger>
+														{#snippet child({ props })}
+															<span {...props}>
+																<Paperclip class={receiptIconClass(expense.hasReceipt)} />
+															</span>
+														{/snippet}
+													</Tooltip.Trigger>
+													<Tooltip.Content>
+														{expense.hasReceipt ? 'Receipt attached' : 'No receipt'}
+													</Tooltip.Content>
+												</Tooltip.Root>
+											</Tooltip.Provider>
+										</Card.Content>
+									</Card.Root>
+								</a>
+							{:else}
+								{@const firstChild = item.children[0]}
+								{@const repDate = expenseListItemDate(item)}
+								<Collapsible.Root class="group">
+									<Collapsible.Trigger class="w-full text-left">
+										<Card.Root
+											class="transition-colors group-data-[state=open]:bg-muted/40 hover:bg-accent/50"
+										>
 											<Card.Header>
-												<Card.Title>{expense.description}</Card.Title>
+												<Card.Title>{item.expenseGroupName ?? 'Scanned receipt'}</Card.Title>
 												<Card.Description>
-													Paid by {expense.paidByName} · {formatDate(expense.date)}
+													Paid by {firstChild.paidByName} · {formatDate(repDate)}
 												</Card.Description>
 												<Card.Action class="flex items-center gap-2 text-lg font-semibold">
-													{formatAmount(expense.amountCents)}
+													<Badge variant="secondary">{item.children.length} items</Badge>
+													{formatAmount(item.totalCents)}
 												</Card.Action>
 											</Card.Header>
 											<Card.Content
 												class="flex items-center justify-between text-sm text-muted-foreground"
 											>
-												<span>
-													{#if expense.categoryName}
-														{expense.categoryIcon}
-														{expense.categoryName}
-													{/if}
+												<span>Expand to view line items</span>
+												<span class="flex items-center gap-2">
+													<Tooltip.Provider>
+														<Tooltip.Root>
+															<Tooltip.Trigger>
+																{#snippet child({ props })}
+																	<span {...props}>
+																		<Paperclip class={receiptIconClass(item.hasReceipt)} />
+																	</span>
+																{/snippet}
+															</Tooltip.Trigger>
+															<Tooltip.Content>
+																{item.hasReceipt ? 'Receipt attached' : 'No receipt'}
+															</Tooltip.Content>
+														</Tooltip.Root>
+													</Tooltip.Provider>
+													<ChevronDown
+														class="size-4 transition-transform group-data-[state=open]:rotate-180"
+													/>
 												</span>
-												<Tooltip.Provider>
-													<Tooltip.Root>
-														<Tooltip.Trigger>
-															{#snippet child({ props })}
-																<span {...props}>
-																	<Paperclip class={receiptIconClass(expense.hasReceipt)} />
-																</span>
-															{/snippet}
-														</Tooltip.Trigger>
-														<Tooltip.Content>
-															{expense.hasReceipt ? 'Receipt attached' : 'No receipt'}
-														</Tooltip.Content>
-													</Tooltip.Root>
-												</Tooltip.Provider>
 											</Card.Content>
 										</Card.Root>
-									</a>
-								{:else}
-									{@const firstChild = item.children[0]}
-									{@const repDate = expenseListItemDate(item)}
-									<Collapsible.Root class="group">
-										<Collapsible.Trigger class="w-full text-left">
-											<Card.Root
-												class="transition-colors group-data-[state=open]:bg-muted/40 hover:bg-accent/50"
+									</Collapsible.Trigger>
+									<Collapsible.Content>
+										<div class="mt-2 flex flex-col gap-2 border-l-2 border-muted pl-3">
+											<a
+												href="expense-groups/{item.expenseGroupId}/edit"
+												class="self-start text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
 											>
-												<Card.Header>
-													<Card.Title>{item.expenseGroupName ?? 'Scanned receipt'}</Card.Title>
-													<Card.Description>
-														Paid by {firstChild.paidByName} · {formatDate(repDate)}
-													</Card.Description>
-													<Card.Action class="flex items-center gap-2 text-lg font-semibold">
-														<Badge variant="secondary">{item.children.length} items</Badge>
-														{formatAmount(item.totalCents)}
-													</Card.Action>
-												</Card.Header>
-												<Card.Content
-													class="flex items-center justify-between text-sm text-muted-foreground"
-												>
-													<span>Expand to view line items</span>
-													<span class="flex items-center gap-2">
-														<Tooltip.Provider>
-															<Tooltip.Root>
-																<Tooltip.Trigger>
-																	{#snippet child({ props })}
-																		<span {...props}>
-																			<Paperclip class={receiptIconClass(item.hasReceipt)} />
-																		</span>
-																	{/snippet}
-																</Tooltip.Trigger>
-																<Tooltip.Content>
-																	{item.hasReceipt ? 'Receipt attached' : 'No receipt'}
-																</Tooltip.Content>
-															</Tooltip.Root>
-														</Tooltip.Provider>
-														<ChevronDown
-															class="size-4 transition-transform group-data-[state=open]:rotate-180"
-														/>
-													</span>
-												</Card.Content>
-											</Card.Root>
-										</Collapsible.Trigger>
-										<Collapsible.Content>
-											<div class="mt-2 flex flex-col gap-2 border-l-2 border-muted pl-3">
+												Edit line items
+											</a>
+											{#each item.children as child (child.id)}
 												<a
-													href="expense-groups/{item.expenseGroupId}/edit"
-													class="self-start text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+													href="expenses/{child.id}"
+													class="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent/50"
 												>
-													Edit line items
+													<span class="flex flex-col">
+														<span class="font-medium">{child.description}</span>
+														<span class="text-muted-foreground">
+															{#if child.paidByName !== firstChild.paidByName || child.date.valueOf() !== repDate.valueOf()}
+																Paid by {child.paidByName} · {formatDate(
+																	child.date
+																)}{#if child.categoryName}
+																	· {child.categoryIcon} {child.categoryName}{/if}
+															{:else if child.categoryName}
+																{child.categoryIcon} {child.categoryName}
+															{/if}
+														</span>
+													</span>
+													<span class="font-semibold">
+														{formatAmount(child.amountCents)}
+													</span>
 												</a>
-												{#each item.children as child (child.id)}
-													<a
-														href="expenses/{child.id}"
-														class="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent/50"
-													>
-														<span class="flex flex-col">
-															<span class="font-medium">{child.description}</span>
-															<span class="text-muted-foreground">
-																{#if child.paidByName !== firstChild.paidByName || child.date.valueOf() !== repDate.valueOf()}
-																	Paid by {child.paidByName} · {formatDate(
-																		child.date
-																	)}{#if child.categoryName}
-																		· {child.categoryIcon} {child.categoryName}{/if}
-																{:else if child.categoryName}
-																	{child.categoryIcon} {child.categoryName}
-																{/if}
-															</span>
-														</span>
-														<span class="font-semibold">
-															{formatAmount(child.amountCents)}
-														</span>
-													</a>
-												{/each}
-											</div>
-										</Collapsible.Content>
-									</Collapsible.Root>
-								{/if}
-							{/each}
-						</section>
-					{/each}
-					{#if hasMore}
-						<div use:loadMoreSentinel={visibleCount} class="h-1 w-full" aria-hidden="true"></div>
-					{/if}
-				</div>
-			{/if}
-		</ScrollArea.Root>
+											{/each}
+										</div>
+									</Collapsible.Content>
+								</Collapsible.Root>
+							{/if}
+						{/each}
+					</section>
+				{/each}
+				{#if hasMore}
+					<div use:loadMoreSentinel={visibleCount} class="h-1 w-full" aria-hidden="true"></div>
+				{/if}
+			</div>
+		{/if}
 	{:else}
 		<Empty.Root class="flex flex-1 items-center justify-center">
 			<Empty.Header>
