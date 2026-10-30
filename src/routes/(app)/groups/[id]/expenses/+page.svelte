@@ -376,7 +376,7 @@
 						placeholder="Search"
 						bind:value={searchInput}
 						class="pl-8"
-						aria-label="Search expenses"
+						aria-label="Search expenses, categories, and groups"
 					/>
 				</div>
 				<DropdownMenu.Root>

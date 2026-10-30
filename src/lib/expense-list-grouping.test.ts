@@ -282,6 +282,66 @@ describe('filterExpenses', () => {
 		).toEqual(['a']);
 	});
 
+	it('matches expenses by expense group name substring', () => {
+		const expenses = [
+			entry('a', 'ga', 1, 100, undefined, null),
+			entry('b', 'gb', 2, 100, undefined, null)
+		];
+		expenses[0].expenseGroupName = 'Paris Trip';
+
+		expect(
+			filterExpenses(expenses, {
+				search: 'paris',
+				categoryIds: null,
+				payerNames: null,
+				dateRange: null
+			}).map((e) => e.id)
+		).toEqual(['a']);
+	});
+
+	it('matches expense group name case-insensitively', () => {
+		const expenses = [
+			entry('a', 'ga', 1, 100, undefined, null),
+			entry('b', 'gb', 2, 100, undefined, null)
+		];
+		expenses[0].expenseGroupName = 'Paris Trip';
+
+		expect(
+			filterExpenses(expenses, {
+				search: 'PARIS TRIP',
+				categoryIds: null,
+				payerNames: null,
+				dateRange: null
+			}).map((e) => e.id)
+		).toEqual(['a']);
+	});
+
+	it('excludes an expense with a null expense group name that matches nothing else', () => {
+		const expenses = [
+			entry('a', 'ga', 1, 100, undefined, null),
+			entry('b', 'gb', 2, 100, undefined, null)
+		];
+		expenses[1].expenseGroupName = 'Paris Trip';
+
+		expect(expenses[0].expenseGroupName).toBeNull();
+		expect(() =>
+			filterExpenses(expenses, {
+				search: 'paris',
+				categoryIds: null,
+				payerNames: null,
+				dateRange: null
+			})
+		).not.toThrow();
+		expect(
+			filterExpenses(expenses, {
+				search: 'paris',
+				categoryIds: null,
+				payerNames: null,
+				dateRange: null
+			}).map((e) => e.id)
+		).toEqual(['b']);
+	});
+
 	it('returns no expenses when nothing matches', () => {
 		const expenses = [
 			entry('a', 'ga', 1, 100, undefined, 'Food', 'cat-food'),

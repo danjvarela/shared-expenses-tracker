@@ -12,6 +12,7 @@ export interface ExpenseListLike {
 export interface FilterableExpense {
 	description: string;
 	categoryName: string | null;
+	expenseGroupName: string | null;
 	categoryId: string | null;
 	paidByName: string;
 	date: Date;
@@ -37,7 +38,8 @@ export function filterExpenses<E extends FilterableExpense>(
 		result = result.filter(
 			(expense) =>
 				expense.description.toLowerCase().includes(search) ||
-				(expense.categoryName?.toLowerCase().includes(search) ?? false)
+				(expense.categoryName?.toLowerCase().includes(search) ?? false) ||
+				(expense.expenseGroupName?.toLowerCase().includes(search) ?? false)
 		);
 	}
 
